@@ -339,6 +339,8 @@ class BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
+    // No Listener wrapper needed - event blocking is handled at HomeScreen level
+    // via _isPositionOnUI() check before forwarding to SkyView.
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(

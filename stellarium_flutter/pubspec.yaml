@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 3.0.0+208
+version: 3.0.1+209
 
 environment:
   sdk: ^3.9.0
@@ -60,7 +60,8 @@ dependencies:
   shared_preferences: ^2.3.5
 
   # WebView for running stellarium engine on mobile
-  flutter_inappwebview: ^6.1.5
+  webview_flutter: ^4.10.0
+  webview_flutter_wkwebview: ^3.16.3  # iOS implementation
 
   # Path provider for temp directory access
   path_provider: ^2.1.5

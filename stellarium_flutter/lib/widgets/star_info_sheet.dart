@@ -516,6 +516,7 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
     final starInfo = _effectiveStarInfo;
     final modelData = starInfo.modelData;
     final registryInfo = starInfo.registryInfo;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Container(
       decoration: const BoxDecoration(
@@ -593,7 +594,7 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
           // Content
           Flexible(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomPadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

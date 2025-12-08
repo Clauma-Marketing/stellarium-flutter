@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -10,6 +11,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 import '../stellarium/stellarium.dart';
 import 'stellarium_webview.dart';
+
 
 /// A widget that displays the Stellarium sky view with gesture controls.
 class SkyView extends StatefulWidget {
@@ -79,6 +81,46 @@ class SkyViewState extends State<SkyView> {
     setState(() {
       _touchBlocked = blocked;
     });
+  }
+
+  /// Forward a pointer down event to the engine (called from parent widget)
+  void onPointerDown(PointerDownEvent event, double devicePixelRatio) {
+    if (_touchBlocked || !kIsWeb) return;
+    _engine?.onPointerDown(
+      event.pointer,
+      event.localPosition.dx * devicePixelRatio,
+      event.localPosition.dy * devicePixelRatio,
+    );
+  }
+
+  /// Forward a pointer move event to the engine (called from parent widget)
+  void onPointerMove(PointerMoveEvent event, double devicePixelRatio) {
+    if (_touchBlocked || widget.gyroscopeEnabled || !kIsWeb) return;
+    _engine?.onPointerMove(
+      event.pointer,
+      event.localPosition.dx * devicePixelRatio,
+      event.localPosition.dy * devicePixelRatio,
+    );
+  }
+
+  /// Forward a pointer up event to the engine (called from parent widget)
+  void onPointerUp(PointerUpEvent event, double devicePixelRatio) {
+    if (_touchBlocked || !kIsWeb) return;
+    _engine?.onPointerUp(
+      event.pointer,
+      event.localPosition.dx * devicePixelRatio,
+      event.localPosition.dy * devicePixelRatio,
+    );
+  }
+
+  /// Forward a scroll event to the engine for zoom (called from parent widget)
+  void onPointerScroll(PointerScrollEvent event, double devicePixelRatio) {
+    if (_touchBlocked || !kIsWeb) return;
+    _engine?.onZoom(
+      event.scrollDelta.dy > 0 ? 1.1 : 0.9,
+      event.localPosition.dx * devicePixelRatio,
+      event.localPosition.dy * devicePixelRatio,
+    );
   }
 
   // Gyroscope and sensors
@@ -443,48 +485,137 @@ class SkyViewState extends State<SkyView> {
     return _buildWebView();
   }
 
+  /// Forward a pointer down event to the WebView (called from parent widget)
+  void forwardPointerDown(int pointer, double x, double y) {
+    if (_touchBlocked) return;
+    _webViewKey.currentState?.onPointerDown(pointer, x, y);
+  }
+
+  /// Forward a pointer move event to the WebView (called from parent widget)
+  void forwardPointerMove(int pointer, double x, double y) {
+    if (_touchBlocked || widget.gyroscopeEnabled) return;
+    _webViewKey.currentState?.onPointerMove(pointer, x, y);
+  }
+
+  /// Forward a pointer up event to the WebView (called from parent widget)
+  void forwardPointerUp(int pointer, double x, double y) {
+    if (_touchBlocked) return;
+    _webViewKey.currentState?.onPointerUp(pointer, x, y);
+  }
+
+  // Track active pointers and map to engine slots (engine only supports 0 and 1)
+  final Map<int, int> _pointerSlots = {};
+  int _nextSlot = 0;
+
+  // Track touch start position/time for tap detection
+  double? _touchStartX;
+  double? _touchStartY;
+  int? _touchStartTime;
+
+  int _getSlot(int pointer) {
+    return _pointerSlots.putIfAbsent(pointer, () => (_nextSlot++) % 2);
+  }
+
+  void _releaseSlot(int pointer) {
+    _pointerSlots.remove(pointer);
+  }
+
   Widget _buildMobileView() {
-    return Stack(
-      children: [
-        // WebView with Stellarium
-        Positioned.fill(
-          child: StellariumWebView(
-            key: _webViewKey,
-            latitude: widget.initialObserver != null
-                ? Observer.rad2deg(widget.initialObserver!.latitude)
-                : null,
-            longitude: widget.initialObserver != null
-                ? Observer.rad2deg(widget.initialObserver!.longitude)
-                : null,
-            onReady: (ready) {
-              setState(() {
-                _isInitialized = ready;
-              });
-              widget.onEngineReady?.call(ready);
-            },
-            onError: (error) {
-              setState(() {
-                _errorMessage = error;
-              });
-            },
-            onObjectSelected: widget.onObjectSelected,
-            onTimeChanged: widget.onTimeChanged,
+    // Coordinates are in CSS pixels (same as Flutter logical pixels)
+    // NOT multiplied by devicePixelRatio - the engine handles DPR internally
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Listener forwards touches to WebView via JavaScript API.
+        // Flutter's hit-testing ensures UI elements block touches naturally -
+        // only touches that reach this widget (not blocked by UI) get forwarded.
+        return Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (event) {
+            if (_touchBlocked) return;
+            final slot = _getSlot(event.pointer);
+            final x = event.localPosition.dx;
+            final y = event.localPosition.dy;
+            _webViewKey.currentState?.onPointerDown(slot, x, y);
+            // Track for tap detection
+            _touchStartX = x;
+            _touchStartY = y;
+            _touchStartTime = DateTime.now().millisecondsSinceEpoch;
+          },
+          onPointerMove: (event) {
+            if (_touchBlocked || widget.gyroscopeEnabled) return;
+            final slot = _pointerSlots[event.pointer];
+            if (slot == null) return;
+            _webViewKey.currentState?.onPointerMove(
+              slot,
+              event.localPosition.dx,
+              event.localPosition.dy,
+            );
+          },
+          onPointerUp: (event) {
+            if (_touchBlocked) return;
+            final slot = _pointerSlots[event.pointer];
+            if (slot == null) return;
+            final x = event.localPosition.dx;
+            final y = event.localPosition.dy;
+            _webViewKey.currentState?.onPointerUp(slot, x, y);
+            _releaseSlot(event.pointer);
+
+            // Tap detection - check if this was a tap (small movement, short duration)
+            if (_touchStartX != null && _touchStartY != null && _touchStartTime != null) {
+              final dx = (x - _touchStartX!).abs();
+              final dy = (y - _touchStartY!).abs();
+              final duration = DateTime.now().millisecondsSinceEpoch - _touchStartTime!;
+              const tapThreshold = 15.0;
+              const tapMaxDuration = 300;
+
+              if (dx < tapThreshold && dy < tapThreshold && duration < tapMaxDuration) {
+                debugPrint('[SKYVIEW] Tap detected at ($x, $y)');
+                // Tap detection is handled by the WebView's JavaScript
+              }
+            }
+            _touchStartX = null;
+            _touchStartY = null;
+            _touchStartTime = null;
+          },
+          onPointerCancel: (event) {
+            _releaseSlot(event.pointer);
+            _touchStartX = null;
+            _touchStartY = null;
+            _touchStartTime = null;
+          },
+          child: Stack(
+            children: [
+              // WebView with Stellarium - native gestures disabled, purely visual
+              Positioned.fill(
+                child: StellariumWebView(
+                  key: _webViewKey,
+                  latitude: widget.initialObserver != null
+                      ? Observer.rad2deg(widget.initialObserver!.latitude)
+                      : null,
+                  longitude: widget.initialObserver != null
+                      ? Observer.rad2deg(widget.initialObserver!.longitude)
+                      : null,
+                  onReady: (ready) {
+                    setState(() {
+                      _isInitialized = ready;
+                    });
+                    widget.onEngineReady?.call(ready);
+                  },
+                  onError: (error) {
+                    setState(() {
+                      _errorMessage = error;
+                    });
+                  },
+                  onObjectSelected: widget.onObjectSelected,
+                  onTimeChanged: widget.onTimeChanged,
+                ),
+              ),
+              // Overlays
+              if (widget.showFps || widget.showCoordinates) _buildOverlays(),
+            ],
           ),
-        ),
-        // Touch barrier - blocks all touches when active
-        if (_touchBlocked)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () {}, // Absorb taps
-              onPanUpdate: (_) {}, // Absorb pans
-              onScaleUpdate: (_) {}, // Absorb pinches
-              behavior: HitTestBehavior.opaque,
-              child: const SizedBox.expand(),
-            ),
-          ),
-        // Overlays
-        if (widget.showFps || widget.showCoordinates) _buildOverlays(),
-      ],
+        );
+      },
     );
   }
 
@@ -497,44 +628,89 @@ class SkyViewState extends State<SkyView> {
           );
         }
 
-        return Stack(
-          children: [
-            // Platform View - embeds the Stellarium canvas
-            const Positioned.fill(
-              child: HtmlElementView(viewType: 'stellarium-container'),
-            ),
+        final dpr = MediaQuery.of(context).devicePixelRatio;
 
-            // Overlays
-            if (widget.showFps || widget.showCoordinates) _buildOverlays(),
+        // Event forwarding Listener is now INSIDE SkyView.
+        // This means UI elements in the parent Stack (home_screen) are hit-tested
+        // BEFORE this widget. Only events that "fall through" (don't hit any UI)
+        // reach this Listener and get forwarded to Stellarium.
+        return Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (event) {
+            debugPrint('[SKYVIEW] onPointerDown at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
+            if (_touchBlocked) return;
+            _engine?.onPointerDown(
+              event.pointer,
+              event.localPosition.dx * dpr,
+              event.localPosition.dy * dpr,
+            );
+          },
+          onPointerMove: (event) {
+            if (_touchBlocked || widget.gyroscopeEnabled) return;
+            _engine?.onPointerMove(
+              event.pointer,
+              event.localPosition.dx * dpr,
+              event.localPosition.dy * dpr,
+            );
+          },
+          onPointerUp: (event) {
+            debugPrint('[SKYVIEW] onPointerUp at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
+            if (_touchBlocked) return;
+            _engine?.onPointerUp(
+              event.pointer,
+              event.localPosition.dx * dpr,
+              event.localPosition.dy * dpr,
+            );
+          },
+          onPointerSignal: (event) {
+            if (_touchBlocked) return;
+            if (event is PointerScrollEvent) {
+              _engine?.onZoom(
+                event.scrollDelta.dy > 0 ? 1.1 : 0.9,
+                event.localPosition.dx * dpr,
+                event.localPosition.dy * dpr,
+              );
+            }
+          },
+          child: Stack(
+            children: [
+              // Platform View - embeds the Stellarium canvas (pointer-events: none in CSS)
+              const Positioned.fill(
+                child: HtmlElementView(viewType: 'stellarium-container'),
+              ),
 
-            // Loading indicator
-            if (!_isInitialized && _errorMessage == null)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: Container(
-                    color: const Color(0xFF0a1628),
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(
-                            color: Color(0xFF33B4E8),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Loading Stellarium...',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
+              // Overlays
+              if (widget.showFps || widget.showCoordinates) _buildOverlays(),
+
+              // Loading indicator
+              if (!_isInitialized && _errorMessage == null)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      color: const Color(0xFF0a1628),
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(
+                              color: Color(0xFF33B4E8),
                             ),
-                          ),
-                        ],
+                            SizedBox(height: 16),
+                            Text(
+                              'Loading Stellarium...',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         );
       },
     );

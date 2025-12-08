@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../stellarium/stellarium_settings.dart';
 
@@ -72,13 +74,12 @@ class StellariumWebView extends StatefulWidget {
 
 class StellariumWebViewState extends State<StellariumWebView>
     with SingleTickerProviderStateMixin {
-  InAppWebViewController? _webViewController;
+  WebViewController? _webViewController;
   bool _isReady = false;
   bool _isLoading = true;
   String? _errorMessage;
   String? _localServerUrl;
   HttpServer? _server;
-  bool _touchEnabled = true;
   bool _isDisposed = false;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -101,19 +102,17 @@ class StellariumWebViewState extends State<StellariumWebView>
   void dispose() {
     _isDisposed = true;
     _pulseController.dispose();
-    _webViewController?.dispose();
-    _webViewController = null;
     _server?.close();
     super.dispose();
   }
 
   /// Safely execute JavaScript, only if controller is valid
-  Future<void> _safeEvaluateJavascript(String source) async {
+  Future<void> _safeRunJavaScript(String source) async {
     if (_isDisposed || _webViewController == null || !_isReady) return;
     try {
-      await _webViewController!.evaluateJavascript(source: source);
+      await _webViewController!.runJavaScript(source);
     } catch (e) {
-      debugPrint('JavaScript evaluation error: $e');
+      debugPrint('JavaScript execution error: $e');
     }
   }
 
@@ -169,12 +168,15 @@ class StellariumWebViewState extends State<StellariumWebView>
         await request.response.close();
       });
 
+      _localServerUrl = 'http://127.0.0.1:$port/stellarium.html';
+      debugPrint('Stellarium local server started at: $_localServerUrl');
+
+      // Initialize the WebViewController
+      _initWebViewController();
+
       setState(() {
-        _localServerUrl = 'http://127.0.0.1:$port/stellarium.html';
         _isLoading = false;
       });
-
-      debugPrint('Stellarium local server started at: $_localServerUrl');
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to start local server: $e';
@@ -184,22 +186,34 @@ class StellariumWebViewState extends State<StellariumWebView>
     }
   }
 
-  void _onWebViewCreated(InAppWebViewController controller) {
-    _webViewController = controller;
+  void _initWebViewController() {
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0xFF0a1628))
+      ..addJavaScriptChannel(
+        'FlutterChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          try {
+            final data = jsonDecode(message.message);
+            _handleMessage(data);
+          } catch (e) {
+            debugPrint('Error parsing message: $e');
+          }
+        },
+      )
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (url) {
+            debugPrint('WebView loaded: $url');
+          },
+          onWebResourceError: (error) {
+            debugPrint('WebView error: ${error.description}');
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(_localServerUrl!));
 
-    // Set up JavaScript handler
-    controller.addJavaScriptHandler(
-      handlerName: 'onMessage',
-      callback: (args) {
-        if (args.isEmpty) return;
-        try {
-          final message = jsonDecode(args[0] as String);
-          _handleMessage(message);
-        } catch (e) {
-          debugPrint('Error parsing message: $e');
-        }
-      },
-    );
+    _webViewController = controller;
   }
 
   void _handleMessage(Map<String, dynamic> message) {
@@ -239,6 +253,12 @@ class StellariumWebViewState extends State<StellariumWebView>
   }
 
   void _applyInitialSettings() {
+    // IMPORTANT: Keep native touch handling ENABLED.
+    // Native WebView touches bypass Flutter's hit-testing, so we filter them
+    // in the HTML layer using UI bounds sent from Flutter.
+    // Flutter's event forwarding is now redundant but harmless.
+    setTouchEnabled(true);
+
     // Set initial location if provided
     if (widget.latitude != null && widget.longitude != null) {
       setLocation(widget.latitude!, widget.longitude!);
@@ -252,12 +272,12 @@ class StellariumWebViewState extends State<StellariumWebView>
 
   /// Set the observer's location
   void setLocation(double latitude, double longitude, [double altitude = 0]) {
-    _safeEvaluateJavascript('stellariumAPI.setLocation($latitude, $longitude, $altitude)');
+    _safeRunJavaScript('stellariumAPI.setLocation($latitude, $longitude, $altitude)');
   }
 
   /// Set a single display setting
   void setSetting(String key, bool value) {
-    _safeEvaluateJavascript('stellariumAPI.setSetting("$key", $value)');
+    _safeRunJavaScript('stellariumAPI.setSetting("$key", $value)');
   }
 
   /// Apply all settings
@@ -270,42 +290,53 @@ class StellariumWebViewState extends State<StellariumWebView>
 
   /// Set the observation time (MJD)
   void setTime(double mjd) {
-    _safeEvaluateJavascript('stellariumAPI.setTime($mjd)');
+    _safeRunJavaScript('stellariumAPI.setTime($mjd)');
   }
 
   /// Set the time progression speed (1.0 = real-time, 0.0 = paused)
   void setTimeSpeed(double speed) {
-    _safeEvaluateJavascript('stellariumAPI.setTimeSpeed($speed)');
+    _safeRunJavaScript('stellariumAPI.setTimeSpeed($speed)');
   }
 
   /// Set field of view in degrees
   void setFov(double fovDeg, [double duration = 1.0]) {
-    _safeEvaluateJavascript('stellariumAPI.setFov($fovDeg, $duration)');
+    _safeRunJavaScript('stellariumAPI.setFov($fovDeg, $duration)');
   }
 
   /// Point at a celestial object by name
   void pointAt(String name, [double duration = 1.0]) {
-    _safeEvaluateJavascript('stellariumAPI.pointAt("$name", $duration)');
+    _safeRunJavaScript('stellariumAPI.pointAt("$name", $duration)');
   }
 
   /// Look at a specific direction (azimuth/altitude in radians)
   void lookAt(double azimuthRad, double altitudeRad, [double duration = 0.0]) {
-    _safeEvaluateJavascript('stellariumAPI.lookAtRadians($azimuthRad, $altitudeRad, $duration)');
+    _safeRunJavaScript('stellariumAPI.lookAtRadians($azimuthRad, $altitudeRad, $duration)');
   }
 
   /// Enable or disable gyroscope mode (disables touch panning when enabled)
   void setGyroscopeEnabled(bool enabled) {
-    _safeEvaluateJavascript('stellariumAPI.setGyroscopeEnabled($enabled)');
+    _safeRunJavaScript('stellariumAPI.setGyroscopeEnabled($enabled)');
   }
 
   /// Enable or disable all touch handling (use when modals are open)
   void setTouchEnabled(bool enabled) {
-    if (_isDisposed) return;
-    setState(() {
-      _touchEnabled = enabled;
-    });
-    // Also set JavaScript flag as backup
-    _safeEvaluateJavascript('stellariumAPI.setTouchEnabled($enabled)');
+    // Set JavaScript flag
+    _safeRunJavaScript('stellariumAPI.setTouchEnabled($enabled)');
+  }
+
+  /// Forward a pointer down event to Stellarium
+  void onPointerDown(int pointerId, double x, double y) {
+    _safeRunJavaScript('stellariumAPI.onTouchStart($pointerId, $x, $y)');
+  }
+
+  /// Forward a pointer move event to Stellarium
+  void onPointerMove(int pointerId, double x, double y) {
+    _safeRunJavaScript('stellariumAPI.onTouchMove($pointerId, $x, $y)');
+  }
+
+  /// Forward a pointer up event to Stellarium
+  void onPointerUp(int pointerId, double x, double y) {
+    _safeRunJavaScript('stellariumAPI.onTouchEnd($pointerId, $x, $y)');
   }
 
   /// Set a custom label to display near the selected star
@@ -313,45 +344,45 @@ class StellariumWebViewState extends State<StellariumWebView>
     if (label != null && label.isNotEmpty) {
       // Escape quotes in the label
       final escaped = label.replaceAll('"', '\\"').replaceAll("'", "\\'");
-      _safeEvaluateJavascript('stellariumAPI.setCustomLabel("$escaped")');
+      _safeRunJavaScript('stellariumAPI.setCustomLabel("$escaped")');
     } else {
-      _safeEvaluateJavascript('stellariumAPI.clearCustomLabel()');
+      _safeRunJavaScript('stellariumAPI.clearCustomLabel()');
     }
   }
 
   /// Clear the custom label
   void clearCustomLabel() {
-    _safeEvaluateJavascript('stellariumAPI.clearCustomLabel()');
+    _safeRunJavaScript('stellariumAPI.clearCustomLabel()');
   }
 
   /// Add a persistent label for a star (shown without selection)
   void addPersistentLabel(String identifier, String label) {
     final escapedId = identifier.replaceAll('"', '\\"').replaceAll("'", "\\'");
     final escapedLabel = label.replaceAll('"', '\\"').replaceAll("'", "\\'");
-    _safeEvaluateJavascript('stellariumAPI.addPersistentLabel("$escapedId", "$escapedLabel")');
+    _safeRunJavaScript('stellariumAPI.addPersistentLabel("$escapedId", "$escapedLabel")');
   }
 
   /// Remove a persistent label for a star
   void removePersistentLabel(String identifier) {
     final escapedId = identifier.replaceAll('"', '\\"').replaceAll("'", "\\'");
-    _safeEvaluateJavascript('stellariumAPI.removePersistentLabel("$escapedId")');
+    _safeRunJavaScript('stellariumAPI.removePersistentLabel("$escapedId")');
   }
 
   /// Clear all persistent labels
   void clearPersistentLabels() {
-    _safeEvaluateJavascript('stellariumAPI.clearPersistentLabels()');
+    _safeRunJavaScript('stellariumAPI.clearPersistentLabels()');
   }
 
   /// Start gyroscope guidance to a star by name
   /// Shows an arrow pointing to the star without changing FOV
   void startGuidance(String name) {
     final escaped = name.replaceAll('"', '\\"').replaceAll("'", "\\'");
-    _safeEvaluateJavascript('stellariumAPI.startGuidance("$escaped")');
+    _safeRunJavaScript('stellariumAPI.startGuidance("$escaped")');
   }
 
   /// Stop gyroscope guidance
   void stopGuidance() {
-    _safeEvaluateJavascript('stellariumAPI.stopGuidance()');
+    _safeRunJavaScript('stellariumAPI.stopGuidance()');
   }
 
   /// Whether the engine is ready
@@ -363,54 +394,18 @@ class StellariumWebViewState extends State<StellariumWebView>
       return _buildErrorWidget();
     }
 
-    if (_isLoading || _localServerUrl == null) {
+    if (_isLoading || _localServerUrl == null || _webViewController == null) {
       return _buildLoadingWidget();
     }
 
-    // Use Stack with overlay to block touches without wrapping InAppWebView
-    // This prevents platform view recreation issues from setState calls
-    return Stack(
-      children: [
-        InAppWebView(
-          key: const ValueKey('stellarium-webview'),
-          initialUrlRequest: URLRequest(url: WebUri(_localServerUrl!)),
-          initialSettings: InAppWebViewSettings(
-            mediaPlaybackRequiresUserGesture: false,
-            allowsInlineMediaPlayback: true,
-            javaScriptEnabled: true,
-            domStorageEnabled: true,
-            databaseEnabled: true,
-            supportZoom: false,
-            verticalScrollBarEnabled: false,
-            horizontalScrollBarEnabled: false,
-            transparentBackground: true,
-            disableContextMenu: true,
-            // iOS specific
-            allowsBackForwardNavigationGestures: false,
-            // Android specific
-            useHybridComposition: true,
-            hardwareAcceleration: true,
-          ),
-          onWebViewCreated: _onWebViewCreated,
-          onLoadStop: (controller, url) {
-            debugPrint('WebView loaded: $url');
-          },
-          onConsoleMessage: (controller, consoleMessage) {
-            debugPrint('WebView console: ${consoleMessage.message}');
-          },
-          onReceivedError: (controller, request, error) {
-            debugPrint('WebView error: ${error.description}');
-          },
-        ),
-        // Touch blocker overlay - only visible when touch is disabled
-        if (!_touchEnabled)
-          const Positioned.fill(
-            child: ModalBarrier(
-              dismissible: false,
-              color: Colors.transparent,
-            ),
-          ),
-      ],
+    // Disable ALL native gesture handling on the WebView.
+    // This makes the WebView purely visual - it won't respond to any touches.
+    // Touch events are forwarded via JavaScript from a Flutter Listener in SkyView.
+    // This allows Flutter's hit-testing to work naturally: UI elements block touches,
+    // and only touches in the sky area get forwarded to Stellarium.
+    return WebViewWidget(
+      controller: _webViewController!,
+      gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
     );
   }
 

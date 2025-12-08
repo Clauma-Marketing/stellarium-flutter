@@ -296,8 +296,9 @@ class StellariumEngineWeb implements StellariumEngine {
 
   @override
   void onPointerDown(int pointerId, double x, double y) {
+    debugPrint('[ENGINE] onPointerDown: id=$pointerId x=${x.toStringAsFixed(0)} y=${y.toStringAsFixed(0)} inputReady=$_stelInputReady');
     if (_stelInputReady != true) {
-      debugPrint('onPointerDown: Stellarium input not ready');
+      debugPrint('[ENGINE] onPointerDown: Stellarium input not ready - SKIPPING');
       return;
     }
     // state: 1 = down, buttons: 1 = left button
@@ -313,8 +314,9 @@ class StellariumEngineWeb implements StellariumEngine {
 
   @override
   void onPointerUp(int pointerId, double x, double y) {
+    debugPrint('[ENGINE] onPointerUp: id=$pointerId x=${x.toStringAsFixed(0)} y=${y.toStringAsFixed(0)} inputReady=$_stelInputReady');
     if (_stelInputReady != true) {
-      debugPrint('onPointerUp: Stellarium input not ready');
+      debugPrint('[ENGINE] onPointerUp: Stellarium input not ready - SKIPPING');
       return;
     }
     // state: 0 = up, buttons: 0 = no button

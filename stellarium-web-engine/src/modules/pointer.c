@@ -31,7 +31,7 @@ static int pointer_init(obj_t *obj, json_value *args)
 // Amber-500: #f59e0b = (0.961, 0.620, 0.043)
 // Amber-100: #fef3c7 = (0.996, 0.953, 0.780)
 
-// Render a sophisticated direction arrow with glow effects
+// Render a simple direction arrow
 static void render_direction_arrow(const painter_t *painter_,
                                    double center_x, double center_y,
                                    double angle_rad)
@@ -39,161 +39,42 @@ static void render_direction_arrow(const painter_t *painter_,
     painter_t painter = *painter_;
     double transf[3][3];
     double t = sys_get_unix_time();
-    int i;
 
-    // Animation phases
-    double pulse_slow = 0.85 + 0.15 * sin(t * 2.0);       // Slow breathing
-    double arrow_bob = sin(t * 3.0) * 3.0;                // Arrow bobbing
+    // Subtle pulse animation
+    double pulse = 0.9 + 0.1 * sin(t * 2.5);
 
-    // =========================================
-    // 1. OUTER GLOW - Multiple soft circles
-    // =========================================
-    double glow_base_r = 90.0 * pulse_slow;
-    for (i = 0; i < 5; i++) {
-        double glow_r = glow_base_r + i * 15;
-        double alpha = 0.15 - i * 0.025;
-        if (alpha <= 0) break;
-        vec4_set(painter.color, 0.984, 0.749, 0.141, alpha);
-        painter.lines.width = 8 - i;
-        paint_2d_ellipse(&painter, NULL, 0,
-                         (double[]){center_x, center_y},
-                         VEC(glow_r, glow_r), NULL);
-    }
+    // Circle radius
+    double circle_r = 50.0 * pulse;
 
-    // =========================================
-    // 2. PULSING RIPPLE RINGS (3 rings with staggered animation)
-    // =========================================
-    for (i = 0; i < 3; i++) {
-        double phase = fmod(t + i * 1.0, 3.0) / 3.0;  // 0 to 1, staggered
-        double ripple_r = 70.0 + phase * 50.0;
-        double ripple_alpha = 0.5 * (1.0 - phase);  // Fade out as it expands
-        vec4_set(painter.color, 0.984, 0.749, 0.141, ripple_alpha);
-        painter.lines.width = 2;
-        paint_2d_ellipse(&painter, NULL, 0,
-                         (double[]){center_x, center_y},
-                         VEC(ripple_r, ripple_r), NULL);
-    }
-
-    // =========================================
-    // 3. MAIN CIRCLE - Thick golden ring with gradient effect
-    // =========================================
-    double main_r = 65.0;
-
-    // Outer edge glow (lighter)
-    vec4_set(painter.color, 0.996, 0.953, 0.780, 0.6);
-    painter.lines.width = 8;
-    paint_2d_ellipse(&painter, NULL, 0,
-                     (double[]){center_x, center_y},
-                     VEC(main_r + 2, main_r + 2), NULL);
-
-    // Main golden ring
-    vec4_set(painter.color, 0.984, 0.749, 0.141, 1.0);
-    painter.lines.width = 5;
-    paint_2d_ellipse(&painter, NULL, 0,
-                     (double[]){center_x, center_y},
-                     VEC(main_r, main_r), NULL);
-
-    // Inner edge (darker amber)
-    vec4_set(painter.color, 0.961, 0.620, 0.043, 0.8);
-    painter.lines.width = 2;
-    paint_2d_ellipse(&painter, NULL, 0,
-                     (double[]){center_x, center_y},
-                     VEC(main_r - 4, main_r - 4), NULL);
-
-    // =========================================
-    // 4. INNER HIGHLIGHT (subtle shine on top-left)
-    // =========================================
-    vec4_set(painter.color, 0.996, 0.953, 0.780, 0.15);
+    // Main circle
+    vec4_set(painter.color, 0.984, 0.749, 0.141, 0.9);
     painter.lines.width = 3;
-    // Draw arc segment for highlight effect (partial ellipse)
-    paint_2d_ellipse(&painter, NULL, M_PI * 0.4,
-                     (double[]){center_x - 15, center_y - 15},
-                     VEC(35, 35), NULL);
+    paint_2d_ellipse(&painter, NULL, 0,
+                     (double[]){center_x, center_y},
+                     VEC(circle_r, circle_r), NULL);
 
-    // =========================================
-    // 5. BOLD ARROW - With gradient from amber to white
-    // =========================================
+    // Arrow setup
     mat3_set_identity(transf);
     mat3_itranslate(transf, center_x, center_y);
     mat3_rz(angle_rad, transf, transf);
 
     // Arrow dimensions
-    double arrow_length = 38.0 + arrow_bob;
-    double head_size = 16.0;
+    double arrow_length = 30.0;
+    double head_size = 12.0;
     double tip_y = -arrow_length;
 
-    // Arrow shaft - multiple overlapping lines for thickness and glow
-    // Outer glow layer
-    vec4_set(painter.color, 0.984, 0.749, 0.141, 0.4);
-    painter.lines.width = 10;
-    paint_2d_line(&painter, transf, VEC(0, 5), VEC(0, tip_y + head_size * 0.3));
-
-    // Mid layer (amber)
-    vec4_set(painter.color, 0.984, 0.749, 0.141, 0.9);
-    painter.lines.width = 6;
-    paint_2d_line(&painter, transf, VEC(0, 5), VEC(0, tip_y + head_size * 0.3));
-
-    // Core (bright)
-    vec4_set(painter.color, 0.996, 0.953, 0.780, 1.0);
-    painter.lines.width = 3;
-    paint_2d_line(&painter, transf, VEC(0, 5), VEC(0, tip_y + head_size * 0.3));
-
-    // =========================================
-    // 6. ARROW HEAD - Closed triangle
-    // =========================================
-    // Arrow head - glow layer
-    vec4_set(painter.color, 0.984, 0.749, 0.141, 0.5);
-    painter.lines.width = 8;
-    paint_2d_line(&painter, transf,
-                  VEC(-head_size, tip_y + head_size),
-                  VEC(0, tip_y));
-    paint_2d_line(&painter, transf,
-                  VEC(head_size, tip_y + head_size),
-                  VEC(0, tip_y));
-    paint_2d_line(&painter, transf,
-                  VEC(-head_size, tip_y + head_size),
-                  VEC(head_size, tip_y + head_size));
-
-    // Arrow head - main layer
+    // Arrow shaft
     vec4_set(painter.color, 0.984, 0.749, 0.141, 1.0);
-    painter.lines.width = 5;
+    painter.lines.width = 3;
+    paint_2d_line(&painter, transf, VEC(0, 8), VEC(0, tip_y + head_size * 0.5));
+
+    // Arrow head (V shape)
     paint_2d_line(&painter, transf,
                   VEC(-head_size, tip_y + head_size),
                   VEC(0, tip_y));
     paint_2d_line(&painter, transf,
                   VEC(head_size, tip_y + head_size),
                   VEC(0, tip_y));
-    paint_2d_line(&painter, transf,
-                  VEC(-head_size, tip_y + head_size),
-                  VEC(head_size, tip_y + head_size));
-
-    // Arrow head - bright core layer (all lines meet at the same tip)
-    vec4_set(painter.color, 0.996, 0.953, 0.780, 1.0);
-    painter.lines.width = 2;
-    paint_2d_line(&painter, transf,
-                  VEC(-head_size * 0.8, tip_y + head_size * 0.8),
-                  VEC(0, tip_y));
-    paint_2d_line(&painter, transf,
-                  VEC(head_size * 0.8, tip_y + head_size * 0.8),
-                  VEC(0, tip_y));
-    paint_2d_line(&painter, transf,
-                  VEC(-head_size * 0.8, tip_y + head_size * 0.8),
-                  VEC(head_size * 0.8, tip_y + head_size * 0.8));
-
-    // =========================================
-    // 7. DECORATIVE CORNER ACCENTS
-    // =========================================
-    vec4_set(painter.color, 0.984, 0.749, 0.141, 0.4);
-    painter.lines.width = 2;
-    for (i = 0; i < 4; i++) {
-        double corner_angle = angle_rad + i * M_PI / 2.0 + M_PI / 4.0;
-        double corner_r = main_r + 8;
-        double cx = center_x + sin(corner_angle) * corner_r;
-        double cy = center_y - cos(corner_angle) * corner_r;
-        paint_2d_ellipse(&painter, NULL, M_PI * 0.2,
-                         (double[]){cx, cy},
-                         VEC(6, 6), NULL);
-    }
 }
 
 // Check if position is on screen (with margin)
@@ -227,7 +108,7 @@ static int pointer_render(obj_t *obj, const painter_t *painter_)
         double screen_w = core->win_size[0];
         double screen_h = core->win_size[1];
         double center_x = screen_w / 2.0;
-        double center_y = screen_h / 2.0;
+        double center_y = screen_h * 0.25;  // Position at 25% from top
         double margin = 50.0;
 
         // Check if selection is off-screen

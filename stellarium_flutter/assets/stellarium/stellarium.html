@@ -43,14 +43,12 @@
     // Global state
     window.stellarium = null;
     window.stellariumReady = false;
+    window.stelModule = null;  // Reference to Emscripten Module for touch forwarding
 
-    // Flutter handler - will be set by InAppWebView
-    window.flutterHandler = null;
-
-    // Send message to Flutter
+    // Send message to Flutter via webview_flutter's JavaScript channel
     function sendToFlutter(type, data) {
-      if (window.flutter_inappwebview) {
-        window.flutter_inappwebview.callHandler('onMessage', JSON.stringify({
+      if (window.FlutterChannel) {
+        FlutterChannel.postMessage(JSON.stringify({
           type: type,
           data: data
         }));
@@ -107,6 +105,26 @@
         onReady: function(stel) {
           window.stellarium = stel;
           window.stellariumReady = true;
+
+          // Capture Module reference for touch forwarding
+          // Module is created by Emscripten and has _core_on_mouse
+          if (typeof Module !== 'undefined') {
+            window.stelModule = Module;
+          } else if (typeof window.Module !== 'undefined') {
+            window.stelModule = window.Module;
+          } else if (stel._module) {
+            window.stelModule = stel._module;
+          } else if (stel.Module) {
+            window.stelModule = stel.Module;
+          } else {
+            // Search for _core_on_mouse in window properties
+            for (var key in window) {
+              if (window[key] && typeof window[key]._core_on_mouse === 'function') {
+                window.stelModule = window[key];
+                break;
+              }
+            }
+          }
 
           const core = stel.core;
           const baseUrl = 'https://data.star-register.com/';
@@ -390,6 +408,58 @@
         console.log('Touch handling:', enabled ? 'enabled' : 'disabled');
       },
 
+      // Touch events forwarded from Flutter (bypasses native WebView touch handling)
+      onTouchStart: function(id, x, y) {
+        if (window.stelModule && window.stelModule._core_on_mouse) {
+          window.stelModule._core_on_mouse(id, 1, x, y, 1);
+          // Track for tap detection
+          window._touchStartX = x;
+          window._touchStartY = y;
+          window._touchStartTime = Date.now();
+          window._touchId = id;
+        }
+      },
+
+      onTouchMove: function(id, x, y) {
+        if (!window.gyroscopeEnabled && window.stelModule && window.stelModule._core_on_mouse) {
+          window.stelModule._core_on_mouse(id, -1, x, y, 1);
+        }
+      },
+
+      onTouchEnd: function(id, x, y) {
+        if (window.stelModule && window.stelModule._core_on_mouse) {
+          // Always send touch end - MUST use buttons=1 for engine to process (movements.c checks buttons==1)
+          window.stelModule._core_on_mouse(id, 0, x, y, 1);
+
+          // Check if this was a tap
+          const dx = Math.abs(x - (window._touchStartX || 0));
+          const dy = Math.abs(y - (window._touchStartY || 0));
+          const duration = Date.now() - (window._touchStartTime || 0);
+          const TAP_THRESHOLD = 15;
+          const TAP_MAX_DURATION = 300;
+
+          if (dx < TAP_THRESHOLD && dy < TAP_THRESHOLD && duration < TAP_MAX_DURATION) {
+            console.log('Flutter-forwarded tap detected at:', x, y);
+            if (window.gyroscopeEnabled) {
+              const info = stellariumAPI.selectForGuidance(x, y);
+              if (info && info.name) {
+                sendToFlutter('objectSelected', info);
+              }
+            } else {
+              // Normal tap - wait for engine to process
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  const info = stellariumAPI.getSelectedObjectInfo();
+                  if (info && info.name && info.name !== 'Unknown') {
+                    sendToFlutter('objectSelected', info);
+                  }
+                });
+              });
+            }
+          }
+        }
+      },
+
       // Get info about selected object
       getSelectedObjectInfo: function() {
         if (!window.stellarium) return null;
@@ -483,10 +553,11 @@
 
           // Send click event to engine to trigger object selection
           // This mimics a mouse click at the position
-          if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+          if (window.stelModule && window.stelModule._core_on_mouse) {
             // Mouse down (action=1) then up (action=0) = click
-            Module._core_on_mouse(99, 1, x, y, 1); // Use ID 99 for selection clicks
-            Module._core_on_mouse(99, 0, x, y, 0);
+            // MUST use buttons=1 for both events (movements.c checks buttons==1)
+            window.stelModule._core_on_mouse(99, 1, x, y, 1); // Use ID 99 for selection clicks
+            window.stelModule._core_on_mouse(99, 0, x, y, 1);
           }
 
           // Read the selection that was set by the click
@@ -524,9 +595,10 @@
             const stel = window.stellarium;
 
             // Send click event to engine to trigger object selection
-            if (typeof Module !== 'undefined' && Module._core_on_mouse) {
-              Module._core_on_mouse(99, 1, x, y, 1);
-              Module._core_on_mouse(99, 0, x, y, 0);
+            // MUST use buttons=1 for both events (movements.c checks buttons==1)
+            if (window.stelModule && window.stelModule._core_on_mouse) {
+              window.stelModule._core_on_mouse(99, 1, x, y, 1);
+              window.stelModule._core_on_mouse(99, 0, x, y, 1);
             }
 
             // Wait for next frame for engine to process the click
@@ -595,9 +667,10 @@
           const stel = window.stellarium;
 
           // Send click event to engine to trigger object selection
-          if (typeof Module !== 'undefined' && Module._core_on_mouse) {
-            Module._core_on_mouse(99, 1, x, y, 1);
-            Module._core_on_mouse(99, 0, x, y, 0);
+          // MUST use buttons=1 for both events (movements.c checks buttons==1)
+          if (window.stelModule && window.stelModule._core_on_mouse) {
+            window.stelModule._core_on_mouse(99, 1, x, y, 1);
+            window.stelModule._core_on_mouse(99, 0, x, y, 1);
           }
 
           // Read the selection
@@ -650,197 +723,10 @@
       // Arrow is now rendered by the engine's pointer module
     }
 
-    // Touch event handling - forward to WASM
-    let lastTouchDistance = 0;
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchStartTime = 0;
-    const TAP_THRESHOLD = 15; // Max pixels moved for a tap
-    const TAP_MAX_DURATION = 300; // Max ms for a tap
-
-    // Get device pixel ratio for coordinate scaling
-    function getDpr() {
-      return window.devicePixelRatio || 1;
-    }
-
-    document.addEventListener('touchstart', function(e) {
-      // Always prevent default to stop browser handling
-      e.preventDefault();
-
-      // If touch is disabled (e.g., modal open), block all touch events
-      if (!window.touchEnabled) {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      const dpr = getDpr();
-
-      // Track touch start for tap detection
-      if (e.touches.length === 1) {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        touchStartTime = Date.now();
-      }
-      // Skip panning in gyroscope mode, but still track pinch-to-zoom
-      if (!window.gyroscopeEnabled && typeof Module !== 'undefined' && Module._core_on_mouse) {
-        for (let i = 0; i < e.touches.length; i++) {
-          const touch = e.touches[i];
-          // Scale coordinates by dpr since canvas is scaled
-          Module._core_on_mouse(touch.identifier, 1, touch.clientX * dpr, touch.clientY * dpr, 1);
-        }
-      }
-      if (e.touches.length === 2) {
-        lastTouchDistance = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-      }
-    }, { passive: false, capture: true });
-
-    document.addEventListener('touchmove', function(e) {
-      e.preventDefault();
-      if (!window.touchEnabled) {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      const dpr = getDpr();
-
-      if (typeof Module !== 'undefined') {
-        // Single finger: pan (only if gyroscope disabled)
-        if (e.touches.length === 1 && !window.gyroscopeEnabled && Module._core_on_mouse) {
-          const touch = e.touches[0];
-          Module._core_on_mouse(touch.identifier, -1, touch.clientX * dpr, touch.clientY * dpr, 1);
-        }
-        // Two fingers: pinch-to-zoom (always allowed)
-        else if (e.touches.length === 2) {
-          const newDistance = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-          );
-          if (lastTouchDistance > 0 && Module._core_on_zoom) {
-            const scale = newDistance / lastTouchDistance;
-            const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-            const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-            Module._core_on_zoom(1.0 / scale, centerX * dpr, centerY * dpr);
-          }
-          lastTouchDistance = newDistance;
-        }
-      }
-    }, { passive: false, capture: true });
-
-    document.addEventListener('touchend', function(e) {
-      e.preventDefault();
-      if (!window.touchEnabled) {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return;
-      }
-
-      const dpr = getDpr();
-      const isTap = e.changedTouches.length === 1;
-      let wasTap = false;
-
-      // Check if this was a tap (short duration, minimal movement)
-      if (isTap) {
-        const touch = e.changedTouches[0];
-        const dx = Math.abs(touch.clientX - touchStartX);
-        const dy = Math.abs(touch.clientY - touchStartY);
-        const duration = Date.now() - touchStartTime;
-        wasTap = dx < TAP_THRESHOLD && dy < TAP_THRESHOLD && duration < TAP_MAX_DURATION;
-      }
-
-      // Send touch end to engine first (only if gyroscope disabled)
-      if (!window.gyroscopeEnabled && typeof Module !== 'undefined' && Module._core_on_mouse) {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          const touch = e.changedTouches[i];
-          Module._core_on_mouse(touch.identifier, 0, touch.clientX * dpr, touch.clientY * dpr, 0);
-        }
-      }
-
-      // If this was a tap, wait for engine to process and then check selection
-      if (wasTap) {
-        const touch = e.changedTouches[0];
-        console.log('Tap detected at:', touch.clientX, touch.clientY, 'dpr:', dpr);
-
-        if (window.gyroscopeEnabled) {
-          // In gyroscope mode: select for guidance (no FOV change, shows arrow)
-          const info = stellariumAPI.selectForGuidance(touch.clientX * dpr, touch.clientY * dpr);
-          console.log('Gyroscope selection result:', info);
-          if (info && info.name) {
-            console.log('Sending objectSelected to Flutter:', info.name);
-            sendToFlutter('objectSelected', info);
-          }
-        } else {
-          // Normal mode: wait for engine to process the touch, then read selection
-          // Use two frames to ensure the engine has fully processed
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              if (!window.stellarium) return;
-              const stel = window.stellarium;
-              const selection = stel.core.selection;
-              console.log('Post-tap selection check:', selection);
-
-              if (selection) {
-                // Use designations() method (not property) to get names
-                const names = typeof selection.designations === 'function' ? selection.designations() : (selection.names || []);
-
-                // Get the display label using designationCleanup (converts "* gam Per" to "Gamma Persei")
-                let displayName = (names && names.length > 0) ? names[0] : 'Unknown';
-                if (typeof stel.designationCleanup === 'function' && names && names.length > 0) {
-                  // Try to get a nice display name from the first designation
-                  // flags: 4 = default cleanup
-                  const cleanedName = stel.designationCleanup(names[0], 4);
-                  if (cleanedName && cleanedName.length > 0) {
-                    displayName = cleanedName;
-                  }
-                }
-
-                // Get coordinates via getInfo if direct properties aren't available
-                let ra = null, dec = null, vmag = null;
-                try {
-                  if (typeof selection.getInfo === 'function') {
-                    const radec = selection.getInfo('radec');
-                    if (radec) {
-                      // radec is in radians, convert to degrees
-                      const spherical = stel.c2s(radec);
-                      ra = spherical[0] * stel.R2D;
-                      dec = spherical[1] * stel.R2D;
-                    }
-                    vmag = selection.getInfo('vmag');
-                  }
-                } catch(e) {
-                  console.log('Error getting star info:', e);
-                }
-                // Fallback to direct properties
-                if (ra === null && selection.ra !== undefined) ra = selection.ra * stel.R2D;
-                if (dec === null && selection.de !== undefined) dec = selection.de * stel.R2D;
-                if (vmag === null) vmag = selection.vmag;
-
-                const info = {
-                  name: (names && names.length > 0) ? names[0] : 'Unknown',
-                  displayName: displayName,
-                  names: names || [],
-                  type: selection.type || 'unknown',
-                  vmag: vmag,
-                  ra: ra,
-                  dec: dec,
-                  distance: selection.distance
-                };
-                console.log('Sending objectSelected to Flutter:', info.displayName, info);
-                sendToFlutter('objectSelected', info);
-              } else {
-                console.log('No object selected after tap');
-              }
-            });
-          });
-        }
-      }
-
-      lastTouchDistance = 0;
-    }, { passive: false, capture: true });
+    // NOTE: Native touch handling is now done in canvas.js (stellarium-web-engine)
+    // with UI bounds filtering. These document-level handlers are disabled to
+    // prevent double-processing of touch events.
+    // The canvas.js handlers check window.uiBounds before processing any touch.
 
     // Start
     if (typeof StelWebEngine !== 'undefined') {

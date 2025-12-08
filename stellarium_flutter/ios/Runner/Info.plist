@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -24,6 +26,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Stellarium needs your location to show you the sky exactly as it appears from where you are, including accurate star positions, rise and set times.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Stellarium needs your location to show you the sky exactly as it appears from where you are, including accurate star positions, rise and set times.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>We use this data to improve the app experience and show you relevant content. Your privacy is important to us.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -41,15 +53,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Stellarium needs your location to show you the sky exactly as it appears from where you are, including accurate star positions, rise and set times.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Stellarium needs your location to show you the sky exactly as it appears from where you are, including accurate star positions, rise and set times.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>We use this data to improve the app experience and show you relevant content. Your privacy is important to us.</string>
 </dict>
 </plist>

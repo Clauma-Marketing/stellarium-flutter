@@ -90,39 +90,16 @@ Module.afterInit(function() {
 
       document.onmousemove = function(e) {
         e = e || event;
+
+        
         fixPageXY(e);
         mousePos = getMousePos(e);
       }
     });
 
-    canvas.addEventListener('touchstart', function(e) {
-      var rect = canvas.getBoundingClientRect();
-      for (var i = 0; i < e.changedTouches.length; i++) {
-        var id = e.changedTouches[i].identifier;
-        var relX = e.changedTouches[i].pageX - rect.left;
-        var relY = e.changedTouches[i].pageY - rect.top;
-        Module._core_on_mouse(id, 1, relX, relY, 1);
-      }
-    }, {passive: true});
-    canvas.addEventListener('touchmove', function(e) {
-      e.preventDefault();
-      var rect = canvas.getBoundingClientRect();
-      for (var i = 0; i < e.changedTouches.length; i++) {
-        var id = e.changedTouches[i].identifier;
-        var relX = e.changedTouches[i].pageX - rect.left;
-        var relY = e.changedTouches[i].pageY - rect.top;
-        Module._core_on_mouse(id, -1, relX, relY, 1);
-      }
-    }, {passive: false});
-    canvas.addEventListener('touchend', function(e) {
-      var rect = canvas.getBoundingClientRect();
-      for (var i = 0; i < e.changedTouches.length; i++) {
-        var id = e.changedTouches[i].identifier;
-        var relX = e.changedTouches[i].pageX - rect.left;
-        var relY = e.changedTouches[i].pageY - rect.top;
-        Module._core_on_mouse(id, 0, relX, relY, 1);
-      }
-    });
+    // Touch handling is disabled here - Flutter handles all touches and forwards
+    // sky touches via stellariumAPI.onTouchStart/Move/End. This ensures Flutter's
+    // UI elements naturally block touches without any special coordination.
 
     function getMouseWheelDelta(event) {
       var delta = 0;

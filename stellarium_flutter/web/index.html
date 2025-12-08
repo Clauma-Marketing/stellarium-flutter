@@ -38,13 +38,14 @@
       width: 100%;
       height: 100%;
       z-index: 0;
-      /* Allow native events */
-      pointer-events: auto;
+      /* Disable native events - Flutter will forward events via JS */
+      pointer-events: none;
     }
 
     #stellarium-canvas {
       width: 100%;
       height: 100%;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -123,6 +124,11 @@
           // Set up input wrapper functions for Flutter to call
           window.stelInputReady = true;
 
+          // CRITICAL: Disable native Emscripten input handlers
+          // This ensures only Flutter-forwarded events reach Stellarium
+          // Native browser events (from Emscripten's event listeners) are blocked
+          disableNativeInput();
+
           // Call all waiting callbacks
           window.stellariumReadyCallbacks.forEach(function (cb) {
             try { cb(stel); } catch (e) { console.error(e); }
@@ -138,25 +144,70 @@
     // These are set up before stellarium loads, and work once Module is ready
     window.stelInputReady = false;
 
+    // Flag to track if events are being forwarded from Flutter
+    // Native browser events should be BLOCKED - only Flutter-forwarded events should reach Stellarium
+    window._flutterForwardingEvent = false;
+    window._nativeInputDisabled = false;
+
+    // Store original Module._core_on_mouse to wrap it
+    window._originalCoreOnMouse = null;
+    window._originalCoreOnZoom = null;
+
     window.stelCoreOnMouse = function (id, state, x, y, buttons) {
-      console.log('stelCoreOnMouse called:', id, state, x, y, buttons);
+      console.log('[FLUTTER->STEL] stelCoreOnMouse called: id=' + id + ' state=' + state + ' x=' + x.toFixed(0) + ' y=' + y.toFixed(0) + ' buttons=' + buttons);
       if (typeof Module !== 'undefined' && Module._core_on_mouse) {
-        console.log('Calling Module._core_on_mouse');
+        // Set flag so the wrapper knows this is from Flutter
+        window._flutterForwardingEvent = true;
         Module._core_on_mouse(id, state, x, y, buttons);
+        window._flutterForwardingEvent = false;
       } else {
-        console.log('Module or _core_on_mouse not available:', typeof Module, Module ? !!Module._core_on_mouse : 'no module');
+        console.log('[FLUTTER->STEL] Module._core_on_mouse not available');
       }
     };
 
     window.stelCoreOnZoom = function (factor, x, y) {
-      console.log('stelCoreOnZoom called:', factor, x, y);
+      console.log('[FLUTTER->STEL] stelCoreOnZoom called: factor=' + factor + ' x=' + x.toFixed(0) + ' y=' + y.toFixed(0));
       if (typeof Module !== 'undefined' && Module._core_on_zoom) {
-        console.log('Calling Module._core_on_zoom');
+        window._flutterForwardingEvent = true;
         Module._core_on_zoom(factor, x, y);
-      } else {
-        console.log('Module or _core_on_zoom not available');
+        window._flutterForwardingEvent = false;
       }
     };
+
+    // Function to disable native Emscripten input handlers
+    // This wraps Module._core_on_mouse to only accept Flutter-forwarded events
+    function disableNativeInput() {
+      if (window._nativeInputDisabled) return;
+
+      if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+        // Wrap _core_on_mouse to block native events
+        window._originalCoreOnMouse = Module._core_on_mouse;
+        Module._core_on_mouse = function(id, state, x, y, buttons) {
+          // Only process if this call came from Flutter (via stelCoreOnMouse)
+          if (window._flutterForwardingEvent) {
+            console.log('[WRAPPER] ALLOWED Flutter event: state=' + state + ' x=' + x.toFixed(0) + ' y=' + y.toFixed(0));
+            window._originalCoreOnMouse(id, state, x, y, buttons);
+          } else {
+            console.log('[WRAPPER] BLOCKED native event: state=' + state + ' x=' + x.toFixed(0) + ' y=' + y.toFixed(0));
+          }
+        };
+      }
+
+      if (typeof Module !== 'undefined' && Module._core_on_zoom) {
+        window._originalCoreOnZoom = Module._core_on_zoom;
+        Module._core_on_zoom = function(factor, x, y) {
+          if (window._flutterForwardingEvent) {
+            console.log('[WRAPPER] ALLOWED Flutter zoom');
+            window._originalCoreOnZoom(factor, x, y);
+          } else {
+            console.log('[WRAPPER] BLOCKED native zoom');
+          }
+        };
+      }
+
+      window._nativeInputDisabled = true;
+      console.log('[INIT] Native Stellarium input disabled - only Flutter-forwarded events will be processed');
+    }
 
     // Wait for StelWebEngine to load
     if (typeof StelWebEngine !== 'undefined') {
@@ -211,6 +262,33 @@
         // When gyroscope is enabled, disable native panning
         window.gyroscopeEnabled = enabled;
         console.log('Gyroscope mode:', enabled ? 'enabled' : 'disabled');
+      },
+
+      // Touch/mouse event forwarding from Flutter (since pointer-events: none)
+      onTouchStart: function(id, x, y) {
+        if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+          Module._core_on_mouse(id, 1, x, y, 1); // state=1 (down), buttons=1
+        }
+      },
+
+      onTouchMove: function(id, x, y) {
+        if (!window.gyroscopeEnabled && typeof Module !== 'undefined' && Module._core_on_mouse) {
+          Module._core_on_mouse(id, -1, x, y, 1); // state=-1 (move), buttons=1
+        }
+      },
+
+      onTouchEnd: function(id, x, y) {
+        if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+          Module._core_on_mouse(id, 0, x, y, 1); // state=0 (up), buttons=1
+        }
+      },
+
+      onMouseWheel: function(deltaY, x, y) {
+        if (typeof Module !== 'undefined' && Module._core_on_zoom) {
+          // Convert deltaY to zoom factor (negative = zoom in, positive = zoom out)
+          const factor = deltaY > 0 ? 1.1 : 0.9;
+          Module._core_on_zoom(factor, x, y);
+        }
       }
     };
 

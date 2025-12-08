@@ -186,7 +186,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _gyroscopeEnabled = false;
   bool _gyroscopeAvailable = false;
   bool _subMenuOpening = false; // Track if sub-menu is about to open
-  bool _starInfoSheetShowing = false; // Track if star info sheet is showing
+  StarInfo? _selectedStarInfo; // Currently selected star info (shown inline, not modal)
+  Future<StarInfo?>? _registryFuture; // Future for loading registry data
+  SelectedObjectInfo? _selectedObjectInfo; // Selection info for callbacks
   List<SearchSuggestion> _searchSuggestions = []; // Search history suggestions
   String? _locationName; // Display name for current location
   bool _showTimeSlider = false; // Track if time slider is visible
@@ -194,6 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _sliderDate; // The date (year, month, day) shown on slider - only changes with day arrows
   Timer? _timeUpdateTimer; // Timer to refresh time display
   String _lastDisplayedTime = ''; // Track last displayed time to avoid unnecessary rebuilds
+
 
   /// Get current time from engine, falling back to observer or system time
   DateTime get _currentTime {
@@ -208,11 +211,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasStarInfo = _selectedStarInfo != null;
+
+    // Simple Stack layout - Flutter's hit-testing naturally blocks touches on UI elements.
+    // SkyView has its own Listener that forwards non-blocked touches to the WebView.
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // Sky view with night mode filter
+          // Sky view with night mode filter (full screen, at bottom of stack)
           ColorFiltered(
             colorFilter: _settings.nightMode
                 ? const ColorFilter.matrix(<double>[
@@ -264,36 +271,116 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _buildTimeSlider(context),
             ),
 
-          // Bottom bar with buttons and search
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: BottomBar(
-              atmosphereEnabled: _settings.atmosphere,
-              gyroscopeEnabled: _gyroscopeEnabled,
-              gyroscopeAvailable: _gyroscopeAvailable,
-              searchController: _searchController,
-              onAtmosphereTap: () {
-                _onSettingChanged('atmosphere', !_settings.atmosphere);
-              },
-              onGyroscopeTap: () {
-                setState(() {
-                  _gyroscopeEnabled = !_gyroscopeEnabled;
-                });
-              },
-              onSearchTap: _showSearchHistory,
-              onSearchSubmitted: _searchAndPoint,
-              onSearchChanged: _onSearchChanged,
-              onHamburgerTap: _showSettingsBottomSheet,
-              searchSuggestions: _searchSuggestions,
-              onSuggestionTap: _onSuggestionTap,
+          // Bottom bar with buttons and search (only when star info not shown)
+          if (!hasStarInfo)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: BottomBar(
+                atmosphereEnabled: _settings.atmosphere,
+                gyroscopeEnabled: _gyroscopeEnabled,
+                gyroscopeAvailable: _gyroscopeAvailable,
+                searchController: _searchController,
+                onAtmosphereTap: () {
+                  _onSettingChanged('atmosphere', !_settings.atmosphere);
+                },
+                onGyroscopeTap: () {
+                  setState(() {
+                    _gyroscopeEnabled = !_gyroscopeEnabled;
+                  });
+                },
+                onSearchTap: _showSearchHistory,
+                onSearchSubmitted: _searchAndPoint,
+                onSearchChanged: _onSearchChanged,
+                onHamburgerTap: _showSettingsBottomSheet,
+                searchSuggestions: _searchSuggestions,
+                onSuggestionTap: _onSuggestionTap,
+              ),
             ),
-          ),
 
+          // Star info panel overlay
+          if (hasStarInfo)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildStarInfoPanel(),
+            ),
         ],
       ),
     );
+  }
+
+  Widget _buildStarInfoPanel() {
+    return StarInfoBottomSheet(
+      // Key ensures widget rebuilds when star changes
+      key: ValueKey(_selectedStarInfo!.shortName),
+      starInfo: _selectedStarInfo!,
+      registryFuture: _registryFuture,
+      onClose: _closeStarInfo,
+      onPointAt: () {
+        final modelData = _selectedStarInfo!.modelData;
+        if (modelData != null && modelData.identifier.isNotEmpty) {
+          final searchId = modelData.searchIdentifier;
+          _skyViewKey.currentState?.webView?.pointAt(searchId);
+          _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
+            if (obj != null) {
+              _skyViewKey.currentState?.engine?.pointAt(obj);
+            }
+          });
+        }
+      },
+      onNameStar: () async {
+        _closeStarInfo();
+
+        final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
+        final isGerman = locale.languageCode == 'de';
+
+        final url = isGerman
+            ? 'https://sterntaufe-deutschland.de'
+            : 'https://star-registration.com';
+
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      onViewIn3D: () {
+        final starInfo = _selectedStarInfo!;
+        final selectionInfo = _selectedObjectInfo;
+        _closeStarInfo();
+
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => StarViewerScreen(
+              starName: starInfo.registryInfo?.name ?? starInfo.modelData?.shortName ?? starInfo.shortName,
+              spectralType: starInfo.modelData?.spectralType,
+            ),
+          ),
+        ).then((_) {
+          // Reopen the info panel when returning from 3D viewer
+          if (selectionInfo != null) {
+            setState(() {
+              _selectedStarInfo = starInfo;
+              _registryFuture = _fetchRegistryInfo(selectionInfo);
+              _selectedObjectInfo = selectionInfo;
+            });
+          }
+        });
+      },
+    );
+  }
+
+  void _closeStarInfo() {
+    setState(() {
+      _selectedStarInfo = null;
+      _registryFuture = null;
+      _selectedObjectInfo = null;
+    });
+    // Clear custom label and stop guidance
+    _skyViewKey.currentState?.webView?.clearCustomLabel();
+    _skyViewKey.currentState?.webView?.stopGuidance();
   }
 
   void _showTimeLocationSheet() {
@@ -317,6 +404,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final currentTime = _currentTime;
     final timeText = '${currentTime.hour.toString().padLeft(2, '0')}:${currentTime.minute.toString().padLeft(2, '0')}';
 
+    // No Listener wrapper needed - event blocking is handled at HomeScreen level
+    // via _isPositionOnUI() check before forwarding to SkyView.
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -441,6 +530,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dateStr = '${weekdays[displayDateTime.weekday - 1]}, ${displayDateTime.day} ${months[displayDateTime.month - 1]} ${displayDateTime.year}';
 
+    // No Listener wrapper needed - event blocking is handled at HomeScreen level
+    // via _isPositionOnUI() check before forwarding to SkyView.
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1024,9 +1115,6 @@ class _HomeScreenState extends State<HomeScreen> {
     // Show loading indicator
     if (!mounted) return;
 
-    // Disable touch while loading
-    _skyViewKey.currentState?.webView?.setTouchEnabled(false);
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1058,7 +1146,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Show registered name as custom label if available and auto-save
           if (starInfo.isRegistered && starInfo.registryInfo != null) {
             final registeredName = starInfo.registryInfo!.name;
-            // Set temporary selection label (will be cleared when sheet closes)
+            // Set temporary selection label (will be cleared when panel closes)
             _skyViewKey.currentState?.webView?.setCustomLabel(registeredName);
 
             // Auto-save the star with its registered name for persistence
@@ -1081,11 +1169,9 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
-        // Show star info bottom sheet (it will handle touch re-enable on close)
+        // Show star info panel
         _showStarInfo(starInfo);
       } else if (mounted) {
-        // Re-enable touch since we're not showing star info
-        _skyViewKey.currentState?.webView?.setTouchEnabled(true);
         // Show not found message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1095,10 +1181,9 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     } catch (e) {
-      // Close loading dialog and re-enable touch
+      // Close loading dialog
       if (mounted) {
         Navigator.of(context).pop();
-        _skyViewKey.currentState?.webView?.setTouchEnabled(true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error searching: $e'),
@@ -1112,58 +1197,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showStarInfo(StarInfo starInfo) {
     debugPrint('HomeScreen: _showStarInfo called for: ${starInfo.shortName}');
 
-    // Don't show if already showing
-    if (_starInfoSheetShowing) {
-      debugPrint('HomeScreen: _showStarInfo skipped - sheet already showing');
-      return;
-    }
-
-    debugPrint('HomeScreen: showing star info sheet');
-
-    // Disable WebView touch handling while modal is open
-    _skyViewKey.currentState?.webView?.setTouchEnabled(false);
-    _starInfoSheetShowing = true;
-
-    showStarInfoSheet(
-      context,
-      starInfo,
-      onPointAt: () {
-        // Point at the star using formatted identifier (e.g., "HIP 14778")
-        final modelData = starInfo.modelData;
-        if (modelData != null && modelData.identifier.isNotEmpty) {
-          final searchId = modelData.searchIdentifier;
-          _skyViewKey.currentState?.webView?.pointAt(searchId);
-          _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
-            if (obj != null) {
-              _skyViewKey.currentState?.engine?.pointAt(obj);
-            }
-          });
-        }
-      },
-      onViewIn3D: () {
-        Navigator.of(context).pop(); // Close the sheet first
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => StarViewerScreen(
-              starName: starInfo.registryInfo?.name ?? starInfo.modelData?.shortName ?? starInfo.shortName,
-              spectralType: starInfo.modelData?.spectralType,
-            ),
-          ),
-        ).then((_) {
-          // Reopen the info sheet when returning from 3D viewer
-          _starInfoSheetShowing = false;
-          _showStarInfo(starInfo);
-        });
-      },
-    ).whenComplete(() {
-      // Re-enable WebView touch handling when modal is closed
-      _skyViewKey.currentState?.webView?.setTouchEnabled(true);
-      // Always clear selection custom label - persistent labels handle saved stars
-      _skyViewKey.currentState?.webView?.clearCustomLabel();
-      // Stop gyroscope guidance arrow when sheet is closed
-      _skyViewKey.currentState?.webView?.stopGuidance();
-      // Clear the flag
-      _starInfoSheetShowing = false;
+    setState(() {
+      _selectedStarInfo = starInfo;
+      _registryFuture = null;
+      _selectedObjectInfo = null;
     });
   }
 
@@ -1181,8 +1218,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Track star selection
     AnalyticsService.instance.logStarSelect(starName: info.displayName);
-
-    debugPrint('HomeScreen: _starInfoSheetShowing = $_starInfoSheetShowing');
 
     // Create basic star info immediately from selection data
     final basicStarInfo = StarInfo.fromBasicData(
@@ -1305,68 +1340,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showStarInfoWithRegistry(StarInfo basicInfo, Future<StarInfo?> registryFuture, SelectedObjectInfo selectionInfo) {
     debugPrint('HomeScreen: _showStarInfoWithRegistry called for: ${basicInfo.shortName}');
 
-    if (_starInfoSheetShowing) {
-      debugPrint('HomeScreen: sheet already showing, skipping');
-      return;
-    }
-
-    _skyViewKey.currentState?.webView?.setTouchEnabled(false);
-    _starInfoSheetShowing = true;
-
-    showStarInfoSheet(
-      context,
-      basicInfo,
-      registryFuture: registryFuture,
-      onPointAt: () {
-        final modelData = basicInfo.modelData;
-        if (modelData != null && modelData.identifier.isNotEmpty) {
-          final searchId = modelData.searchIdentifier;
-          _skyViewKey.currentState?.webView?.pointAt(searchId);
-          _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
-            if (obj != null) {
-              _skyViewKey.currentState?.engine?.pointAt(obj);
-            }
-          });
-        }
-      },
-      onNameStar: () async {
-        Navigator.of(context).pop(); // Close the sheet first
-
-        // Get current locale to determine which site to open
-        final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
-        final isGerman = locale.languageCode == 'de';
-
-        final url = isGerman
-            ? 'https://sterntaufe-deutschland.de'
-            : 'https://star-registration.com';
-
-        debugPrint('Name this star tapped, opening: $url');
-
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      },
-      onViewIn3D: () {
-        Navigator.of(context).pop(); // Close the sheet first
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => StarViewerScreen(
-              starName: selectionInfo.displayName,
-              spectralType: basicInfo.modelData?.spectralType,
-            ),
-          ),
-        ).then((_) {
-          // Reopen the info sheet when returning from 3D viewer
-          _starInfoSheetShowing = false;
-          _showStarInfoWithRegistry(basicInfo, _fetchRegistryInfo(selectionInfo), selectionInfo);
-        });
-      },
-    ).whenComplete(() {
-      _skyViewKey.currentState?.webView?.setTouchEnabled(true);
-      _skyViewKey.currentState?.webView?.clearCustomLabel();
-      _skyViewKey.currentState?.webView?.stopGuidance();
-      _starInfoSheetShowing = false;
+    setState(() {
+      _selectedStarInfo = basicInfo;
+      _registryFuture = registryFuture;
+      _selectedObjectInfo = selectionInfo;
     });
   }
 }

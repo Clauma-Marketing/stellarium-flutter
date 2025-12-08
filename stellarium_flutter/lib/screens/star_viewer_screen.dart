@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 /// Full-screen 3D star viewer using Three.js
 class StarViewerScreen extends StatefulWidget {
@@ -25,6 +25,7 @@ class _StarViewerScreenState extends State<StarViewerScreen> {
   HttpServer? _server;
   bool _isLoading = true;
   String? _errorMessage;
+  WebViewController? _webViewController;
 
   @override
   void initState() {
@@ -89,12 +90,15 @@ class _StarViewerScreenState extends State<StarViewerScreen> {
           .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
           .join('&');
 
+      _localServerUrl = 'http://127.0.0.1:$port/star_viewer.html?$queryString';
+      debugPrint('Star viewer server started at: $_localServerUrl');
+
+      // Initialize WebViewController
+      _initWebViewController();
+
       setState(() {
-        _localServerUrl = 'http://127.0.0.1:$port/star_viewer.html?$queryString';
         _isLoading = false;
       });
-
-      debugPrint('Star viewer server started at: $_localServerUrl');
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to start viewer: $e';
@@ -103,14 +107,31 @@ class _StarViewerScreenState extends State<StarViewerScreen> {
     }
   }
 
-  void _onWebViewCreated(InAppWebViewController controller) {
-    // Set up close handler
-    controller.addJavaScriptHandler(
-      handlerName: 'onClose',
-      callback: (args) {
-        Navigator.of(context).pop();
-      },
-    );
+  void _initWebViewController() {
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..addJavaScriptChannel(
+        'FlutterChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          if (message.message == 'close') {
+            Navigator.of(context).pop();
+          }
+        },
+      )
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (url) {
+            debugPrint('Star viewer loaded: $url');
+          },
+          onWebResourceError: (error) {
+            debugPrint('Star viewer error: ${error.description}');
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(_localServerUrl!));
+
+    _webViewController = controller;
   }
 
   @override
@@ -146,7 +167,7 @@ class _StarViewerScreenState extends State<StarViewerScreen> {
                 ),
               ),
             )
-          else if (_isLoading || _localServerUrl == null)
+          else if (_isLoading || _localServerUrl == null || _webViewController == null)
             const Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -161,27 +182,7 @@ class _StarViewerScreenState extends State<StarViewerScreen> {
               ),
             )
           else
-            InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(_localServerUrl!)),
-              initialSettings: InAppWebViewSettings(
-                mediaPlaybackRequiresUserGesture: false,
-                allowsInlineMediaPlayback: true,
-                javaScriptEnabled: true,
-                domStorageEnabled: true,
-                supportZoom: false,
-                verticalScrollBarEnabled: false,
-                horizontalScrollBarEnabled: false,
-                transparentBackground: true,
-                disableContextMenu: true,
-                allowsBackForwardNavigationGestures: false,
-                useHybridComposition: true,
-                hardwareAcceleration: true,
-              ),
-              onWebViewCreated: _onWebViewCreated,
-              onConsoleMessage: (controller, consoleMessage) {
-                debugPrint('StarViewer console: ${consoleMessage.message}');
-              },
-            ),
+            WebViewWidget(controller: _webViewController!),
 
           // Fallback close button (in case WebView doesn't load)
           if (_isLoading || _errorMessage != null)
