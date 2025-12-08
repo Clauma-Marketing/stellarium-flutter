@@ -98,5 +98,6 @@ coverage/
 !/dev/ci/**/Gemfile.lock
 !**/ios/**/Podfile.lock
 
-# stellarium-web-engine (separate repository)
-stellarium-web-engine/
+# stellarium-web-engine build artifacts
+stellarium-web-engine/build/
+stellarium-web-engine/.sconsign.dblite
