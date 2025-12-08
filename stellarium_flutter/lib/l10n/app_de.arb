@@ -1,0 +1,249 @@
+{
+  "@@locale": "de",
+
+  "appTitle": "Night Sky Guide",
+
+  "menu": "Menü",
+  "myStars": "Meine Sterne",
+  "myStarsSubtitle": "Gespeicherte Orte und Favoriten",
+  "timeLocation": "Zeit & Ort",
+  "timeLocationSubtitle": "Beobachtungszeit und -ort einstellen",
+  "visualEffects": "Visuelle Effekte",
+  "visualEffectsSubtitle": "Himmelsanzeige, Objekte und Gitter",
+  "settings": "Einstellungen",
+  "settingsSubtitle": "App-Einstellungen",
+
+  "location": "ORT",
+  "time": "ZEIT",
+  "searchCityAddress": "Stadt, Adresse suchen...",
+  "useMyLocation": "Meinen Standort verwenden",
+  "detecting": "Wird ermittelt...",
+  "unknownLocation": "Unbekannter Ort",
+  "setToNow": "Auf Jetzt setzen",
+  "applyChanges": "Änderungen übernehmen",
+  "setTime": "Zeit einstellen",
+  "now": "Jetzt",
+  "cancel": "Abbrechen",
+  "apply": "Anwenden",
+
+  "save": "Speichern",
+  "saved": "Gespeichert",
+  "savedToMyStars": "Zu Meine Sterne hinzugefügt",
+  "removedFromMyStars": "Aus Meine Sterne entfernt",
+  "pointAtStar": "Stern anzeigen",
+  "removeFromMyStars": "Aus Meine Sterne entfernen",
+  "saveToMyStars": "Zu Meine Sterne hinzufügen",
+
+  "noSavedStarsYet": "Noch keine Sterne gespeichert",
+  "tapStarIconHint": "Tippe auf das Stern-Symbol in der Stern-Info, um ihn hier zu speichern",
+  "starRemoved": "{name} entfernt",
+  "@starRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registration": "REGISTRIERUNG",
+  "registeredTo": "Registriert auf",
+  "registrationDate": "Datum",
+  "registrationNumber": "Registrierungsnr.",
+  "registry": "Register",
+  "properties": "EIGENSCHAFTEN",
+  "coordinates": "KOORDINATEN",
+  "scientificName": "Wissenschaftlicher Name",
+  "magnitude": "Helligkeit",
+  "spectralType": "Spektraltyp",
+  "distance": "Entfernung",
+  "parallax": "Parallaxe",
+  "objectType": "Objekttyp",
+  "doubleMultipleStar": "Doppel-/Mehrfachstern",
+  "rightAscension": "Rektaszension",
+  "declination": "Deklination",
+
+  "skyDisplay": "Himmelsanzeige",
+  "celestialObjects": "Himmelsobjekte",
+  "gridLines": "Gitter & Linien",
+  "displayOptions": "Anzeigeoptionen",
+
+  "constellationLines": "Sternbildlinien",
+  "constellationLinesDesc": "Linien zwischen Sternen in Sternbildern anzeigen",
+  "constellationNames": "Sternbildnamen",
+  "constellationNamesDesc": "Beschriftungen der Sternbilder anzeigen",
+  "constellationArt": "Sternbildkunst",
+  "constellationArtDesc": "Künstlerische Sternbilddarstellungen anzeigen",
+  "atmosphere": "Atmosphäre",
+  "atmosphereDesc": "Atmosphärische Effekte und Himmelslicht anzeigen",
+  "landscape": "Landschaft",
+  "landscapeDesc": "Boden/Horizont-Landschaft anzeigen",
+  "landscapeFog": "Landschaftsnebel",
+  "landscapeFogDesc": "Nebeleffekt auf der Landschaft anzeigen",
+  "milkyWay": "Milchstraße",
+  "milkyWayDesc": "Die Milchstraße anzeigen",
+  "dssBackground": "DSS-Hintergrund",
+  "dssBackgroundDesc": "Digital Sky Survey Hintergrundbilder anzeigen",
+
+  "stars": "Sterne",
+  "starsDesc": "Sterne am Himmel anzeigen",
+  "planets": "Planeten",
+  "planetsDesc": "Planeten und Sonnensystemkörper anzeigen",
+  "deepSkyObjects": "Deep-Sky-Objekte",
+  "deepSkyObjectsDesc": "Nebel, Galaxien und Sternhaufen anzeigen",
+  "satellites": "Satelliten",
+  "satellitesDesc": "Künstliche Satelliten anzeigen",
+
+  "azimuthalGrid": "Azimutales Gitter",
+  "azimuthalGridDesc": "Höhen-/Azimut-Koordinatengitter anzeigen",
+  "equatorialGrid": "Äquatoriales Gitter",
+  "equatorialGridDesc": "Rektaszensions-/Deklinationsgitter anzeigen",
+  "equatorialJ2000Grid": "Äquatoriales J2000 Gitter",
+  "equatorialJ2000GridDesc": "J2000-Epoche Äquatorialkoordinaten anzeigen",
+  "meridianLine": "Meridianlinie",
+  "meridianLineDesc": "Meridian anzeigen (Nord-Süd durch Zenit)",
+  "eclipticLine": "Ekliptiklinie",
+  "eclipticLineDesc": "Ekliptik anzeigen (scheinbare Sonnenbahn)",
+
+  "nightMode": "Nachtmodus",
+  "nightModeDesc": "Rotverschiebung zur Erhaltung der Nachtsicht",
+
+  "loadingSkyView": "Himmelsansicht wird geladen...",
+  "failedToLoadSkyView": "Himmelsansicht konnte nicht geladen werden",
+
+  "locationPermissionDenied": "Standortberechtigung verweigert",
+  "locationPermissionPermanentlyDenied": "Standortberechtigung dauerhaft verweigert. Bitte in den Einstellungen aktivieren.",
+  "errorGettingLocation": "Fehler beim Abrufen des Standorts: {error}",
+  "@errorGettingLocation": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registrationNotFound": "Registrierungsnummer \"{number}\" nicht gefunden",
+  "@registrationNotFound": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSearching": "Fehler bei der Suche: {error}",
+  "@errorSearching": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "recentSearch": "Letzte Suche",
+  "search": "Suchen",
+
+  "language": "Sprache",
+  "languageSubtitle": "App-Sprache wählen",
+  "english": "Englisch",
+  "german": "Deutsch",
+  "chinese": "Chinesisch (Vereinfacht)",
+  "systemDefault": "Systemstandard",
+
+  "subscription": "Abonnement",
+  "subscriptionSubtitle": "Abonnement verwalten",
+  "currentPlan": "Aktueller Plan",
+  "freePlan": "Kostenlos",
+  "premiumPlan": "Premium",
+  "proPlan": "Pro",
+  "subscriptionActive": "Aktiv",
+  "subscriptionExpired": "Abgelaufen",
+  "expiresOn": "Läuft ab am {date}",
+  "@expiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "restorePurchases": "Käufe wiederherstellen",
+  "restoringPurchases": "Wird wiederhergestellt...",
+  "purchasesRestored": "Käufe erfolgreich wiederhergestellt",
+  "noPurchasesToRestore": "Keine Käufe zum Wiederherstellen",
+  "restoreError": "Fehler beim Wiederherstellen: {error}",
+  "@restoreError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "manageSubscription": "Abonnement verwalten",
+  "upgradeToPremium": "Auf Premium upgraden",
+
+  "tapToChangeLocation": "Tippen zum Ändern",
+  "currentLocation": "Aktueller Standort",
+
+  "checkingStarRegistry": "Sternregister wird überprüft...",
+  "starNotYetNamed": "Dieser Stern hat noch keinen Namen",
+  "giveUniqueNameHint": "Gib ihm einen einzigartigen Namen, der am Himmel sichtbar sein wird",
+  "nameThisStar": "Stern benennen",
+  "viewStarIn3D": "Stern in 3D ansehen",
+  "catalogId": "Katalog-ID",
+
+  "atmosphereButton": "Atmosphäre",
+  "movementButton": "Bewegung",
+  "searchPlaceholder": "Stern oder Objekt suchen...",
+
+  "onboardingExploreUniverse": "Entdecke das Universum aus deiner Tasche",
+  "onboardingGetStarted": "Los geht's",
+  "onboardingContinue": "Weiter",
+  "onboardingSkip": "Überspringen",
+  "onboardingSkipForNow": "Vorerst überspringen",
+  "onboardingMaybeLater": "Vielleicht später",
+  "onboardingRequesting": "Anfrage läuft...",
+
+  "locationAccessTitle": "Standortzugriff",
+  "locationAccessSubtitle": "Erlaube Standortzugriff, um den Himmel genau so zu sehen, wie er von deinem Standort aus erscheint",
+  "locationAccuratePositions": "Genaue Sternpositionen",
+  "locationAccuratePositionsDesc": "Sieh Sterne so, wie sie von deinem genauen Standort aus erscheinen",
+  "locationCompassNav": "Kompass-Navigation",
+  "locationCompassNavDesc": "Richte dein Handy aus, um Sterne am Himmel zu finden",
+  "locationRiseSetTimes": "Auf- & Untergangszeiten",
+  "locationRiseSetTimesDesc": "Erfahre, wann Himmelsobjekte an deinem Standort sichtbar sind",
+  "locationPrivacyNotice": "Dein Standort wird nur lokal verwendet und niemals weitergegeben.",
+  "locationConfirmedTitle": "Standort bestätigt",
+  "locationConfirmedSubtitle": "Deine Himmelsansicht wird für deinen Standort angepasst",
+  "locationOpenSettings": "Einstellungen öffnen",
+  "locationGettingLocation": "Standort wird ermittelt...",
+  "locationServicesDisabled": "Standortdienste sind deaktiviert. Bitte aktiviere sie in den Einstellungen.",
+  "locationFailedBrowser": "Standortermittlung fehlgeschlagen. Bitte erlaube den Standortzugriff in deinem Browser.",
+
+  "notificationTitle": "Bleib informiert",
+  "notificationSubtitle": "Erhalte Benachrichtigungen über Himmelsereignisse und optimale Beobachtungsbedingungen",
+  "notificationMoonPhase": "Mondphasen-Hinweise",
+  "notificationMoonPhaseDesc": "Erfahre die besten Nächte für Sternenbeobachtung",
+  "notificationCelestialEvents": "Himmelsereignisse",
+  "notificationCelestialEventsDesc": "Verpasse keine Sternschnuppen und Finsternisse",
+  "notificationVisibility": "Sichtbarkeitshinweise",
+  "notificationVisibilityDesc": "Werde benachrichtigt, wenn Planeten am besten sichtbar sind",
+  "notificationPrivacyNotice": "Du kannst die Benachrichtigungseinstellungen jederzeit in der App ändern.",
+
+  "attTitle": "Datenschutz & Tracking",
+  "attSubtitle": "Erlaube Tracking, um uns zu helfen, dein Erlebnis zu verbessern und dir relevante Inhalte zu zeigen",
+  "attImproveApp": "App verbessern",
+  "attImproveAppDesc": "Hilf uns zu verstehen, wie du die App nutzt, um sie zu verbessern",
+  "attRelevantContent": "Relevante Inhalte",
+  "attRelevantContentDesc": "Sieh Empfehlungen, die auf deine Interessen zugeschnitten sind",
+  "attPrivacyMatters": "Deine Privatsphäre ist wichtig",
+  "attPrivacyMattersDesc": "Wir verkaufen deine persönlichen Daten niemals an Dritte",
+  "attPrivacyNotice": "Du kannst diese Einstellung jederzeit unter iOS-Einstellungen > Datenschutz > Tracking ändern.",
+
+  "starRegTitle": "Finde deinen Stern",
+  "starRegSubtitle": "Gib deine Stern-Registrierungsnummer ein, um deinen benannten Stern am Himmel zu finden",
+  "starRegFindButton": "Meinen Stern finden",
+  "starRegNoStarYet": "Ich habe noch keinen Stern benannt",
+  "starRegNameAStar": "Stern benennen",
+  "starRegEnterNumber": "Bitte gib eine Registrierungsnummer ein",
+  "starRegInvalidFormat": "Ungültiges Format. Verwende: XXXX-XXXXX-XXXXXXXX",
+  "starRegNotFound": "Stern nicht gefunden. Bitte überprüfe deine Registrierungsnummer.",
+  "starRegSearchFailed": "Suche fehlgeschlagen. Bitte versuche es erneut."
+}

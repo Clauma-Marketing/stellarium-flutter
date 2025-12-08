@@ -1,0 +1,249 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Night Sky Guide",
+
+  "menu": "Menu",
+  "myStars": "My Stars",
+  "myStarsSubtitle": "Saved locations and favorites",
+  "timeLocation": "Time & Location",
+  "timeLocationSubtitle": "Set observation time and place",
+  "visualEffects": "Visual Effects",
+  "visualEffectsSubtitle": "Sky display, objects, and grids",
+  "settings": "Settings",
+  "settingsSubtitle": "App preferences",
+
+  "location": "LOCATION",
+  "time": "TIME",
+  "searchCityAddress": "Search city, address...",
+  "useMyLocation": "Use My Location",
+  "detecting": "Detecting...",
+  "unknownLocation": "Unknown location",
+  "setToNow": "Set to Now",
+  "applyChanges": "Apply Changes",
+  "setTime": "Set Time",
+  "now": "Now",
+  "cancel": "Cancel",
+  "apply": "Apply",
+
+  "save": "Save",
+  "saved": "Saved",
+  "savedToMyStars": "Saved to My Stars",
+  "removedFromMyStars": "Removed from My Stars",
+  "pointAtStar": "Point at Star",
+  "removeFromMyStars": "Remove from My Stars",
+  "saveToMyStars": "Save to My Stars",
+
+  "noSavedStarsYet": "No saved stars yet",
+  "tapStarIconHint": "Tap the star icon on any star's info sheet to save it here",
+  "starRemoved": "{name} removed",
+  "@starRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registration": "REGISTRATION",
+  "registeredTo": "Registered to",
+  "registrationDate": "Date",
+  "registrationNumber": "Registration #",
+  "registry": "Registry",
+  "properties": "PROPERTIES",
+  "coordinates": "COORDINATES",
+  "scientificName": "Scientific Name",
+  "magnitude": "Magnitude",
+  "spectralType": "Spectral Type",
+  "distance": "Distance",
+  "parallax": "Parallax",
+  "objectType": "Object Type",
+  "doubleMultipleStar": "Double/Multiple Star",
+  "rightAscension": "Right Ascension",
+  "declination": "Declination",
+
+  "skyDisplay": "Sky Display",
+  "celestialObjects": "Celestial Objects",
+  "gridLines": "Grids & Lines",
+  "displayOptions": "Display Options",
+
+  "constellationLines": "Constellation Lines",
+  "constellationLinesDesc": "Show lines connecting stars in constellations",
+  "constellationNames": "Constellation Names",
+  "constellationNamesDesc": "Show constellation name labels",
+  "constellationArt": "Constellation Art",
+  "constellationArtDesc": "Show artistic constellation illustrations",
+  "atmosphere": "Atmosphere",
+  "atmosphereDesc": "Show atmospheric effects and sky glow",
+  "landscape": "Landscape",
+  "landscapeDesc": "Show ground/horizon landscape",
+  "landscapeFog": "Landscape Fog",
+  "landscapeFogDesc": "Show fog effect on landscape",
+  "milkyWay": "Milky Way",
+  "milkyWayDesc": "Show the Milky Way galaxy",
+  "dssBackground": "DSS Background",
+  "dssBackgroundDesc": "Show Digital Sky Survey background images",
+
+  "stars": "Stars",
+  "starsDesc": "Show stars in the sky",
+  "planets": "Planets",
+  "planetsDesc": "Show planets and solar system bodies",
+  "deepSkyObjects": "Deep Sky Objects",
+  "deepSkyObjectsDesc": "Show nebulae, galaxies, and star clusters",
+  "satellites": "Satellites",
+  "satellitesDesc": "Show artificial satellites",
+
+  "azimuthalGrid": "Azimuthal Grid",
+  "azimuthalGridDesc": "Show altitude/azimuth coordinate grid",
+  "equatorialGrid": "Equatorial Grid",
+  "equatorialGridDesc": "Show right ascension/declination grid",
+  "equatorialJ2000Grid": "Equatorial J2000 Grid",
+  "equatorialJ2000GridDesc": "Show J2000 epoch equatorial coordinates",
+  "meridianLine": "Meridian Line",
+  "meridianLineDesc": "Show the meridian (north-south through zenith)",
+  "eclipticLine": "Ecliptic Line",
+  "eclipticLineDesc": "Show the ecliptic (sun's apparent path)",
+
+  "nightMode": "Night Mode",
+  "nightModeDesc": "Red-shift display to preserve night vision",
+
+  "loadingSkyView": "Loading sky view...",
+  "failedToLoadSkyView": "Failed to load sky view",
+
+  "locationPermissionDenied": "Location permission denied",
+  "locationPermissionPermanentlyDenied": "Location permission permanently denied. Please enable in Settings.",
+  "errorGettingLocation": "Error getting location: {error}",
+  "@errorGettingLocation": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registrationNotFound": "Registration number \"{number}\" not found",
+  "@registrationNotFound": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSearching": "Error searching: {error}",
+  "@errorSearching": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "recentSearch": "Recent search",
+  "search": "Search",
+
+  "language": "Language",
+  "languageSubtitle": "Choose app language",
+  "english": "English",
+  "german": "German",
+  "chinese": "Chinese (Simplified)",
+  "systemDefault": "System Default",
+
+  "subscription": "Subscription",
+  "subscriptionSubtitle": "Manage your subscription",
+  "currentPlan": "Current Plan",
+  "freePlan": "Free",
+  "premiumPlan": "Premium",
+  "proPlan": "Pro",
+  "subscriptionActive": "Active",
+  "subscriptionExpired": "Expired",
+  "expiresOn": "Expires on {date}",
+  "@expiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "restorePurchases": "Restore Purchases",
+  "restoringPurchases": "Restoring...",
+  "purchasesRestored": "Purchases restored successfully",
+  "noPurchasesToRestore": "No purchases to restore",
+  "restoreError": "Error restoring purchases: {error}",
+  "@restoreError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "manageSubscription": "Manage Subscription",
+  "upgradeToPremium": "Upgrade to Premium",
+
+  "tapToChangeLocation": "Tap to change location",
+  "currentLocation": "Current Location",
+
+  "checkingStarRegistry": "Checking star registry...",
+  "starNotYetNamed": "This star is not yet named",
+  "giveUniqueNameHint": "Give it a unique name that will be visible in the sky",
+  "nameThisStar": "Name this Star",
+  "viewStarIn3D": "View Star in 3D",
+  "catalogId": "Catalog ID",
+
+  "atmosphereButton": "Atmosphere",
+  "movementButton": "Movement",
+  "searchPlaceholder": "Search for a star or object...",
+
+  "onboardingExploreUniverse": "Explore the universe from your pocket",
+  "onboardingGetStarted": "Get Started",
+  "onboardingContinue": "Continue",
+  "onboardingSkip": "Skip",
+  "onboardingSkipForNow": "Skip for now",
+  "onboardingMaybeLater": "Maybe Later",
+  "onboardingRequesting": "Requesting...",
+
+  "locationAccessTitle": "Location Access",
+  "locationAccessSubtitle": "Allow location access to see the sky exactly as it appears from your location",
+  "locationAccuratePositions": "Accurate Star Positions",
+  "locationAccuratePositionsDesc": "See stars as they appear from your exact location",
+  "locationCompassNav": "Compass Navigation",
+  "locationCompassNavDesc": "Point your phone to find stars in the sky",
+  "locationRiseSetTimes": "Rise & Set Times",
+  "locationRiseSetTimesDesc": "Know when celestial objects are visible at your location",
+  "locationPrivacyNotice": "Your location is only used locally and never shared.",
+  "locationConfirmedTitle": "Location Confirmed",
+  "locationConfirmedSubtitle": "Your sky view will be customized for your location",
+  "locationOpenSettings": "Open Settings",
+  "locationGettingLocation": "Getting Location...",
+  "locationServicesDisabled": "Location services are disabled. Please enable them in settings.",
+  "locationFailedBrowser": "Failed to get location. Please allow location access in your browser.",
+
+  "notificationTitle": "Stay Updated",
+  "notificationSubtitle": "Get notified about celestial events and optimal viewing conditions",
+  "notificationMoonPhase": "Moon Phase Alerts",
+  "notificationMoonPhaseDesc": "Know the best nights for stargazing",
+  "notificationCelestialEvents": "Celestial Events",
+  "notificationCelestialEventsDesc": "Never miss meteor showers and eclipses",
+  "notificationVisibility": "Visibility Alerts",
+  "notificationVisibilityDesc": "Get notified when planets are best visible",
+  "notificationPrivacyNotice": "You can change notification settings anytime in the app.",
+
+  "attTitle": "Privacy & Tracking",
+  "attSubtitle": "Allow tracking to help us improve your experience and show you relevant content",
+  "attImproveApp": "Improve the App",
+  "attImproveAppDesc": "Help us understand how you use the app to make it better",
+  "attRelevantContent": "Relevant Content",
+  "attRelevantContentDesc": "See recommendations tailored to your interests",
+  "attPrivacyMatters": "Your Privacy Matters",
+  "attPrivacyMattersDesc": "We never sell your personal data to third parties",
+  "attPrivacyNotice": "You can change this setting anytime in iOS Settings > Privacy > Tracking.",
+
+  "starRegTitle": "Find Your Star",
+  "starRegSubtitle": "Enter your star registration number to locate your named star in the sky",
+  "starRegFindButton": "Find My Star",
+  "starRegNoStarYet": "I didn't name a star yet",
+  "starRegNameAStar": "Name a Star",
+  "starRegEnterNumber": "Please enter a registration number",
+  "starRegInvalidFormat": "Invalid format. Use: XXXX-XXXXX-XXXXXXXX",
+  "starRegNotFound": "Star not found. Please check your registration number.",
+  "starRegSearchFailed": "Failed to search. Please try again."
+}

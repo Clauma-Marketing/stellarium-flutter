@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Stellarium Flutter - A planetarium app">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Stellarium">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png" />
+
+  <title>Stellarium</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000;
+    }
+
+    #stellarium-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      /* Allow native events */
+      pointer-events: auto;
+    }
+
+    #stellarium-canvas {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Stellarium canvas container -->
+  <div id="stellarium-container">
+    <canvas id="stellarium-canvas"></canvas>
+  </div>
+
+  <!-- Load Stellarium Web Engine -->
+  <script src="stellarium-web-engine.js"></script>
+
+  <!-- Stellarium initialization -->
+  <script>
+    // Global stellarium instance
+    window.stellarium = null;
+    window.stellariumReady = false;
+    window.stellariumReadyCallbacks = [];
+
+    // Initialize Stellarium when ready
+    function initStellarium() {
+      const canvas = document.getElementById('stellarium-canvas');
+
+      // Resize canvas to fill container
+      function resizeCanvas() {
+        const container = document.getElementById('stellarium-container');
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = container.clientWidth * dpr;
+        canvas.height = container.clientHeight * dpr;
+        canvas.style.width = container.clientWidth + 'px';
+        canvas.style.height = container.clientHeight + 'px';
+      }
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Create Stellarium engine
+      StelWebEngine({
+        canvas: canvas,
+        wasmFile: 'stellarium-web-engine.wasm',
+        onReady: function (stel) {
+          window.stellarium = stel;
+          window.stellariumReady = true;
+
+          // Add default data sources
+          const core = stel.core;
+
+          // Use CDN data sources
+          const baseUrl = 'https://data.star-register.com/';
+
+          core.stars.addDataSource({ url: baseUrl + 'surveys/stars/v1' });
+          core.skycultures.addDataSource({
+            url: baseUrl + 'skycultures/v2/western',
+            key: 'western'
+          });
+          core.dsos.addDataSource({ url: baseUrl + 'surveys/dso/v1' });
+          core.landscapes.addDataSource({
+            url: baseUrl + 'landscapes/v1/guereins',
+            key: 'guereins'
+          });
+          core.milkyway.addDataSource({ url: baseUrl + 'surveys/milkyway/v1' });
+          core.planets.addDataSource({
+            url: baseUrl + 'surveys/sso/moon',
+            key: 'moon'
+          });
+          core.planets.addDataSource({
+            url: baseUrl + 'surveys/sso/sun',
+            key: 'sun'
+          });
+
+          // Set default location (New York)
+          stel.observer.longitude = -74.0060 * stel.D2R;
+          stel.observer.latitude = 40.7128 * stel.D2R;
+
+          // Set up input wrapper functions for Flutter to call
+          window.stelInputReady = true;
+
+          // Call all waiting callbacks
+          window.stellariumReadyCallbacks.forEach(function (cb) {
+            try { cb(stel); } catch (e) { console.error(e); }
+          });
+          window.stellariumReadyCallbacks = [];
+
+          console.log('Stellarium Web Engine initialized with Flutter input bridge');
+        }
+      });
+    }
+
+    // Input wrapper functions - called by Flutter to forward events to WASM
+    // These are set up before stellarium loads, and work once Module is ready
+    window.stelInputReady = false;
+
+    window.stelCoreOnMouse = function (id, state, x, y, buttons) {
+      console.log('stelCoreOnMouse called:', id, state, x, y, buttons);
+      if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+        console.log('Calling Module._core_on_mouse');
+        Module._core_on_mouse(id, state, x, y, buttons);
+      } else {
+        console.log('Module or _core_on_mouse not available:', typeof Module, Module ? !!Module._core_on_mouse : 'no module');
+      }
+    };
+
+    window.stelCoreOnZoom = function (factor, x, y) {
+      console.log('stelCoreOnZoom called:', factor, x, y);
+      if (typeof Module !== 'undefined' && Module._core_on_zoom) {
+        console.log('Calling Module._core_on_zoom');
+        Module._core_on_zoom(factor, x, y);
+      } else {
+        console.log('Module or _core_on_zoom not available');
+      }
+    };
+
+    // Wait for StelWebEngine to load
+    if (typeof StelWebEngine !== 'undefined') {
+      initStellarium();
+    } else {
+      window.addEventListener('load', function () {
+        if (typeof StelWebEngine !== 'undefined') {
+          initStellarium();
+        } else {
+          console.error('StelWebEngine not loaded');
+        }
+      });
+    }
+
+    // Helper function to wait for Stellarium to be ready
+    window.onStellariumReady = function (callback) {
+      if (window.stellariumReady && window.stellarium) {
+        callback(window.stellarium);
+      } else {
+        window.stellariumReadyCallbacks.push(callback);
+      }
+    };
+
+    // API for Flutter/Dart to call - matches mobile stellariumAPI
+    window.stellariumAPI = {
+      lookAtRadians: function(azimuthRad, altitudeRad, duration) {
+        if (!window.stellarium) return;
+        try {
+          const stel = window.stellarium;
+          // Convert spherical (azimuth, altitude) to cartesian direction vector
+          var pos = stel.s2c(azimuthRad, altitudeRad);
+          stel.lookAt(pos, duration || 0);
+        } catch(e) {
+          console.error('lookAtRadians error:', e);
+        }
+      },
+
+      lookAt: function(azimuthDeg, altitudeDeg, duration) {
+        if (!window.stellarium) return;
+        try {
+          const stel = window.stellarium;
+          const azRad = azimuthDeg * stel.D2R;
+          const altRad = altitudeDeg * stel.D2R;
+          var pos = stel.s2c(azRad, altRad);
+          stel.lookAt(pos, duration || 0);
+        } catch(e) {
+          console.error('lookAt error:', e);
+        }
+      },
+
+      setGyroscopeEnabled: function(enabled) {
+        // When gyroscope is enabled, disable native panning
+        window.gyroscopeEnabled = enabled;
+        console.log('Gyroscope mode:', enabled ? 'enabled' : 'disabled');
+      }
+    };
+
+    // Track gyroscope state
+    window.gyroscopeEnabled = false;
+  </script>
+
+  <!-- Flutter bootstrap -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html>

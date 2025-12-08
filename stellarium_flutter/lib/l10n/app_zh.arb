@@ -1,0 +1,249 @@
+{
+  "@@locale": "zh",
+
+  "appTitle": "Night Sky Guide",
+
+  "menu": "菜单",
+  "myStars": "我的星星",
+  "myStarsSubtitle": "已保存的位置和收藏",
+  "timeLocation": "时间与位置",
+  "timeLocationSubtitle": "设置观测时间和地点",
+  "visualEffects": "视觉效果",
+  "visualEffectsSubtitle": "天空显示、天体和网格",
+  "settings": "设置",
+  "settingsSubtitle": "应用偏好设置",
+
+  "location": "位置",
+  "time": "时间",
+  "searchCityAddress": "搜索城市、地址...",
+  "useMyLocation": "使用我的位置",
+  "detecting": "检测中...",
+  "unknownLocation": "未知位置",
+  "setToNow": "设为当前时间",
+  "applyChanges": "应用更改",
+  "setTime": "设置时间",
+  "now": "现在",
+  "cancel": "取消",
+  "apply": "应用",
+
+  "save": "保存",
+  "saved": "已保存",
+  "savedToMyStars": "已保存到我的星星",
+  "removedFromMyStars": "已从我的星星中移除",
+  "pointAtStar": "指向星星",
+  "removeFromMyStars": "从我的星星中移除",
+  "saveToMyStars": "保存到我的星星",
+
+  "noSavedStarsYet": "暂无保存的星星",
+  "tapStarIconHint": "点击任意星星信息页上的星星图标，即可保存到这里",
+  "starRemoved": "{name} 已移除",
+  "@starRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registration": "注册信息",
+  "registeredTo": "注册给",
+  "registrationDate": "日期",
+  "registrationNumber": "注册号",
+  "registry": "注册机构",
+  "properties": "属性",
+  "coordinates": "坐标",
+  "scientificName": "科学名称",
+  "magnitude": "星等",
+  "spectralType": "光谱类型",
+  "distance": "距离",
+  "parallax": "视差",
+  "objectType": "天体类型",
+  "doubleMultipleStar": "双星/聚星",
+  "rightAscension": "赤经",
+  "declination": "赤纬",
+
+  "skyDisplay": "天空显示",
+  "celestialObjects": "天体",
+  "gridLines": "网格与线条",
+  "displayOptions": "显示选项",
+
+  "constellationLines": "星座连线",
+  "constellationLinesDesc": "显示连接星座中恒星的线条",
+  "constellationNames": "星座名称",
+  "constellationNamesDesc": "显示星座名称标签",
+  "constellationArt": "星座图案",
+  "constellationArtDesc": "显示星座艺术插图",
+  "atmosphere": "大气层",
+  "atmosphereDesc": "显示大气效果和天空辉光",
+  "landscape": "地景",
+  "landscapeDesc": "显示地面/地平线景观",
+  "landscapeFog": "地景雾",
+  "landscapeFogDesc": "在地景上显示雾效果",
+  "milkyWay": "银河",
+  "milkyWayDesc": "显示银河系",
+  "dssBackground": "DSS背景",
+  "dssBackgroundDesc": "显示数字巡天背景图像",
+
+  "stars": "恒星",
+  "starsDesc": "显示天空中的恒星",
+  "planets": "行星",
+  "planetsDesc": "显示行星和太阳系天体",
+  "deepSkyObjects": "深空天体",
+  "deepSkyObjectsDesc": "显示星云、星系和星团",
+  "satellites": "卫星",
+  "satellitesDesc": "显示人造卫星",
+
+  "azimuthalGrid": "地平坐标网格",
+  "azimuthalGridDesc": "显示高度/方位角坐标网格",
+  "equatorialGrid": "赤道坐标网格",
+  "equatorialGridDesc": "显示赤经/赤纬网格",
+  "equatorialJ2000Grid": "J2000赤道坐标网格",
+  "equatorialJ2000GridDesc": "显示J2000历元赤道坐标",
+  "meridianLine": "子午线",
+  "meridianLineDesc": "显示子午线（穿过天顶的南北线）",
+  "eclipticLine": "黄道线",
+  "eclipticLineDesc": "显示黄道（太阳视运动路径）",
+
+  "nightMode": "夜间模式",
+  "nightModeDesc": "红色显示以保护夜视能力",
+
+  "loadingSkyView": "正在加载天空视图...",
+  "failedToLoadSkyView": "加载天空视图失败",
+
+  "locationPermissionDenied": "位置权限被拒绝",
+  "locationPermissionPermanentlyDenied": "位置权限已被永久拒绝。请在设置中启用。",
+  "errorGettingLocation": "获取位置时出错：{error}",
+  "@errorGettingLocation": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registrationNotFound": "未找到注册号 \"{number}\"",
+  "@registrationNotFound": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSearching": "搜索时出错：{error}",
+  "@errorSearching": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "recentSearch": "最近搜索",
+  "search": "搜索",
+
+  "language": "语言",
+  "languageSubtitle": "选择应用语言",
+  "english": "英语",
+  "german": "德语",
+  "chinese": "中文（简体）",
+  "systemDefault": "系统默认",
+
+  "subscription": "订阅",
+  "subscriptionSubtitle": "管理您的订阅",
+  "currentPlan": "当前方案",
+  "freePlan": "免费版",
+  "premiumPlan": "高级版",
+  "proPlan": "专业版",
+  "subscriptionActive": "已激活",
+  "subscriptionExpired": "已过期",
+  "expiresOn": "到期时间：{date}",
+  "@expiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "restorePurchases": "恢复购买",
+  "restoringPurchases": "正在恢复...",
+  "purchasesRestored": "购买已成功恢复",
+  "noPurchasesToRestore": "没有可恢复的购买",
+  "restoreError": "恢复购买时出错：{error}",
+  "@restoreError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "manageSubscription": "管理订阅",
+  "upgradeToPremium": "升级到高级版",
+
+  "tapToChangeLocation": "点击更改位置",
+  "currentLocation": "当前位置",
+
+  "checkingStarRegistry": "正在查询星星注册信息...",
+  "starNotYetNamed": "这颗星星尚未命名",
+  "giveUniqueNameHint": "给它起一个独特的名字，将在天空中显示",
+  "nameThisStar": "为这颗星星命名",
+  "viewStarIn3D": "3D查看星星",
+  "catalogId": "目录编号",
+
+  "atmosphereButton": "大气层",
+  "movementButton": "移动",
+  "searchPlaceholder": "搜索星星或天体...",
+
+  "onboardingExploreUniverse": "在口袋里探索宇宙",
+  "onboardingGetStarted": "开始使用",
+  "onboardingContinue": "继续",
+  "onboardingSkip": "跳过",
+  "onboardingSkipForNow": "暂时跳过",
+  "onboardingMaybeLater": "以后再说",
+  "onboardingRequesting": "请求中...",
+
+  "locationAccessTitle": "位置访问",
+  "locationAccessSubtitle": "允许访问位置，以便准确显示您所在位置的天空",
+  "locationAccuratePositions": "精确的星星位置",
+  "locationAccuratePositionsDesc": "查看从您确切位置看到的星星",
+  "locationCompassNav": "指南针导航",
+  "locationCompassNavDesc": "将手机对准天空中的星星",
+  "locationRiseSetTimes": "升起和落下时间",
+  "locationRiseSetTimesDesc": "了解天体在您位置的可见时间",
+  "locationPrivacyNotice": "您的位置仅在本地使用，绝不会被分享。",
+  "locationConfirmedTitle": "位置已确认",
+  "locationConfirmedSubtitle": "您的天空视图将根据您的位置进行定制",
+  "locationOpenSettings": "打开设置",
+  "locationGettingLocation": "正在获取位置...",
+  "locationServicesDisabled": "位置服务已禁用。请在设置中启用。",
+  "locationFailedBrowser": "获取位置失败。请在浏览器中允许位置访问。",
+
+  "notificationTitle": "保持更新",
+  "notificationSubtitle": "获取天文事件和最佳观测条件的通知",
+  "notificationMoonPhase": "月相提醒",
+  "notificationMoonPhaseDesc": "了解最佳观星夜晚",
+  "notificationCelestialEvents": "天文事件",
+  "notificationCelestialEventsDesc": "不错过流星雨和日食月食",
+  "notificationVisibility": "可见性提醒",
+  "notificationVisibilityDesc": "当行星最佳可见时获得通知",
+  "notificationPrivacyNotice": "您可以随时在应用中更改通知设置。",
+
+  "attTitle": "隐私与追踪",
+  "attSubtitle": "允许追踪以帮助我们改善您的体验并向您展示相关内容",
+  "attImproveApp": "改进应用",
+  "attImproveAppDesc": "帮助我们了解您如何使用应用以便改进",
+  "attRelevantContent": "相关内容",
+  "attRelevantContentDesc": "查看根据您的兴趣定制的推荐",
+  "attPrivacyMatters": "您的隐私很重要",
+  "attPrivacyMattersDesc": "我们绝不会将您的个人数据出售给第三方",
+  "attPrivacyNotice": "您可以随时在iOS设置 > 隐私 > 追踪中更改此设置。",
+
+  "starRegTitle": "找到您的星星",
+  "starRegSubtitle": "输入您的星星注册号码，在天空中找到您命名的星星",
+  "starRegFindButton": "找到我的星星",
+  "starRegNoStarYet": "我还没有命名星星",
+  "starRegNameAStar": "命名一颗星星",
+  "starRegEnterNumber": "请输入注册号码",
+  "starRegInvalidFormat": "格式无效。请使用：XXXX-XXXXX-XXXXXXXX",
+  "starRegNotFound": "未找到星星。请检查您的注册号码。",
+  "starRegSearchFailed": "搜索失败。请重试。"
+}

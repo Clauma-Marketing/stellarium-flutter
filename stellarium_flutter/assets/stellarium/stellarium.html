@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Stellarium</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000;
+      touch-action: none;
+    }
+    #stellarium-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    /* Custom label is now rendered natively by the engine */
+    #custom-label {
+      display: none;
+    }
+    /* Direction arrow is now rendered inside the engine via pointer.c */
+  </style>
+</head>
+<body>
+  <canvas id="stellarium-canvas"></canvas>
+  <div id="custom-label"></div>
+
+  <!-- Direction arrow is now rendered inside the engine via pointer.c -->
+
+  <script src="stellarium-web-engine.js"></script>
+  <script>
+    // Global state
+    window.stellarium = null;
+    window.stellariumReady = false;
+
+    // Flutter handler - will be set by InAppWebView
+    window.flutterHandler = null;
+
+    // Send message to Flutter
+    function sendToFlutter(type, data) {
+      if (window.flutter_inappwebview) {
+        window.flutter_inappwebview.callHandler('onMessage', JSON.stringify({
+          type: type,
+          data: data
+        }));
+      }
+    }
+
+    // Convert JavaScript Date to Modified Julian Date (MJD)
+    // Uses local time values to match Flutter's convention
+    function dateToMjd(date) {
+      var y = date.getFullYear();
+      var m = date.getMonth() + 1; // JavaScript months are 0-based
+      var d = date.getDate() +
+              date.getHours() / 24.0 +
+              date.getMinutes() / 1440.0 +
+              date.getSeconds() / 86400.0 +
+              date.getMilliseconds() / 86400000.0;
+
+      var a = Math.floor((14 - m) / 12);
+      var yAdj = y + 4800 - a;
+      var mAdj = m + 12 * a - 3;
+
+      var jd = d +
+               Math.floor((153 * mAdj + 2) / 5) +
+               365 * yAdj +
+               Math.floor(yAdj / 4) -
+               Math.floor(yAdj / 100) +
+               Math.floor(yAdj / 400) -
+               32045;
+
+      // Subtract 2400001.0 to shift from noon to midnight epoch
+      return jd - 2400001.0;
+    }
+
+    // Initialize Stellarium
+    function initStellarium() {
+      const canvas = document.getElementById('stellarium-canvas');
+
+      // Resize canvas
+      function resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+      }
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Create Stellarium engine
+      StelWebEngine({
+        canvas: canvas,
+        wasmFile: 'stellarium-web-engine.wasm',
+        onReady: function(stel) {
+          window.stellarium = stel;
+          window.stellariumReady = true;
+
+          const core = stel.core;
+          const baseUrl = 'https://data.star-register.com/';
+
+          // Add data sources
+          core.stars.addDataSource({ url: baseUrl + 'surveys/stars/v1' });
+          core.skycultures.addDataSource({
+            url: baseUrl + 'skycultures/v2/western',
+            key: 'western'
+          });
+          core.dsos.addDataSource({ url: baseUrl + 'surveys/dso/v1' });
+          core.landscapes.addDataSource({
+            url: baseUrl + 'landscapes/v1/guereins',
+            key: 'guereins'
+          });
+          core.milkyway.addDataSource({ url: baseUrl + 'surveys/milkyway/v1' });
+          core.planets.addDataSource({
+            url: baseUrl + 'surveys/sso/moon',
+            key: 'moon'
+          });
+          core.planets.addDataSource({
+            url: baseUrl + 'surveys/sso/sun',
+            key: 'sun'
+          });
+
+          // Default location (New York)
+          stel.observer.longitude = -74.0060 * stel.D2R;
+          stel.observer.latitude = 40.7128 * stel.D2R;
+
+          // Set time to current time (now) and enable real-time progression
+          var now = new Date();
+          var mjd = dateToMjd(now);
+          stel.observer.utc = mjd;
+          // Set time speed to 1.0 for real-time progression
+          if (stel.core) {
+            stel.core.time_speed = 1.0;
+          }
+          console.log('Set initial time to now:', now.toISOString(), 'MJD:', mjd);
+
+          // Set up time change listener for explicit changes
+          var lastUtc = stel.observer.utc;
+          stel.change(function(obj, attr) {
+            // Check if observer UTC changed
+            if (attr === 'utc' || (obj === stel.observer && stel.observer.utc !== lastUtc)) {
+              lastUtc = stel.observer.utc;
+              sendToFlutter('timeChanged', { utc: lastUtc });
+            }
+          });
+
+          // Set up periodic time update for real-time progression
+          // Check every second if time has changed (due to real-time simulation)
+          setInterval(function() {
+            if (stel.observer.utc !== lastUtc) {
+              lastUtc = stel.observer.utc;
+              sendToFlutter('timeChanged', { utc: lastUtc });
+            }
+          }, 1000);
+
+          // Notify Flutter
+          sendToFlutter('ready', {});
+
+          console.log('Stellarium ready');
+        }
+      });
+    }
+
+    // API for Flutter to call
+    window.stellariumAPI = {
+      setLocation: function(lat, lon, alt) {
+        if (!window.stellarium) return;
+        const stel = window.stellarium;
+        stel.observer.latitude = lat * stel.D2R;
+        stel.observer.longitude = lon * stel.D2R;
+        if (alt !== undefined) stel.observer.elevation = alt;
+      },
+
+      setTime: function(mjd) {
+        if (!window.stellarium) return;
+        window.stellarium.observer.utc = mjd;
+      },
+
+      setTimeSpeed: function(speed) {
+        if (!window.stellarium || !window.stellarium.core) return;
+        window.stellarium.core.time_speed = speed;
+        console.log('Time speed set to:', speed);
+      },
+
+      getTimeSpeed: function() {
+        if (!window.stellarium || !window.stellarium.core) return 1.0;
+        return window.stellarium.core.time_speed || 1.0;
+      },
+
+      setFov: function(fovDeg, duration) {
+        if (!window.stellarium) return;
+        const fovRad = fovDeg * window.stellarium.D2R;
+        window.stellarium.zoomTo(fovRad, duration || 1.0);
+      },
+
+      setSetting: function(key, value) {
+        if (!window.stellarium) return;
+        const core = window.stellarium.core;
+
+        try {
+          switch(key) {
+            case 'constellationsLines':
+              core.constellations.lines_visible = value;
+              break;
+            case 'constellationsLabels':
+              core.constellations.labels_visible = value;
+              break;
+            case 'constellationsArt':
+              core.constellations.images_visible = value;
+              break;
+            case 'atmosphere':
+              core.atmosphere.visible = value;
+              break;
+            case 'landscape':
+              core.landscapes.visible = value;
+              break;
+            case 'landscapeFog':
+              core.landscapes.fog_visible = value;
+              break;
+            case 'milkyWay':
+              core.milkyway.visible = value;
+              break;
+            case 'dss':
+              core.dss.visible = value;
+              break;
+            case 'stars':
+              core.stars.visible = value;
+              break;
+            case 'planets':
+              core.planets.visible = value;
+              break;
+            case 'dsos':
+              core.dsos.visible = value;
+              break;
+            case 'satellites':
+              if (core.satellites) core.satellites.visible = value;
+              break;
+            case 'gridAzimuthal':
+              core.lines.azimuthal.visible = value;
+              break;
+            case 'gridEquatorial':
+              core.lines.equatorial_jnow.visible = value;
+              break;
+            case 'gridEquatorialJ2000':
+              core.lines.equatorial.visible = value;
+              break;
+            case 'lineMeridian':
+              core.lines.meridian.visible = value;
+              break;
+            case 'lineEcliptic':
+              core.lines.ecliptic.visible = value;
+              break;
+          }
+        } catch(e) {
+          console.error('setSetting error:', key, e);
+        }
+      },
+
+      getObserver: function() {
+        if (!window.stellarium) return null;
+        const stel = window.stellarium;
+        const obs = stel.observer;
+        return {
+          latitude: obs.latitude * stel.R2D,
+          longitude: obs.longitude * stel.R2D,
+          altitude: obs.elevation,
+          azimuth: obs.azimuth * stel.R2D,
+          elevation: obs.altitude * stel.R2D,
+          fov: obs.fov * stel.R2D,
+          utc: obs.utc
+        };
+      },
+
+      search: function(query) {
+        if (!window.stellarium) return Promise.resolve(null);
+        try {
+          // Try different name formats
+          var obj = window.stellarium.getObj('NAME ' + query);
+          if (!obj) obj = window.stellarium.getObj(query);
+          if (!obj) return Promise.resolve(null);
+          return Promise.resolve({
+            name: query,
+            type: obj.type || 'unknown'
+          });
+        } catch(e) {
+          console.error('search error:', e);
+          return Promise.resolve(null);
+        }
+      },
+
+      pointAt: function(name, duration) {
+        if (!window.stellarium) return;
+        try {
+          const stel = window.stellarium;
+          // Try different name formats
+          var obj = stel.getObj('NAME ' + name);
+          if (!obj) obj = stel.getObj(name);
+          if (obj) {
+            // Select the object (shows crosshair marker)
+            stel.core.selection = obj;
+            console.log('Selected:', name);
+
+            // Get current FOV to calculate offset
+            const fov = stel.observer.fov || (60 * Math.PI / 180);
+
+            // Set view_offset_alt to move star up on screen
+            // Positive offset = star appears higher on screen
+            const offset = fov * 0.35;
+            stel.observer.view_offset_alt = offset;
+            console.log('Set view_offset_alt to ' + (offset * 180 / Math.PI).toFixed(1) + '° (FOV: ' + (fov * 180 / Math.PI).toFixed(1) + '°)');
+
+            // Point and lock to the object (with offset applied)
+            stel.pointAndLock(obj, duration || 1.0);
+            console.log('Pointing at:', name, '(with offset)');
+
+            // Send object selection to Flutter so info sheet can be shown
+            // Use designations() method (not property) to get names
+            const names = typeof obj.designations === 'function' ? obj.designations() : (obj.names || [name]);
+            const info = {
+              name: (names && names.length > 0) ? names[0] : name,
+              names: names || [name],
+              type: obj.type || 'unknown',
+              vmag: obj.vmag,
+              ra: obj.ra !== undefined ? obj.ra * stel.R2D : null,
+              dec: obj.de !== undefined ? obj.de * stel.R2D : null,
+              distance: obj.distance
+            };
+            console.log('pointAt: sending objectSelected to Flutter:', info);
+            sendToFlutter('objectSelected', info);
+          } else {
+            console.log('Object not found:', name);
+          }
+        } catch(e) {
+          console.error('pointAt error:', e);
+        }
+      },
+
+      lookAt: function(azimuthDeg, altitudeDeg, duration) {
+        if (!window.stellarium) return;
+        try {
+          const stel = window.stellarium;
+          const azRad = azimuthDeg * stel.D2R;
+          const altRad = altitudeDeg * stel.D2R;
+          // Convert spherical to cartesian direction vector
+          var pos = stel.s2c(azRad, altRad);
+          stel.lookAt(pos, duration || 0);
+        } catch(e) {
+          console.error('lookAt error:', e);
+        }
+      },
+
+      lookAtRadians: function(azimuthRad, altitudeRad, duration) {
+        if (!window.stellarium) {
+          console.log('lookAtRadians: stellarium not ready');
+          return;
+        }
+        try {
+          const stel = window.stellarium;
+          // Convert spherical (azimuth, altitude) to cartesian direction vector
+          var pos = stel.s2c(azimuthRad, altitudeRad);
+          stel.lookAt(pos, duration || 0);
+        } catch(e) {
+          console.error('lookAtRadians error:', e);
+        }
+      },
+
+      setGyroscopeEnabled: function(enabled) {
+        window.gyroscopeEnabled = enabled;
+        // Set the engine's gyroscope_mode property for native arrow rendering
+        if (window.stellarium && window.stellarium.core) {
+          window.stellarium.core.gyroscope_mode = enabled;
+        }
+        console.log('Gyroscope mode:', enabled ? 'enabled' : 'disabled');
+      },
+
+      setTouchEnabled: function(enabled) {
+        window.touchEnabled = enabled;
+        console.log('Touch handling:', enabled ? 'enabled' : 'disabled');
+      },
+
+      // Get info about selected object
+      getSelectedObjectInfo: function() {
+        if (!window.stellarium) return null;
+        try {
+          const stel = window.stellarium;
+          const selection = stel.core.selection;
+          if (!selection) return null;
+
+          // Use designations() method (not property) to get names
+          const names = typeof selection.designations === 'function' ? selection.designations() : (selection.names || []);
+          const info = {
+            name: (names && names.length > 0) ? names[0] : 'Unknown',
+            names: names || [],
+            type: selection.type || 'unknown',
+            vmag: selection.vmag,
+            ra: selection.ra * stel.R2D,
+            dec: selection.de * stel.R2D,
+            distance: selection.distance
+          };
+          return info;
+        } catch(e) {
+          console.error('getSelectedObjectInfo error:', e);
+          return null;
+        }
+      },
+
+      // Set a custom label for the currently selected star
+      // This uses the native engine API to render the label in the sky view
+      setCustomLabel: function(label) {
+        if (!window.stellarium) {
+          console.log('setCustomLabel: stellarium not ready');
+          return;
+        }
+
+        const stel = window.stellarium;
+
+        if (label && label.trim()) {
+          // Use the native engine API to set the custom label
+          stel.setSelectionCustomLabel(label);
+          window.currentCustomLabel = label;
+          console.log('Custom label set (native):', label);
+        } else {
+          this.clearCustomLabel();
+        }
+      },
+
+      // Clear the custom label
+      clearCustomLabel: function() {
+        if (window.stellarium) {
+          window.stellarium.setSelectionCustomLabel('');
+        }
+        window.currentCustomLabel = null;
+        console.log('Custom label cleared');
+      },
+
+      // Add a persistent label for a star (shown without selection)
+      addPersistentLabel: function(identifier, label) {
+        if (!window.stellarium) {
+          console.log('addPersistentLabel: stellarium not ready');
+          return;
+        }
+        window.stellarium.addPersistentLabel(identifier, label);
+        console.log('Persistent label added:', identifier, '->', label);
+      },
+
+      // Remove a persistent label for a star
+      removePersistentLabel: function(identifier) {
+        if (!window.stellarium) {
+          console.log('removePersistentLabel: stellarium not ready');
+          return;
+        }
+        window.stellarium.removePersistentLabel(identifier);
+        console.log('Persistent label removed:', identifier);
+      },
+
+      // Clear all persistent labels
+      clearPersistentLabels: function() {
+        if (!window.stellarium) {
+          console.log('clearPersistentLabels: stellarium not ready');
+          return;
+        }
+        window.stellarium.clearPersistentLabels();
+        console.log('All persistent labels cleared');
+      },
+
+      // Select object at screen coordinates
+      selectAtPosition: function(x, y) {
+        if (!window.stellarium) return null;
+        try {
+          const stel = window.stellarium;
+
+          // Send click event to engine to trigger object selection
+          // This mimics a mouse click at the position
+          if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+            // Mouse down (action=1) then up (action=0) = click
+            Module._core_on_mouse(99, 1, x, y, 1); // Use ID 99 for selection clicks
+            Module._core_on_mouse(99, 0, x, y, 0);
+          }
+
+          // Read the selection that was set by the click
+          const selection = stel.core.selection;
+          console.log('selectAtPosition: selection =', selection, 'at', x, y);
+          if (!selection) return null;
+
+          // Use designations() method (not property) to get names
+          const names = typeof selection.designations === 'function' ? selection.designations() : (selection.names || []);
+          const info = {
+            name: (names && names.length > 0) ? names[0] : 'Unknown',
+            names: names || [],
+            type: selection.type || 'unknown',
+            vmag: selection.vmag,
+            ra: selection.ra !== undefined ? selection.ra * stel.R2D : null,
+            dec: selection.de !== undefined ? selection.de * stel.R2D : null,
+            distance: selection.distance
+          };
+          console.log('selectAtPosition: returning info:', info);
+          return info;
+        } catch(e) {
+          console.error('selectAtPosition error:', e);
+          return null;
+        }
+      },
+
+      // Select object at screen coordinates (async version - waits for engine to process)
+      selectAtPositionAsync: function(x, y) {
+        return new Promise((resolve) => {
+          if (!window.stellarium) {
+            resolve(null);
+            return;
+          }
+          try {
+            const stel = window.stellarium;
+
+            // Send click event to engine to trigger object selection
+            if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+              Module._core_on_mouse(99, 1, x, y, 1);
+              Module._core_on_mouse(99, 0, x, y, 0);
+            }
+
+            // Wait for next frame for engine to process the click
+            requestAnimationFrame(() => {
+              const selection = stel.core.selection;
+              console.log('selectAtPositionAsync: selection =', selection);
+              if (!selection) {
+                resolve(null);
+                return;
+              }
+
+              // Use designations() method (not property) to get names
+              const names = typeof selection.designations === 'function' ? selection.designations() : (selection.names || []);
+              const info = {
+                name: (names && names.length > 0) ? names[0] : 'Unknown',
+                names: names || [],
+                type: selection.type || 'unknown',
+                vmag: selection.vmag,
+                ra: selection.ra !== undefined ? selection.ra * stel.R2D : null,
+                dec: selection.de !== undefined ? selection.de * stel.R2D : null,
+                distance: selection.distance
+              };
+              resolve(info);
+            });
+          } catch(e) {
+            console.error('selectAtPositionAsync error:', e);
+            resolve(null);
+          }
+        });
+      },
+
+      // Start gyroscope guidance to a star by name
+      startGuidance: function(name) {
+        if (!window.stellarium) return false;
+        try {
+          const stel = window.stellarium;
+          var obj = stel.getObj('NAME ' + name);
+          if (!obj) obj = stel.getObj(name);
+          if (obj) {
+            // Set selection (shows crosshair marker) without changing view
+            stel.core.selection = obj;
+            // Start gyroscope guidance
+            startGyroscopeGuidance(obj, name);
+            return true;
+          }
+          return false;
+        } catch(e) {
+          console.error('startGuidance error:', e);
+          return false;
+        }
+      },
+
+      // Stop gyroscope guidance
+      stopGuidance: function() {
+        stopGyroscopeGuidance();
+        // Clear selection as well
+        if (window.stellarium) {
+          window.stellarium.core.selection = null;
+        }
+      },
+
+      // Select object at position in gyroscope mode (no view change)
+      selectForGuidance: function(x, y) {
+        if (!window.stellarium) return null;
+        try {
+          const stel = window.stellarium;
+
+          // Send click event to engine to trigger object selection
+          if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+            Module._core_on_mouse(99, 1, x, y, 1);
+            Module._core_on_mouse(99, 0, x, y, 0);
+          }
+
+          // Read the selection
+          const selection = stel.core.selection;
+          if (!selection) return null;
+
+          // Use designations() method (not property) to get names
+          const names = typeof selection.designations === 'function' ? selection.designations() : (selection.names || []);
+          const name = (names && names.length > 0) ? names[0] : 'Unknown';
+
+          // Start guidance to selected object
+          startGyroscopeGuidance(selection, name);
+
+          const info = {
+            name: name,
+            names: names || [],
+            type: selection.type || 'unknown',
+            vmag: selection.vmag,
+            ra: selection.ra !== undefined ? selection.ra * stel.R2D : null,
+            dec: selection.de !== undefined ? selection.de * stel.R2D : null,
+            distance: selection.distance
+          };
+          return info;
+        } catch(e) {
+          console.error('selectForGuidance error:', e);
+          return null;
+        }
+      }
+    };
+
+    // Gyroscope mode flag - when true, disable touch panning
+    window.gyroscopeEnabled = false;
+
+    // Touch enabled flag - when false, ignore ALL touch events
+    window.touchEnabled = true;
+
+    // Direction arrow is now rendered natively in the engine (pointer.c)
+    // when gyroscope_mode is enabled and selection is off-screen.
+    // These functions are kept for API compatibility but do minimal work.
+
+    // Start tracking a target for gyroscope guidance (now handled by engine)
+    function startGyroscopeGuidance(obj, name) {
+      console.log('Gyroscope guidance started for:', name);
+      // Arrow is now rendered by the engine's pointer module
+    }
+
+    // Stop gyroscope guidance (now handled by engine)
+    function stopGyroscopeGuidance() {
+      console.log('Gyroscope guidance stopped');
+      // Arrow is now rendered by the engine's pointer module
+    }
+
+    // Touch event handling - forward to WASM
+    let lastTouchDistance = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    const TAP_THRESHOLD = 15; // Max pixels moved for a tap
+    const TAP_MAX_DURATION = 300; // Max ms for a tap
+
+    // Get device pixel ratio for coordinate scaling
+    function getDpr() {
+      return window.devicePixelRatio || 1;
+    }
+
+    document.addEventListener('touchstart', function(e) {
+      // Always prevent default to stop browser handling
+      e.preventDefault();
+
+      // If touch is disabled (e.g., modal open), block all touch events
+      if (!window.touchEnabled) {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return;
+      }
+
+      const dpr = getDpr();
+
+      // Track touch start for tap detection
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+      }
+      // Skip panning in gyroscope mode, but still track pinch-to-zoom
+      if (!window.gyroscopeEnabled && typeof Module !== 'undefined' && Module._core_on_mouse) {
+        for (let i = 0; i < e.touches.length; i++) {
+          const touch = e.touches[i];
+          // Scale coordinates by dpr since canvas is scaled
+          Module._core_on_mouse(touch.identifier, 1, touch.clientX * dpr, touch.clientY * dpr, 1);
+        }
+      }
+      if (e.touches.length === 2) {
+        lastTouchDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    }, { passive: false, capture: true });
+
+    document.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      if (!window.touchEnabled) {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return;
+      }
+
+      const dpr = getDpr();
+
+      if (typeof Module !== 'undefined') {
+        // Single finger: pan (only if gyroscope disabled)
+        if (e.touches.length === 1 && !window.gyroscopeEnabled && Module._core_on_mouse) {
+          const touch = e.touches[0];
+          Module._core_on_mouse(touch.identifier, -1, touch.clientX * dpr, touch.clientY * dpr, 1);
+        }
+        // Two fingers: pinch-to-zoom (always allowed)
+        else if (e.touches.length === 2) {
+          const newDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          if (lastTouchDistance > 0 && Module._core_on_zoom) {
+            const scale = newDistance / lastTouchDistance;
+            const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            Module._core_on_zoom(1.0 / scale, centerX * dpr, centerY * dpr);
+          }
+          lastTouchDistance = newDistance;
+        }
+      }
+    }, { passive: false, capture: true });
+
+    document.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      if (!window.touchEnabled) {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return;
+      }
+
+      const dpr = getDpr();
+      const isTap = e.changedTouches.length === 1;
+      let wasTap = false;
+
+      // Check if this was a tap (short duration, minimal movement)
+      if (isTap) {
+        const touch = e.changedTouches[0];
+        const dx = Math.abs(touch.clientX - touchStartX);
+        const dy = Math.abs(touch.clientY - touchStartY);
+        const duration = Date.now() - touchStartTime;
+        wasTap = dx < TAP_THRESHOLD && dy < TAP_THRESHOLD && duration < TAP_MAX_DURATION;
+      }
+
+      // Send touch end to engine first (only if gyroscope disabled)
+      if (!window.gyroscopeEnabled && typeof Module !== 'undefined' && Module._core_on_mouse) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const touch = e.changedTouches[i];
+          Module._core_on_mouse(touch.identifier, 0, touch.clientX * dpr, touch.clientY * dpr, 0);
+        }
+      }
+
+      // If this was a tap, wait for engine to process and then check selection
+      if (wasTap) {
+        const touch = e.changedTouches[0];
+        console.log('Tap detected at:', touch.clientX, touch.clientY, 'dpr:', dpr);
+
+        if (window.gyroscopeEnabled) {
+          // In gyroscope mode: select for guidance (no FOV change, shows arrow)
+          const info = stellariumAPI.selectForGuidance(touch.clientX * dpr, touch.clientY * dpr);
+          console.log('Gyroscope selection result:', info);
+          if (info && info.name) {
+            console.log('Sending objectSelected to Flutter:', info.name);
+            sendToFlutter('objectSelected', info);
+          }
+        } else {
+          // Normal mode: wait for engine to process the touch, then read selection
+          // Use two frames to ensure the engine has fully processed
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (!window.stellarium) return;
+              const stel = window.stellarium;
+              const selection = stel.core.selection;
+              console.log('Post-tap selection check:', selection);
+
+              if (selection) {
+                // Use designations() method (not property) to get names
+                const names = typeof selection.designations === 'function' ? selection.designations() : (selection.names || []);
+
+                // Get the display label using designationCleanup (converts "* gam Per" to "Gamma Persei")
+                let displayName = (names && names.length > 0) ? names[0] : 'Unknown';
+                if (typeof stel.designationCleanup === 'function' && names && names.length > 0) {
+                  // Try to get a nice display name from the first designation
+                  // flags: 4 = default cleanup
+                  const cleanedName = stel.designationCleanup(names[0], 4);
+                  if (cleanedName && cleanedName.length > 0) {
+                    displayName = cleanedName;
+                  }
+                }
+
+                // Get coordinates via getInfo if direct properties aren't available
+                let ra = null, dec = null, vmag = null;
+                try {
+                  if (typeof selection.getInfo === 'function') {
+                    const radec = selection.getInfo('radec');
+                    if (radec) {
+                      // radec is in radians, convert to degrees
+                      const spherical = stel.c2s(radec);
+                      ra = spherical[0] * stel.R2D;
+                      dec = spherical[1] * stel.R2D;
+                    }
+                    vmag = selection.getInfo('vmag');
+                  }
+                } catch(e) {
+                  console.log('Error getting star info:', e);
+                }
+                // Fallback to direct properties
+                if (ra === null && selection.ra !== undefined) ra = selection.ra * stel.R2D;
+                if (dec === null && selection.de !== undefined) dec = selection.de * stel.R2D;
+                if (vmag === null) vmag = selection.vmag;
+
+                const info = {
+                  name: (names && names.length > 0) ? names[0] : 'Unknown',
+                  displayName: displayName,
+                  names: names || [],
+                  type: selection.type || 'unknown',
+                  vmag: vmag,
+                  ra: ra,
+                  dec: dec,
+                  distance: selection.distance
+                };
+                console.log('Sending objectSelected to Flutter:', info.displayName, info);
+                sendToFlutter('objectSelected', info);
+              } else {
+                console.log('No object selected after tap');
+              }
+            });
+          });
+        }
+      }
+
+      lastTouchDistance = 0;
+    }, { passive: false, capture: true });
+
+    // Start
+    if (typeof StelWebEngine !== 'undefined') {
+      initStellarium();
+    } else {
+      window.addEventListener('load', function() {
+        if (typeof StelWebEngine !== 'undefined') {
+          initStellarium();
+        } else {
+          sendToFlutter('error', { message: 'StelWebEngine not loaded' });
+        }
+      });
+    }
+  </script>
+</body>
+</html>
