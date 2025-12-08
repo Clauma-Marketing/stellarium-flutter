@@ -217,7 +217,18 @@ class _HomeScreenState extends State<HomeScreen> {
     // SkyView has its own Listener that forwards non-blocked touches to the WebView.
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Stack(
+      // GestureDetector to unfocus search field and hide suggestions when tapping elsewhere
+      body: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus();
+          if (_searchSuggestions.isNotEmpty) {
+            setState(() {
+              _searchSuggestions = [];
+            });
+          }
+        },
+        behavior: HitTestBehavior.translucent,
+        child: Stack(
         children: [
           // Sky view with night mode filter (full screen, at bottom of stack)
           ColorFiltered(
@@ -308,15 +319,20 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _buildStarInfoPanel(),
             ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildStarInfoPanel() {
-    return StarInfoBottomSheet(
-      // Key ensures widget rebuilds when star changes
-      key: ValueKey(_selectedStarInfo!.shortName),
-      starInfo: _selectedStarInfo!,
+    final maxHeight = MediaQuery.of(context).size.height * 0.4;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: StarInfoBottomSheet(
+        // Key ensures widget rebuilds when star changes
+        key: ValueKey(_selectedStarInfo!.shortName),
+        starInfo: _selectedStarInfo!,
       registryFuture: _registryFuture,
       onClose: _closeStarInfo,
       onPointAt: () {
@@ -369,6 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         });
       },
+      ),
     );
   }
 
