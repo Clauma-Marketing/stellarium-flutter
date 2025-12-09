@@ -556,4 +556,43 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get starRegSearchFailed => '搜索失败。请重试。';
+
+  @override
+  String get scanCertificate => '扫描证书';
+
+  @override
+  String get scanningCertificate => '正在扫描证书...';
+
+  @override
+  String get pointCameraAtCertificate => '将相机对准您的证书';
+
+  @override
+  String get registrationNumberWillBeDetected => '注册号码将自动识别';
+
+  @override
+  String get registrationNumberFound => '找到号码';
+
+  @override
+  String get searchForThisNumber => '搜索此注册号码？';
+
+  @override
+  String get scanAgain => '重新扫描';
+
+  @override
+  String get searchStar => '搜索星星';
+
+  @override
+  String get enterManually => '手动输入';
+
+  @override
+  String get enterRegistrationNumber => '输入注册号码';
+
+  @override
+  String get registrationNumberHint => '例如 1234-56789-1234567';
+
+  @override
+  String get noRegistrationNumberFound => '未找到注册号码。请重试或手动输入。';
+
+  @override
+  String get couldNotCaptureImage => '无法拍摄图像。请重试。';
 }

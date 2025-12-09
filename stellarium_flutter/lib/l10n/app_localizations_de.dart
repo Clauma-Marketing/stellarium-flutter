@@ -590,4 +590,46 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get starRegSearchFailed =>
       'Suche fehlgeschlagen. Bitte versuche es erneut.';
+
+  @override
+  String get scanCertificate => 'Zertifikat scannen';
+
+  @override
+  String get scanningCertificate => 'Zertifikat wird gescannt...';
+
+  @override
+  String get pointCameraAtCertificate => 'Kamera auf dein Zertifikat richten';
+
+  @override
+  String get registrationNumberWillBeDetected =>
+      'Die Registrierungsnummer wird automatisch erkannt';
+
+  @override
+  String get registrationNumberFound => 'Nummer gefunden';
+
+  @override
+  String get searchForThisNumber => 'Nach dieser Registrierungsnummer suchen?';
+
+  @override
+  String get scanAgain => 'Erneut scannen';
+
+  @override
+  String get searchStar => 'Stern suchen';
+
+  @override
+  String get enterManually => 'Manuell eingeben';
+
+  @override
+  String get enterRegistrationNumber => 'Registrierungsnummer eingeben';
+
+  @override
+  String get registrationNumberHint => 'z.B. 1234-56789-1234567';
+
+  @override
+  String get noRegistrationNumberFound =>
+      'Keine Registrierungsnummer gefunden. Versuche es erneut oder gib sie manuell ein.';
+
+  @override
+  String get couldNotCaptureImage =>
+      'Bild konnte nicht aufgenommen werden. Bitte versuche es erneut.';
 }

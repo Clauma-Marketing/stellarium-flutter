@@ -245,5 +245,19 @@
   "starRegEnterNumber": "请输入注册号码",
   "starRegInvalidFormat": "格式无效。请使用：XXXX-XXXXX-XXXXXXXX",
   "starRegNotFound": "未找到星星。请检查您的注册号码。",
-  "starRegSearchFailed": "搜索失败。请重试。"
+  "starRegSearchFailed": "搜索失败。请重试。",
+
+  "scanCertificate": "扫描证书",
+  "scanningCertificate": "正在扫描证书...",
+  "pointCameraAtCertificate": "将相机对准您的证书",
+  "registrationNumberWillBeDetected": "注册号码将自动识别",
+  "registrationNumberFound": "找到号码",
+  "searchForThisNumber": "搜索此注册号码？",
+  "scanAgain": "重新扫描",
+  "searchStar": "搜索星星",
+  "enterManually": "手动输入",
+  "enterRegistrationNumber": "输入注册号码",
+  "registrationNumberHint": "例如 1234-56789-1234567",
+  "noRegistrationNumberFound": "未找到注册号码。请重试或手动输入。",
+  "couldNotCaptureImage": "无法拍摄图像。请重试。"
 }

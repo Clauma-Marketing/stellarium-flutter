@@ -1173,6 +1173,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to search. Please try again.'**
   String get starRegSearchFailed;
+
+  /// No description provided for @scanCertificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan Certificate'**
+  String get scanCertificate;
+
+  /// No description provided for @scanningCertificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning certificate...'**
+  String get scanningCertificate;
+
+  /// No description provided for @pointCameraAtCertificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Point camera at your certificate'**
+  String get pointCameraAtCertificate;
+
+  /// No description provided for @registrationNumberWillBeDetected.
+  ///
+  /// In en, this message translates to:
+  /// **'The registration number will be detected automatically'**
+  String get registrationNumberWillBeDetected;
+
+  /// No description provided for @registrationNumberFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Number Found'**
+  String get registrationNumberFound;
+
+  /// No description provided for @searchForThisNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for this registration number?'**
+  String get searchForThisNumber;
+
+  /// No description provided for @scanAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan Again'**
+  String get scanAgain;
+
+  /// No description provided for @searchStar.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Star'**
+  String get searchStar;
+
+  /// No description provided for @enterManually.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter manually'**
+  String get enterManually;
+
+  /// No description provided for @enterRegistrationNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Registration Number'**
+  String get enterRegistrationNumber;
+
+  /// No description provided for @registrationNumberHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 1234-56789-1234567'**
+  String get registrationNumberHint;
+
+  /// No description provided for @noRegistrationNumberFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No registration number found. Try again or enter manually.'**
+  String get noRegistrationNumberFound;
+
+  /// No description provided for @couldNotCaptureImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not capture image. Please try again.'**
+  String get couldNotCaptureImage;
 }
 
 class _AppLocalizationsDelegate

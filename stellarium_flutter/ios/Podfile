@@ -1,5 +1,5 @@
-# Minimum iOS version for Google Maps and permission_handler
-platform :ios, '15.0'
+# Minimum iOS version for Google Maps, permission_handler, and ML Kit
+platform :ios, '15.5'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -49,6 +49,7 @@ post_install do |installer|
         'PERMISSION_LOCATION_ALWAYS=1',
         'PERMISSION_LOCATION_WHENINUSE=1',
         'PERMISSION_APP_TRACKING_TRANSPARENCY=1',
+        'PERMISSION_CAMERA=1',
       ]
     end
   end

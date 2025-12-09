@@ -108,6 +108,7 @@ class SearchBarWidget extends StatelessWidget {
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String>? onChanged;
   final VoidCallback onHamburgerTap;
+  final VoidCallback? onScanTap;
   final List<SearchSuggestion> suggestions;
   final ValueChanged<SearchSuggestion>? onSuggestionTap;
   final bool isSearching;
@@ -119,6 +120,7 @@ class SearchBarWidget extends StatelessWidget {
     required this.onSubmitted,
     this.onChanged,
     required this.onHamburgerTap,
+    this.onScanTap,
     this.suggestions = const [],
     this.onSuggestionTap,
     this.isSearching = false,
@@ -277,7 +279,27 @@ class SearchBarWidget extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            // Scan button
+            if (onScanTap != null) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onScanTap,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.document_scanner_outlined,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(width: 8),
             // Hamburger menu button
             GestureDetector(
               onTap: onHamburgerTap,
@@ -314,6 +336,7 @@ class BottomBar extends StatelessWidget {
   final ValueChanged<String> onSearchSubmitted;
   final ValueChanged<String>? onSearchChanged;
   final VoidCallback onHamburgerTap;
+  final VoidCallback? onScanTap;
   final List<SearchSuggestion> searchSuggestions;
   final ValueChanged<SearchSuggestion>? onSuggestionTap;
   final bool isSearching;
@@ -330,6 +353,7 @@ class BottomBar extends StatelessWidget {
     required this.onSearchSubmitted,
     this.onSearchChanged,
     required this.onHamburgerTap,
+    this.onScanTap,
     this.searchSuggestions = const [],
     this.onSuggestionTap,
     this.isSearching = false,
@@ -380,6 +404,7 @@ class BottomBar extends StatelessWidget {
               onSubmitted: onSearchSubmitted,
               onChanged: onSearchChanged,
               onHamburgerTap: onHamburgerTap,
+              onScanTap: onScanTap,
               suggestions: searchSuggestions,
               onSuggestionTap: onSuggestionTap,
               isSearching: isSearching,

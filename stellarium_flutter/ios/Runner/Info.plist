@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is needed to scan your star certificate and automatically find your registered star.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Stellarium needs your location to show you the sky exactly as it appears from where you are, including accurate star positions, rise and set times.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

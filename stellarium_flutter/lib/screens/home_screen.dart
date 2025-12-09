@@ -20,6 +20,7 @@ import '../widgets/sky_view.dart';
 import '../widgets/star_info_sheet.dart';
 import '../widgets/stellarium_webview.dart';
 import '../widgets/time_slider.dart';
+import 'certificate_scanner_screen.dart';
 import 'star_viewer_screen.dart';
 
 const String _googleApiKey = 'AIzaSyCc4LPIozIoEHVAMFz5uyQ_LrT1nAlbmfc';
@@ -305,6 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onSearchSubmitted: _searchAndPoint,
                 onSearchChanged: _onSearchChanged,
                 onHamburgerTap: _showSettingsBottomSheet,
+                onScanTap: _openScanner,
                 searchSuggestions: _searchSuggestions,
                 onSuggestionTap: _onSuggestionTap,
               ),
@@ -1082,6 +1084,20 @@ class _HomeScreenState extends State<HomeScreen> {
       _searchSuggestions = [];
     });
     _searchAndPoint(suggestion.value);
+  }
+
+  /// Opens the certificate scanner and searches for the detected registration number
+  Future<void> _openScanner() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (context) => const CertificateScannerScreen(),
+      ),
+    );
+
+    // If a registration number was detected and returned, search for it
+    if (result != null && result.isNotEmpty && mounted) {
+      _searchAndPoint(result);
+    }
   }
 
   void _searchAndPoint(String query) async {

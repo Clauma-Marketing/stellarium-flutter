@@ -245,5 +245,19 @@
   "starRegEnterNumber": "Bitte gib eine Registrierungsnummer ein",
   "starRegInvalidFormat": "Ungültiges Format. Verwende: XXXX-XXXXX-XXXXXXXX",
   "starRegNotFound": "Stern nicht gefunden. Bitte überprüfe deine Registrierungsnummer.",
-  "starRegSearchFailed": "Suche fehlgeschlagen. Bitte versuche es erneut."
+  "starRegSearchFailed": "Suche fehlgeschlagen. Bitte versuche es erneut.",
+
+  "scanCertificate": "Zertifikat scannen",
+  "scanningCertificate": "Zertifikat wird gescannt...",
+  "pointCameraAtCertificate": "Kamera auf dein Zertifikat richten",
+  "registrationNumberWillBeDetected": "Die Registrierungsnummer wird automatisch erkannt",
+  "registrationNumberFound": "Nummer gefunden",
+  "searchForThisNumber": "Nach dieser Registrierungsnummer suchen?",
+  "scanAgain": "Erneut scannen",
+  "searchStar": "Stern suchen",
+  "enterManually": "Manuell eingeben",
+  "enterRegistrationNumber": "Registrierungsnummer eingeben",
+  "registrationNumberHint": "z.B. 1234-56789-1234567",
+  "noRegistrationNumberFound": "Keine Registrierungsnummer gefunden. Versuche es erneut oder gib sie manuell ein.",
+  "couldNotCaptureImage": "Bild konnte nicht aufgenommen werden. Bitte versuche es erneut."
 }

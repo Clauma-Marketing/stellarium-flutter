@@ -245,5 +245,19 @@
   "starRegEnterNumber": "Please enter a registration number",
   "starRegInvalidFormat": "Invalid format. Use: XXXX-XXXXX-XXXXXXXX",
   "starRegNotFound": "Star not found. Please check your registration number.",
-  "starRegSearchFailed": "Failed to search. Please try again."
+  "starRegSearchFailed": "Failed to search. Please try again.",
+
+  "scanCertificate": "Scan Certificate",
+  "scanningCertificate": "Scanning certificate...",
+  "pointCameraAtCertificate": "Point camera at your certificate",
+  "registrationNumberWillBeDetected": "The registration number will be detected automatically",
+  "registrationNumberFound": "Number Found",
+  "searchForThisNumber": "Search for this registration number?",
+  "scanAgain": "Scan Again",
+  "searchStar": "Search Star",
+  "enterManually": "Enter manually",
+  "enterRegistrationNumber": "Enter Registration Number",
+  "registrationNumberHint": "e.g. 1234-56789-1234567",
+  "noRegistrationNumberFound": "No registration number found. Try again or enter manually.",
+  "couldNotCaptureImage": "Could not capture image. Please try again."
 }

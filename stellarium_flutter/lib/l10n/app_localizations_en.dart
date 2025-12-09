@@ -583,4 +583,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get starRegSearchFailed => 'Failed to search. Please try again.';
+
+  @override
+  String get scanCertificate => 'Scan Certificate';
+
+  @override
+  String get scanningCertificate => 'Scanning certificate...';
+
+  @override
+  String get pointCameraAtCertificate => 'Point camera at your certificate';
+
+  @override
+  String get registrationNumberWillBeDetected =>
+      'The registration number will be detected automatically';
+
+  @override
+  String get registrationNumberFound => 'Number Found';
+
+  @override
+  String get searchForThisNumber => 'Search for this registration number?';
+
+  @override
+  String get scanAgain => 'Scan Again';
+
+  @override
+  String get searchStar => 'Search Star';
+
+  @override
+  String get enterManually => 'Enter manually';
+
+  @override
+  String get enterRegistrationNumber => 'Enter Registration Number';
+
+  @override
+  String get registrationNumberHint => 'e.g. 1234-56789-1234567';
+
+  @override
+  String get noRegistrationNumberFound =>
+      'No registration number found. Try again or enter manually.';
+
+  @override
+  String get couldNotCaptureImage =>
+      'Could not capture image. Please try again.';
 }
