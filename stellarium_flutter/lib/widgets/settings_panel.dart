@@ -345,10 +345,7 @@ class SettingsBottomSheet extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) => VisualEffectsBottomSheet(
         settings: settings,
-        onSettingChanged: (key, value) {
-          onSettingChanged(key, value);
-          (ctx as Element).markNeedsBuild();
-        },
+        onSettingChanged: onSettingChanged,
       ),
     ).whenComplete(() {
       onSubMenuClosed?.call(); // Notify parent that sub-menu is closed
@@ -386,7 +383,7 @@ class SettingsBottomSheet extends StatelessWidget {
 }
 
 /// Visual Effects sub-menu bottom sheet
-class VisualEffectsBottomSheet extends StatelessWidget {
+class VisualEffectsBottomSheet extends StatefulWidget {
   final StellariumSettings settings;
   final void Function(String key, bool value) onSettingChanged;
 
@@ -395,6 +392,74 @@ class VisualEffectsBottomSheet extends StatelessWidget {
     required this.settings,
     required this.onSettingChanged,
   });
+
+  @override
+  State<VisualEffectsBottomSheet> createState() =>
+      _VisualEffectsBottomSheetState();
+}
+
+class _VisualEffectsBottomSheetState extends State<VisualEffectsBottomSheet> {
+  late StellariumSettings _localSettings;
+
+  @override
+  void initState() {
+    super.initState();
+    // Create a local copy of settings to track UI state
+    _localSettings = widget.settings.copyWith();
+  }
+
+  void _handleSettingChanged(String key, bool value) {
+    // Update local state for immediate UI feedback
+    setState(() {
+      _localSettings = _updateSettingValue(_localSettings, key, value);
+    });
+    // Notify parent to update the actual settings
+    widget.onSettingChanged(key, value);
+  }
+
+  StellariumSettings _updateSettingValue(
+      StellariumSettings settings, String key, bool value) {
+    switch (key) {
+      case 'constellationsLines':
+        return settings.copyWith(constellationsLines: value);
+      case 'constellationsLabels':
+        return settings.copyWith(constellationsLabels: value);
+      case 'constellationsArt':
+        return settings.copyWith(constellationsArt: value);
+      case 'atmosphere':
+        return settings.copyWith(atmosphere: value);
+      case 'landscape':
+        return settings.copyWith(landscape: value);
+      case 'landscapeFog':
+        return settings.copyWith(landscapeFog: value);
+      case 'milkyWay':
+        return settings.copyWith(milkyWay: value);
+      case 'dss':
+        return settings.copyWith(dss: value);
+      case 'stars':
+        return settings.copyWith(stars: value);
+      case 'planets':
+        return settings.copyWith(planets: value);
+      case 'dsos':
+        return settings.copyWith(dsos: value);
+      case 'satellites':
+        return settings.copyWith(satellites: value);
+      case 'gridAzimuthal':
+        return settings.copyWith(gridAzimuthal: value);
+      case 'gridEquatorial':
+        return settings.copyWith(gridEquatorial: value);
+      case 'gridEquatorialJ2000':
+        return settings.copyWith(gridEquatorialJ2000: value);
+      case 'lineMeridian':
+        return settings.copyWith(lineMeridian: value);
+      case 'lineEcliptic':
+        return settings.copyWith(lineEcliptic: value);
+      case 'nightMode':
+        return settings.copyWith(nightMode: value);
+      default:
+        return settings;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -466,7 +531,7 @@ class VisualEffectsBottomSheet extends StatelessWidget {
               // Settings list - scrollable
               Expanded(
                 child: ListView(
-                  controller: scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.only(
                     bottom: MediaQuery.of(context).padding.bottom + 24,
                   ),
@@ -537,7 +602,7 @@ class VisualEffectsBottomSheet extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => onSettingChanged(meta.key, !value),
+        onTap: () => _handleSettingChanged(meta.key, !value),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
@@ -581,13 +646,15 @@ class VisualEffectsBottomSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              Switch(
-                value: value,
-                onChanged: (newValue) => onSettingChanged(meta.key, newValue),
-                activeThumbColor: Colors.blue[400],
-                activeTrackColor: Colors.blue.withValues(alpha: 0.3),
-                inactiveThumbColor: Colors.grey[600],
-                inactiveTrackColor: Colors.grey[800],
+              IgnorePointer(
+                child: Switch(
+                  value: value,
+                  onChanged: null,
+                  activeThumbColor: Colors.blue[400],
+                  activeTrackColor: Colors.blue.withValues(alpha: 0.3),
+                  inactiveThumbColor: Colors.grey[600],
+                  inactiveTrackColor: Colors.grey[800],
+                ),
               ),
             ],
           ),
@@ -687,41 +754,41 @@ class VisualEffectsBottomSheet extends StatelessWidget {
   bool _getSettingValue(String key) {
     switch (key) {
       case 'constellationsLines':
-        return settings.constellationsLines;
+        return _localSettings.constellationsLines;
       case 'constellationsLabels':
-        return settings.constellationsLabels;
+        return _localSettings.constellationsLabels;
       case 'constellationsArt':
-        return settings.constellationsArt;
+        return _localSettings.constellationsArt;
       case 'atmosphere':
-        return settings.atmosphere;
+        return _localSettings.atmosphere;
       case 'landscape':
-        return settings.landscape;
+        return _localSettings.landscape;
       case 'landscapeFog':
-        return settings.landscapeFog;
+        return _localSettings.landscapeFog;
       case 'milkyWay':
-        return settings.milkyWay;
+        return _localSettings.milkyWay;
       case 'dss':
-        return settings.dss;
+        return _localSettings.dss;
       case 'stars':
-        return settings.stars;
+        return _localSettings.stars;
       case 'planets':
-        return settings.planets;
+        return _localSettings.planets;
       case 'dsos':
-        return settings.dsos;
+        return _localSettings.dsos;
       case 'satellites':
-        return settings.satellites;
+        return _localSettings.satellites;
       case 'gridAzimuthal':
-        return settings.gridAzimuthal;
+        return _localSettings.gridAzimuthal;
       case 'gridEquatorial':
-        return settings.gridEquatorial;
+        return _localSettings.gridEquatorial;
       case 'gridEquatorialJ2000':
-        return settings.gridEquatorialJ2000;
+        return _localSettings.gridEquatorialJ2000;
       case 'lineMeridian':
-        return settings.lineMeridian;
+        return _localSettings.lineMeridian;
       case 'lineEcliptic':
-        return settings.lineEcliptic;
+        return _localSettings.lineEcliptic;
       case 'nightMode':
-        return settings.nightMode;
+        return _localSettings.nightMode;
       default:
         return false;
     }

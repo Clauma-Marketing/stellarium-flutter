@@ -585,6 +585,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get starRegSearchFailed => 'Failed to search. Please try again.';
 
   @override
+  String starRegRemoved(String reason) {
+    return 'The star has been removed from the registry. Reason: $reason';
+  }
+
+  @override
   String get scanCertificate => 'Scan Certificate';
 
   @override

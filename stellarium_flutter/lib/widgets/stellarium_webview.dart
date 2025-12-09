@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../stellarium/stellarium_settings.dart';
 
@@ -210,8 +211,21 @@ class StellariumWebViewState extends State<StellariumWebView>
             debugPrint('WebView error: ${error.description}');
           },
         ),
-      )
-      ..loadRequest(Uri.parse(_localServerUrl!));
+      );
+
+    // Enable mixed content on Android (HTTP page loading HTTPS resources)
+    if (Platform.isAndroid) {
+      final androidController =
+          controller.platform as AndroidWebViewController;
+      androidController.setMediaPlaybackRequiresUserGesture(false);
+      // Allow mixed content (HTTP origin loading HTTPS resources)
+      androidController.setMixedContentMode(MixedContentMode.alwaysAllow);
+    }
+
+    // Clear WebView cache to ensure fresh responses (fixes stale CORS headers)
+    controller.clearCache();
+
+    controller.loadRequest(Uri.parse(_localServerUrl!));
 
     _webViewController = controller;
   }
@@ -249,6 +263,31 @@ class StellariumWebViewState extends State<StellariumWebView>
           widget.onTimeChanged?.call(utc);
         }
         break;
+      case 'debugFetch':
+        final url = data?['url'] as String?;
+        if (url != null) {
+          _debugFetchUrl(url);
+        }
+        break;
+    }
+  }
+
+  Future<void> _debugFetchUrl(String url) async {
+    try {
+      final client = HttpClient();
+      final request = await client.getUrl(Uri.parse(url));
+      request.headers.set('Origin', 'http://127.0.0.1');
+      final response = await request.close();
+
+      debugPrint('=== Flutter Debug Fetch: $url ===');
+      debugPrint('Status: ${response.statusCode}');
+      debugPrint('All Response Headers:');
+      response.headers.forEach((name, values) {
+        debugPrint('  $name: ${values.join(", ")}');
+      });
+      client.close();
+    } catch (e) {
+      debugPrint('Flutter Debug Fetch Error: $e');
     }
   }
 

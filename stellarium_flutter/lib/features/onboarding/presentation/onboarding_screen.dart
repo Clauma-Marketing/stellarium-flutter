@@ -4,12 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../services/analytics_service.dart';
-import '../../../../widgets/star_info_sheet.dart';
 import '../onboarding_service.dart';
 import 'pages/att_permission_page.dart';
 import 'pages/location_permission_page.dart';
 import 'pages/notification_permission_page.dart';
-import 'pages/star_registration_page.dart';
 import 'pages/welcome_page.dart';
 
 /// Main onboarding screen that manages the onboarding flow
@@ -46,7 +44,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       'location_permission',
       'notification_permission',
       if (_showAttPage) 'att_permission',
-      'star_registration',
     ];
     if (page < pageNames.length) {
       AnalyticsService.instance.logEvent(
@@ -56,8 +53,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  // Total number of pages: Welcome, Location, Notification, [ATT on iOS], Star Registration
-  int get _totalPages => _showAttPage ? 5 : 4;
+  // Total number of pages: Welcome, Location, Notification, [ATT on iOS]
+  int get _totalPages => _showAttPage ? 4 : 3;
 
   void _goToNextPage() {
     if (_currentPage < _totalPages - 1) {
@@ -83,11 +80,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _onLocationObtained(double latitude, double longitude) {
     OnboardingService.saveUserLocation(latitude, longitude);
-  }
-
-  void _onStarFound(StarInfo starInfo) {
-    // Save the found star info for later use
-    OnboardingService.saveFoundStar(starInfo);
   }
 
   @override
@@ -121,29 +113,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     ];
 
-    // Add ATT page for iOS only
+    // Add ATT page for iOS only (last page)
     if (_showAttPage) {
       pages.add(
         AttPermissionPage(
-          onContinue: _goToNextPage,
-          onSkip: _skipToNextPage,
+          onContinue: _completeOnboarding,
+          onSkip: _completeOnboarding,
           currentPage: 3,
           totalPages: _totalPages,
         ),
       );
     }
-
-    // Star Registration page (last page before completion)
-    final starRegPageIndex = _showAttPage ? 4 : 3;
-    pages.add(
-      StarRegistrationPage(
-        onContinue: _completeOnboarding,
-        onSkip: _completeOnboarding,
-        onStarFound: _onStarFound,
-        currentPage: starRegPageIndex,
-        totalPages: _totalPages,
-      ),
-    );
 
     return pages;
   }

@@ -10,7 +10,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'features/onboarding/onboarding_service.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/onboarding/presentation/pages/star_registration_page.dart';
 import 'features/subscription/presentation/subscription_screen.dart';
+import 'widgets/star_info_sheet.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
 import 'services/analytics_service.dart';
@@ -158,7 +160,7 @@ class AppEntryPoint extends StatefulWidget {
   State<AppEntryPoint> createState() => _AppEntryPointState();
 }
 
-enum AppScreen { loading, onboarding, subscription, home }
+enum AppScreen { loading, onboarding, subscription, starRegistration, home }
 
 class _AppEntryPointState extends State<AppEntryPoint> {
   AppScreen _currentScreen = AppScreen.loading;
@@ -179,7 +181,8 @@ class _AppEntryPointState extends State<AppEntryPoint> {
       } else if (!subscriptionShown && !kIsWeb) {
         _currentScreen = AppScreen.subscription;
       } else {
-        _currentScreen = AppScreen.home;
+        // Always show star registration after onboarding/subscription
+        _currentScreen = AppScreen.starRegistration;
       }
     });
   }
@@ -190,15 +193,28 @@ class _AppEntryPointState extends State<AppEntryPoint> {
       if (!kIsWeb) {
         _currentScreen = AppScreen.subscription;
       } else {
-        _currentScreen = AppScreen.home;
+        // On web, go directly to star registration
+        _currentScreen = AppScreen.starRegistration;
       }
     });
   }
 
   void _onSubscriptionComplete() {
+    // After subscription, show star registration
+    setState(() {
+      _currentScreen = AppScreen.starRegistration;
+    });
+  }
+
+  void _onStarRegistrationComplete() {
     setState(() {
       _currentScreen = AppScreen.home;
     });
+  }
+
+  void _onStarFound(StarInfo starInfo) {
+    // Save the found star info for later use
+    OnboardingService.saveFoundStar(starInfo);
   }
 
   @override
@@ -222,6 +238,16 @@ class _AppEntryPointState extends State<AppEntryPoint> {
       case AppScreen.subscription:
         return SubscriptionScreen(
           onComplete: _onSubscriptionComplete,
+        );
+
+      case AppScreen.starRegistration:
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: StarRegistrationPage(
+            onContinue: _onStarRegistrationComplete,
+            onSkip: _onStarRegistrationComplete,
+            onStarFound: _onStarFound,
+          ),
         );
 
       case AppScreen.home:

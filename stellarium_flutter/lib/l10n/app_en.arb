@@ -246,6 +246,14 @@
   "starRegInvalidFormat": "Invalid format. Use: XXXX-XXXXX-XXXXXXXX",
   "starRegNotFound": "Star not found. Please check your registration number.",
   "starRegSearchFailed": "Failed to search. Please try again.",
+  "starRegRemoved": "The star has been removed from the registry. Reason: {reason}",
+  "@starRegRemoved": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
 
   "scanCertificate": "Scan Certificate",
   "scanningCertificate": "Scanning certificate...",

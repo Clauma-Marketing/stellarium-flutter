@@ -592,6 +592,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Suche fehlgeschlagen. Bitte versuche es erneut.';
 
   @override
+  String starRegRemoved(String reason) {
+    return 'Der Stern wurde aus dem Register entfernt. Grund: $reason';
+  }
+
+  @override
   String get scanCertificate => 'Zertifikat scannen';
 
   @override

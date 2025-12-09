@@ -140,6 +140,33 @@ class SkyViewState extends State<SkyView> {
   double _filteredCompassHeading = 0.0;
   bool _compassInitialized = false;
 
+
+  // ============================================================================
+  // COMPASS 180° FLIP COMPENSATION
+  // ============================================================================
+  // When the phone tilts past a certain angle (roughly when pointing at zenith),
+  // the device's compass/magnetometer suddenly reports a heading that is 180°
+  // opposite to the actual direction. This happens because the phone's internal
+  // orientation reference frame changes when tilted past horizontal.
+  //
+  // DETECTION: We track the previous raw compass value. When the raw compass
+  // suddenly jumps by approximately 180° (we use 150°-210° range to account
+  // for noise), we know a flip occurred.
+  //
+  // COMPENSATION: We maintain a boolean `_compassFlipped` state. Each time we
+  // detect a ~180° jump, we toggle this state. When flipped, we add 180° to
+  // the raw compass reading before applying the low-pass filter. This way:
+  // - First flip (tilting up past threshold): raw jumps 180°, we toggle ON,
+  //   add 180° → result stays continuous
+  // - Second flip (tilting back down): raw jumps 180° again, we toggle OFF,
+  //   stop adding 180° → result stays continuous
+  //
+  // This approach is sensor-agnostic - it doesn't rely on specific accelerometer
+  // thresholds, just detects the actual compass discontinuity when it happens.
+  // ============================================================================
+  bool _compassFlipped = false;
+  double _lastRawCompass = 0.0;
+
   // Low-pass filtered accelerometer values (for stable altitude)
   double _filteredAccX = 0.0;
   double _filteredAccY = 0.0;
@@ -148,9 +175,13 @@ class SkyViewState extends State<SkyView> {
   // Debug frame counter
   int _debugFrameCount = 0;
 
-  // Low-pass filter coefficients (0.0-1.0, lower = more smoothing)
-  static const double _accFilterAlpha = 0.03; // Very heavy smoothing for stable horizon
-  static const double _compassFilterAlpha = 0.05; // Heavy compass smoothing to reduce jitter
+  // Dead zone thresholds - ignore micro-movements below these values (in degrees)
+  static const double _compassDeadZone = 0.5; // Ignore compass changes < 0.5°
+  static const double _altitudeDeadZone = 0.3; // Ignore altitude changes < 0.3°
+
+  // Last applied values (for dead zone comparison)
+  double _lastAppliedAzimuth = 0.0;
+  double _lastAppliedAltitude = 0.0;
 
   @override
   void initState() {
@@ -265,25 +296,52 @@ class SkyViewState extends State<SkyView> {
     _filteredAccY = 0.0;
     _filteredAccZ = 0.0;
 
+
     // Start compass for heading (uses Core Location on iOS for reliable compass)
     _compassSubscription?.cancel();
     _compassInitialized = false;
+    _compassFlipped = false;
     debugPrint('Compass: starting subscription...');
     _compassSubscription = FlutterCompass.events?.listen((event) {
       if (event.heading != null) {
         _compassHeading = event.heading!;
 
-        // Apply low-pass filter with wrap-around handling for 0°/360° boundary
+        // Detect 180° flip by checking if raw compass suddenly jumped ~180°
+        if (_compassInitialized) {
+          double rawDiff = (_compassHeading - _lastRawCompass).abs();
+          // Handle wrap-around
+          if (rawDiff > 180) rawDiff = 360 - rawDiff;
+
+          // If compass jumped close to 180° (between 150° and 210°), toggle flip state
+          if (rawDiff > 150 && rawDiff < 210) {
+            _compassFlipped = !_compassFlipped;
+          }
+        }
+        _lastRawCompass = _compassHeading;
+
+        // Apply flip compensation if needed
+        double correctedHeading = _compassHeading;
+        if (_compassFlipped) {
+          correctedHeading = (_compassHeading + 180.0) % 360.0;
+        }
+
+        // Adaptive filtering: small changes get heavy filtering (kill jitter),
+        // large changes pass through quickly (responsive movement)
         if (!_compassInitialized) {
-          _filteredCompassHeading = _compassHeading;
+          _filteredCompassHeading = correctedHeading;
           _compassInitialized = true;
         } else {
           // Calculate the shortest angular difference
-          double diff = _compassHeading - _filteredCompassHeading;
+          double diff = correctedHeading - _filteredCompassHeading;
           // Handle wrap-around: if diff > 180, go the other way
           if (diff > 180) diff -= 360;
           if (diff < -180) diff += 360;
-          _filteredCompassHeading += _compassFilterAlpha * diff;
+
+          // Adaptive filtering: heavy when still, moderate when moving for smooth motion
+          final absDiff = diff.abs();
+          final double alpha = absDiff < 2.0 ? 0.05 : (absDiff < 8.0 ? 0.15 : 0.3);
+
+          _filteredCompassHeading += alpha * diff;
           // Normalize to 0-360 range
           if (_filteredCompassHeading < 0) _filteredCompassHeading += 360;
           if (_filteredCompassHeading >= 360) _filteredCompassHeading -= 360;
@@ -306,15 +364,22 @@ class SkyViewState extends State<SkyView> {
       final ax = event.x;
       final ay = event.y;
       final az = event.z;
-      // Initialize filter with first reading, then apply low-pass filter
+      // Initialize filter with first reading, then apply adaptive filter
       if (_filteredAccX == 0.0 && _filteredAccY == 0.0 && _filteredAccZ == 0.0) {
         _filteredAccX = ax;
         _filteredAccY = ay;
         _filteredAccZ = az;
       } else {
-        _filteredAccX = _filteredAccX + _accFilterAlpha * (ax - _filteredAccX);
-        _filteredAccY = _filteredAccY + _accFilterAlpha * (ay - _filteredAccY);
-        _filteredAccZ = _filteredAccZ + _accFilterAlpha * (az - _filteredAccZ);
+        // Adaptive filtering based on movement magnitude
+        final diffX = ax - _filteredAccX;
+        final diffY = ay - _filteredAccY;
+        final diffZ = az - _filteredAccZ;
+        final diffMag = diffX.abs() + diffY.abs() + diffZ.abs();
+        final double alpha = diffMag < 0.5 ? 0.05 : (diffMag < 2.0 ? 0.12 : 0.25);
+
+        _filteredAccX = _filteredAccX + alpha * diffX;
+        _filteredAccY = _filteredAccY + alpha * diffY;
+        _filteredAccZ = _filteredAccZ + alpha * diffZ;
       }
     }, onError: (e) {
       debugPrint('Accelerometer error: $e');
@@ -342,26 +407,27 @@ class SkyViewState extends State<SkyView> {
     final accNorm = math.sqrt(ax * ax + ay * ay + az * az);
     if (accNorm < 0.1) return; // Invalid reading
 
-    // "up" direction Z-component in phone coordinates (only need Z for altitude)
     final upZ = az / accNorm;
 
-    // Compass heading: degrees from North, clockwise (0=N, 90=E, 180=S, 270=W)
-    // Convert filtered heading to radians for Stellarium
-    _currentAzimuth = _filteredCompassHeading * math.pi / 180.0;
-
     // Altitude: how much the camera (-Z direction) points above/below horizon
-    // dot(camera, up) = dot((0,0,-1), (upX, upY, upZ)) = -upZ
+    // When phone is upright facing horizon: az ≈ 0 → upZ ≈ 0 → altitude ≈ 0
+    // When phone points at zenith (screen up): az ≈ -9.8 → upZ ≈ -1 → altitude = 90°
     _currentAltitude = math.asin((-upZ).clamp(-1.0, 1.0));
+
+    final altitudeDeg = _currentAltitude.abs() * 180.0 / math.pi;
+
+    // Simply use compass directly - no filtering or freezing
+    _currentAzimuth = _filteredCompassHeading * math.pi / 180.0;
 
     if (!_isCalibrated) {
       _isCalibrated = true;
-      debugPrint('AR Mode: calibrated - azimuth=${_compassHeading.toStringAsFixed(1)}°, altitude=${(_currentAltitude * 180 / math.pi).toStringAsFixed(1)}°');
+      debugPrint('AR Mode: calibrated');
     }
 
     // Periodic debug output (every 60 frames ≈ 1 second)
     _debugFrameCount++;
     if (_debugFrameCount % 60 == 0) {
-      debugPrint('Orientation: az=${_filteredCompassHeading.toStringAsFixed(1)}° (raw: ${_compassHeading.toStringAsFixed(1)}°), alt=${(_currentAltitude * 180 / math.pi).toStringAsFixed(1)}°');
+      debugPrint('DEBUG: compass=${_filteredCompassHeading.toStringAsFixed(1)}° (raw=${_compassHeading.toStringAsFixed(1)}°), alt=${altitudeDeg.toStringAsFixed(1)}°${_compassFlipped ? " FLIP" : ""}');
     }
   }
 
@@ -382,15 +448,34 @@ class SkyViewState extends State<SkyView> {
   void _onGyroscopeEvent(GyroscopeEvent event) {
     if (!_isInitialized) return;
 
-    // Update orientation from accelerometer/magnetometer (absolute reference)
-    // This prevents drift that would occur with pure gyroscope integration
+    // Update orientation from accelerometer/compass
     _updateOrientationFromSensors();
 
     if (!_isCalibrated) return;
 
+    // Apply dead zone - ignore micro-movements to reduce jitter
+    final azimuthDeg = _currentAzimuth * 180.0 / math.pi;
+    final altitudeDeg = _currentAltitude * 180.0 / math.pi;
+    final lastAzimuthDeg = _lastAppliedAzimuth * 180.0 / math.pi;
+    final lastAltitudeDeg = _lastAppliedAltitude * 180.0 / math.pi;
+
+    // Calculate angular difference (handle wrap-around for azimuth)
+    double azimuthDiff = (azimuthDeg - lastAzimuthDeg).abs();
+    if (azimuthDiff > 180) azimuthDiff = 360 - azimuthDiff;
+    final altitudeDiff = (altitudeDeg - lastAltitudeDeg).abs();
+
+    // Only update if movement exceeds dead zone
+    if (azimuthDiff < _compassDeadZone && altitudeDiff < _altitudeDeadZone) {
+      return; // Skip micro-movement
+    }
+
+    // Update last applied values
+    _lastAppliedAzimuth = _currentAzimuth;
+    _lastAppliedAltitude = _currentAltitude;
+
     // Apply to WebView (mobile) or engine (web)
     if (!kIsWeb) {
-      _webViewKey.currentState?.lookAt(_currentAzimuth, _currentAltitude, 0.0);
+      _webViewKey.currentState?.lookAt(_currentAzimuth, _currentAltitude, 0.05);
     } else {
       _engine?.lookAt(
         azimuth: _currentAzimuth,
@@ -542,7 +627,10 @@ class SkyViewState extends State<SkyView> {
             _touchStartTime = DateTime.now().millisecondsSinceEpoch;
           },
           onPointerMove: (event) {
-            if (_touchBlocked || widget.gyroscopeEnabled) return;
+            if (_touchBlocked) return;
+            // When gyroscope is enabled, block single-finger panning but allow
+            // multi-finger gestures (pinch-to-zoom) by checking active pointer count
+            if (widget.gyroscopeEnabled && _pointerSlots.length < 2) return;
             final slot = _pointerSlots[event.pointer];
             if (slot == null) return;
             _webViewKey.currentState?.onPointerMove(
@@ -600,6 +688,10 @@ class SkyViewState extends State<SkyView> {
                       _isInitialized = ready;
                     });
                     widget.onEngineReady?.call(ready);
+                    // Set gyroscope mode on the WebView now that it's ready
+                    if (ready && widget.gyroscopeEnabled) {
+                      _webViewKey.currentState?.setGyroscopeEnabled(true);
+                    }
                   },
                   onError: (error) {
                     setState(() {
@@ -646,7 +738,10 @@ class SkyViewState extends State<SkyView> {
             );
           },
           onPointerMove: (event) {
-            if (_touchBlocked || widget.gyroscopeEnabled) return;
+            if (_touchBlocked) return;
+            // When gyroscope is enabled, block single-finger panning but allow
+            // multi-finger gestures (pinch-to-zoom)
+            if (widget.gyroscopeEnabled) return; // Web doesn't track multi-touch the same way
             _engine?.onPointerMove(
               event.pointer,
               event.localPosition.dx * dpr,
@@ -773,4 +868,5 @@ class SkyViewState extends State<SkyView> {
       ),
     );
   }
+
 }

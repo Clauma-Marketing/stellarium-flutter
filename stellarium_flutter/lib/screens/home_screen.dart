@@ -184,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   final StellariumSettings _settings = StellariumSettings();
-  bool _gyroscopeEnabled = false;
+  bool _gyroscopeEnabled = true; // Enable gyroscope/movement by default
   bool _gyroscopeAvailable = false;
   bool _subMenuOpening = false; // Track if sub-menu is about to open
   StarInfo? _selectedStarInfo; // Currently selected star info (shown inline, not modal)

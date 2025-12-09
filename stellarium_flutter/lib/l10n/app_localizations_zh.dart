@@ -558,6 +558,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get starRegSearchFailed => '搜索失败。请重试。';
 
   @override
+  String starRegRemoved(String reason) {
+    return '该星星已从注册表中移除。原因：$reason';
+  }
+
+  @override
   String get scanCertificate => '扫描证书';
 
   @override

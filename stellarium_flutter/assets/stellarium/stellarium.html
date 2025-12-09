@@ -136,10 +136,6 @@
             key: 'western'
           });
           core.dsos.addDataSource({ url: baseUrl + 'surveys/dso/v1' });
-          core.landscapes.addDataSource({
-            url: baseUrl + 'landscapes/v1/guereins',
-            key: 'guereins'
-          });
           core.milkyway.addDataSource({ url: baseUrl + 'surveys/milkyway/v1' });
           core.planets.addDataSource({
             url: baseUrl + 'surveys/sso/moon',
@@ -148,6 +144,10 @@
           core.planets.addDataSource({
             url: baseUrl + 'surveys/sso/sun',
             key: 'sun'
+          });
+          core.landscapes.addDataSource({
+            url: baseUrl + 'landscapes/v1/guereins',
+            key: 'guereins'
           });
 
           // Default location (New York)
@@ -409,7 +409,11 @@
       },
 
       // Touch events forwarded from Flutter (bypasses native WebView touch handling)
+      // Track active touches for multi-finger gesture detection
+      _activeTouches: new Set(),
+
       onTouchStart: function(id, x, y) {
+        this._activeTouches.add(id);
         if (window.stelModule && window.stelModule._core_on_mouse) {
           window.stelModule._core_on_mouse(id, 1, x, y, 1);
           // Track for tap detection
@@ -421,12 +425,15 @@
       },
 
       onTouchMove: function(id, x, y) {
-        if (!window.gyroscopeEnabled && window.stelModule && window.stelModule._core_on_mouse) {
+        // Allow moves if gyroscope disabled OR if 2+ fingers (pinch-to-zoom)
+        const allowMove = !window.gyroscopeEnabled || this._activeTouches.size >= 2;
+        if (allowMove && window.stelModule && window.stelModule._core_on_mouse) {
           window.stelModule._core_on_mouse(id, -1, x, y, 1);
         }
       },
 
       onTouchEnd: function(id, x, y) {
+        this._activeTouches.delete(id);
         if (window.stelModule && window.stelModule._core_on_mouse) {
           // Always send touch end - MUST use buttons=1 for engine to process (movements.c checks buttons==1)
           window.stelModule._core_on_mouse(id, 0, x, y, 1);

@@ -113,6 +113,7 @@ class StarInfo {
   final StarModelData? modelData;
   final StarRegistryInfo? registryInfo;
   final bool isRegistered;
+  final String? removalReason; // If star was removed from registry, this contains the reason
 
   StarInfo({
     required this.found,
@@ -121,6 +122,7 @@ class StarInfo {
     this.modelData,
     this.registryInfo,
     this.isRegistered = false,
+    this.removalReason,
   });
 
   factory StarInfo.fromApiResponse(Map<String, dynamic> json) {
@@ -128,8 +130,23 @@ class StarInfo {
     final modelData = json['model_data'] as Map<String, dynamic>?;
     final hasRegistry = info != null && info['resolved'] == true;
 
+    // Check if there's a message (e.g., "refund" means star was removed)
+    final message = json['message'] as String?;
+    final wasFoundExplicit = json['found'] as bool?;
+
+    // If found is explicitly false and there's a message, star was removed
+    if (wasFoundExplicit == false && message != null) {
+      debugPrint('StarInfo.fromApiResponse: Star removed from registry. Reason: $message');
+      return StarInfo(
+        found: false,
+        model: 'star',
+        shortName: '',
+        removalReason: message,
+      );
+    }
+
     // Determine if star was found - either explicit 'found' field or presence of model_data/match
-    final wasFound = json['found'] as bool? ??
+    final wasFound = wasFoundExplicit ??
         (modelData != null || json['match'] != null || json['short_name'] != null);
 
     // Extract identifier - try root 'match', then model_data 'identifier'

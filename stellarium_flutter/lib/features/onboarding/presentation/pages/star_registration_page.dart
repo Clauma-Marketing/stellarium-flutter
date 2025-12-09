@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../../screens/certificate_scanner_screen.dart';
 import '../../../../widgets/star_info_sheet.dart';
 import '../widgets/animated_starfield.dart';
 import '../widgets/permission_page_template.dart';
@@ -90,6 +91,12 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
         widget.onStarFound?.call(starInfo);
         // Continue directly to the sky view
         widget.onContinue();
+      } else if (starInfo != null && starInfo.removalReason != null) {
+        // Star was removed from registry
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'REMOVED:${starInfo.removalReason}';
+        });
       } else {
         setState(() {
           _isLoading = false;
@@ -119,7 +126,30 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
     }
   }
 
+  Future<void> _openCertificateScanner() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (context) => const CertificateScannerScreen(),
+      ),
+    );
+
+    if (result != null && mounted) {
+      // Set the scanned registration number in the text field
+      _registrationController.text = result;
+      // Automatically search for the star
+      _searchRegistrationNumber();
+    }
+  }
+
   String _getLocalizedError(AppLocalizations l10n) {
+    if (_errorMessage == null) return '';
+
+    // Check for REMOVED:reason format
+    if (_errorMessage!.startsWith('REMOVED:')) {
+      final reason = _errorMessage!.substring(8); // Remove 'REMOVED:' prefix
+      return l10n.starRegRemoved(reason);
+    }
+
     switch (_errorMessage) {
       case 'ENTER_NUMBER':
         return l10n.starRegEnterNumber;
@@ -140,73 +170,79 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
     return AnimatedStarfield(
       starCount: 60,
       child: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              const SizedBox(height: 40),
-              // Pulsating icon badge
-              ScaleTransition(
-                scale: _pulseAnimation,
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        primaryBlue,
-                        primaryBlue.withValues(alpha: 0.7),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom,
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                // Pulsating icon badge
+                ScaleTransition(
+                  scale: _pulseAnimation,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          primaryBlue,
+                          primaryBlue.withValues(alpha: 0.7),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryBlue.withValues(alpha: 0.5),
+                          blurRadius: 25,
+                          spreadRadius: 5,
+                        ),
                       ],
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryBlue.withValues(alpha: 0.5),
-                        blurRadius: 25,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.star,
-                    size: 48,
-                    color: Colors.white,
+                    child: const Icon(
+                      Icons.star,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              // Title
-              Text(
-                l10n.starRegTitle,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              // Subtitle
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  l10n.starRegSubtitle,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
+                const SizedBox(height: 32),
+                // Title
+                Text(
+                  l10n.starRegTitle,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
                   textAlign: TextAlign.center,
                 ),
-              ),
-              const SizedBox(height: 32),
-              // Registration number input
-              _buildRegistrationInput(),
-              // Error message
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 16),
-                _buildErrorWidget(l10n),
-              ],
-              const Spacer(),
+                const SizedBox(height: 12),
+                // Subtitle
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    l10n.starRegSubtitle,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white70,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                // Registration number input
+                _buildRegistrationInput(),
+                // Error message
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  _buildErrorWidget(l10n),
+                ],
+                const SizedBox(height: 32),
               // Page indicator
               if (widget.currentPage != null && widget.totalPages != null) ...[
                 Row(
@@ -270,6 +306,33 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
                                 letterSpacing: 0.5,
                               ),
                             ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Scan certificate button
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _openCertificateScanner,
+                  icon: const Icon(Icons.qr_code_scanner, size: 20),
+                  label: Text(
+                    l10n.scanCertificate,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(
+                      color: primaryBlue.withValues(alpha: 0.5),
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(26),
                     ),
                   ),
                 ),
@@ -347,7 +410,8 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
                 ),
               ),
               const SizedBox(height: 24),
-            ],
+              ],
+            ),
           ),
         ),
       ),
