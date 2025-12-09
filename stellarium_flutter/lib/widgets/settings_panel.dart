@@ -986,14 +986,19 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
   }
 
   Future<void> _selectSearchResult(PlaceSuggestion place) async {
+    // Immediately clear search results and unfocus to hide suggestions
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _searchResults = [];
+      _searchController.text = place.shortName;
+      _locationName = place.shortName;
+    });
+
     // If we have coordinates, use them directly
     if (place.latitude != null && place.longitude != null) {
       final newLocation = LatLng(place.latitude!, place.longitude!);
       setState(() {
         _selectedLocation = newLocation;
-        _locationName = place.shortName;
-        _searchResults = [];
-        _searchController.text = place.shortName;
       });
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(newLocation, 10.0),
@@ -1024,9 +1029,6 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
 
             setState(() {
               _selectedLocation = newLocation;
-              _locationName = place.shortName;
-              _searchResults = [];
-              _searchController.text = place.shortName;
             });
 
             _mapController?.animateCamera(
@@ -1148,6 +1150,8 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
                   child: TextField(
                     controller: _searchController,
                     style: const TextStyle(color: Colors.white),
+                    autocorrect: false,
+                    enableSuggestions: false,
                     decoration: InputDecoration(
                       hintText: AppLocalizations.of(context)!.searchCityAddress,
                       hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
@@ -1202,25 +1206,50 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
-                      children: _searchResults.map((place) {
-                        return ListTile(
-                          leading: const Icon(Icons.place, color: Colors.green),
-                          title: Text(
-                            place.shortName,
-                            style: const TextStyle(color: Colors.white),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            place.displayName,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 12,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      children: _searchResults.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final place = entry.value;
+                        return GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () => _selectSearchResult(place),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.vertical(
+                                top: index == 0 ? const Radius.circular(12) : Radius.zero,
+                                bottom: index == _searchResults.length - 1 ? const Radius.circular(12) : Radius.zero,
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.place, color: Colors.green, size: 24),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        place.shortName,
+                                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        place.displayName,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.5),
+                                          fontSize: 12,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         );
                       }).toList(),
                     ),
