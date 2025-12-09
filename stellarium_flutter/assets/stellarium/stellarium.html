@@ -667,6 +667,31 @@
         }
       },
 
+      // Set star tracking (24-hour path) visibility
+      setStarTrackVisible: function(visible) {
+        if (!window.stellarium || !window.stellarium.core) {
+          console.log('setStarTrackVisible: stellarium not ready');
+          return false;
+        }
+        try {
+          const core = window.stellarium.core;
+          // Access the star_track module
+          if (core.star_track) {
+            core.star_track.visible = visible;
+            console.log('Star track visibility set to:', visible);
+            return true;
+          } else {
+            console.log('setStarTrackVisible: star_track module not found in core');
+            // List available modules for debugging
+            console.log('Available core properties:', Object.keys(core));
+            return false;
+          }
+        } catch(e) {
+          console.error('setStarTrackVisible error:', e);
+          return false;
+        }
+      },
+
       // Select object at position in gyroscope mode (no view change)
       selectForGuidance: function(x, y) {
         if (!window.stellarium) return null;

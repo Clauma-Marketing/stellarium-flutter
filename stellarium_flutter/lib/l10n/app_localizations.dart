@@ -1257,6 +1257,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not capture image. Please try again.'**
   String get couldNotCaptureImage;
+
+  /// No description provided for @showStarPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Show 24h Path'**
+  String get showStarPath;
+
+  /// No description provided for @hideStarPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide 24h Path'**
+  String get hideStarPath;
 }
 
 class _AppLocalizationsDelegate

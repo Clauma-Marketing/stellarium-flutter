@@ -600,4 +600,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get couldNotCaptureImage => '无法拍摄图像。请重试。';
+
+  @override
+  String get showStarPath => '显示24小时轨迹';
+
+  @override
+  String get hideStarPath => '隐藏24小时轨迹';
 }

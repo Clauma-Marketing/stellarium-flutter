@@ -267,5 +267,8 @@
   "enterRegistrationNumber": "Enter Registration Number",
   "registrationNumberHint": "e.g. 1234-56789-1234567",
   "noRegistrationNumberFound": "No registration number found. Try again or enter manually.",
-  "couldNotCaptureImage": "Could not capture image. Please try again."
+  "couldNotCaptureImage": "Could not capture image. Please try again.",
+
+  "showStarPath": "Show 24h Path",
+  "hideStarPath": "Hide 24h Path"
 }

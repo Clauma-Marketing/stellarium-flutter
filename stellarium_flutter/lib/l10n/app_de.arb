@@ -267,5 +267,8 @@
   "enterRegistrationNumber": "Registrierungsnummer eingeben",
   "registrationNumberHint": "z.B. 1234-56789-1234567",
   "noRegistrationNumberFound": "Keine Registrierungsnummer gefunden. Versuche es erneut oder gib sie manuell ein.",
-  "couldNotCaptureImage": "Bild konnte nicht aufgenommen werden. Bitte versuche es erneut."
+  "couldNotCaptureImage": "Bild konnte nicht aufgenommen werden. Bitte versuche es erneut.",
+
+  "showStarPath": "24h-Pfad anzeigen",
+  "hideStarPath": "24h-Pfad ausblenden"
 }

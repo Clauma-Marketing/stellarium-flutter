@@ -377,6 +377,8 @@ class StarInfoBottomSheet extends StatefulWidget {
   final VoidCallback? onClose;
   final VoidCallback? onNameStar;
   final VoidCallback? onViewIn3D;
+  final void Function(bool enabled)? onToggleStarTrack;
+  final bool starTrackEnabled;
 
   const StarInfoBottomSheet({
     super.key,
@@ -386,6 +388,8 @@ class StarInfoBottomSheet extends StatefulWidget {
     this.onClose,
     this.onNameStar,
     this.onViewIn3D,
+    this.onToggleStarTrack,
+    this.starTrackEnabled = false,
   });
 
   @override
@@ -739,6 +743,42 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.purple.shade200,
                           side: BorderSide(color: Colors.purple.shade300.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // Star tracking button (24-hour path visualization)
+                  if (widget.onToggleStarTrack != null) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          widget.onToggleStarTrack?.call(!widget.starTrackEnabled);
+                        },
+                        icon: Icon(
+                          widget.starTrackEnabled ? Icons.timeline : Icons.timeline_outlined,
+                          size: 20,
+                        ),
+                        label: Text(
+                          widget.starTrackEnabled
+                              ? AppLocalizations.of(context)!.hideStarPath
+                              : AppLocalizations.of(context)!.showStarPath,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: widget.starTrackEnabled
+                              ? Colors.green.shade300
+                              : Colors.green.shade200,
+                          side: BorderSide(
+                            color: widget.starTrackEnabled
+                                ? Colors.green.shade400
+                                : Colors.green.shade300.withValues(alpha: 0.5),
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),

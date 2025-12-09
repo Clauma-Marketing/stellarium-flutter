@@ -630,4 +630,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get couldNotCaptureImage =>
       'Could not capture image. Please try again.';
+
+  @override
+  String get showStarPath => 'Show 24h Path';
+
+  @override
+  String get hideStarPath => 'Hide 24h Path';
 }

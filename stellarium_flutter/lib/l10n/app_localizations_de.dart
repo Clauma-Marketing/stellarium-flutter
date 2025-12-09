@@ -637,4 +637,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get couldNotCaptureImage =>
       'Bild konnte nicht aufgenommen werden. Bitte versuche es erneut.';
+
+  @override
+  String get showStarPath => '24h-Pfad anzeigen';
+
+  @override
+  String get hideStarPath => '24h-Pfad ausblenden';
 }

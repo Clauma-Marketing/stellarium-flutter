@@ -197,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _sliderDate; // The date (year, month, day) shown on slider - only changes with day arrows
   Timer? _timeUpdateTimer; // Timer to refresh time display
   String _lastDisplayedTime = ''; // Track last displayed time to avoid unnecessary rebuilds
+  bool _starTrackEnabled = false; // Track if star 24h path is visible
 
 
   /// Get current time from engine, falling back to observer or system time
@@ -387,6 +388,13 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         });
       },
+      starTrackEnabled: _starTrackEnabled,
+      onToggleStarTrack: (enabled) {
+        setState(() {
+          _starTrackEnabled = enabled;
+        });
+        _skyViewKey.currentState?.webView?.setStarTrackVisible(enabled);
+      },
       ),
     );
   }
@@ -396,10 +404,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedStarInfo = null;
       _registryFuture = null;
       _selectedObjectInfo = null;
+      _starTrackEnabled = false;
     });
-    // Clear custom label and stop guidance
+    // Clear custom label, stop guidance, and disable star tracking
     _skyViewKey.currentState?.webView?.clearCustomLabel();
     _skyViewKey.currentState?.webView?.stopGuidance();
+    _skyViewKey.currentState?.webView?.setStarTrackVisible(false);
   }
 
   void _showTimeLocationSheet() {

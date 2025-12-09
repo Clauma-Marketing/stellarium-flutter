@@ -424,6 +424,11 @@ class StellariumWebViewState extends State<StellariumWebView>
     _safeRunJavaScript('stellariumAPI.stopGuidance()');
   }
 
+  /// Enable or disable star tracking (24-hour path visualization)
+  void setStarTrackVisible(bool visible) {
+    _safeRunJavaScript('stellariumAPI.setStarTrackVisible($visible)');
+  }
+
   /// Whether the engine is ready
   bool get isReady => _isReady;
 

@@ -267,5 +267,8 @@
   "enterRegistrationNumber": "输入注册号码",
   "registrationNumberHint": "例如 1234-56789-1234567",
   "noRegistrationNumberFound": "未找到注册号码。请重试或手动输入。",
-  "couldNotCaptureImage": "无法拍摄图像。请重试。"
+  "couldNotCaptureImage": "无法拍摄图像。请重试。",
+
+  "showStarPath": "显示24小时轨迹",
+  "hideStarPath": "隐藏24小时轨迹"
 }
