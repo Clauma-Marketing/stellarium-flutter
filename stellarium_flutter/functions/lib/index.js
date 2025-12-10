@@ -148,18 +148,24 @@ async function checkAndNotifyForStar(userId, starId, star, userData) {
     // Build and send notification
     try {
         const direction = (0, starVisibility_1.getDirectionName)((0, starVisibility_1.getStarAzimuth)(star.ra, star.dec, userData.latitude, userData.longitude, notificationTime));
-        const visibilityEnd = (0, starVisibility_1.getVisibilityEnd)(star.ra, star.dec, userData.latitude, userData.longitude, notificationTime);
+        // Get the full viewing window (start - end times)
+        const viewingWindow = (0, starVisibility_1.formatViewingWindow)(star.ra, star.dec, userData.latitude, userData.longitude, notificationTime);
         let body;
         if (currentlyVisible) {
-            if (visibilityEnd) {
-                body = `Your star is now visible in the ${direction} sky. Best viewing until ${(0, starVisibility_1.formatTime)(visibilityEnd)}.`;
+            if (viewingWindow) {
+                body = `Your star is now visible in the ${direction} sky (${viewingWindow}).`;
             }
             else {
                 body = `Your star is now visible in the ${direction} sky.`;
             }
         }
         else {
-            body = `Your star will be visible soon in the ${direction} sky.`;
+            if (viewingWindow) {
+                body = `Your star will be visible tonight in the ${direction} sky (${viewingWindow}).`;
+            }
+            else {
+                body = `Your star will be visible soon in the ${direction} sky.`;
+            }
         }
         const message = {
             token: userData.fcmToken,

@@ -75,6 +75,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apply => 'Apply';
 
   @override
+  String get back => 'Back';
+
+  @override
   String get save => 'Save';
 
   @override
@@ -636,4 +639,100 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hideStarPath => 'Hide 24h Path';
+
+  @override
+  String get loaderQuote1 => 'Your personal window to the cosmos';
+
+  @override
+  String get loaderQuote2 => 'Every star holds a name waiting to be given';
+
+  @override
+  String get loaderQuote3 => 'The sky above you, charted and waiting';
+
+  @override
+  String get loaderQuote4 => 'A name etched in light, forever yours';
+
+  @override
+  String get loaderQuote5 => 'Millions of stars — one belongs to you';
+
+  @override
+  String get loaderQuote6 => 'Where the ancient light meets your gaze';
+
+  @override
+  String get loaderQuote7 => 'The universe remembers every name';
+
+  @override
+  String get loaderQuote8 => 'Look up. Find your place among the stars.';
+
+  @override
+  String get loaderStatus1 => 'Locating your coordinates';
+
+  @override
+  String get loaderStatus2 => 'Mapping the celestial sphere';
+
+  @override
+  String get loaderStatus3 => 'Charting visible constellations';
+
+  @override
+  String get loaderStatus4 => 'Calculating star positions';
+
+  @override
+  String get loaderStatus5 => 'Preparing your night sky';
+
+  @override
+  String get visibilityCalculating => 'Calculating visibility...';
+
+  @override
+  String get visibilityVisibleNow => 'Visible Now';
+
+  @override
+  String get visibilityTonight => 'Tonight';
+
+  @override
+  String get visibilityVisible => 'visible';
+
+  @override
+  String get visibilitySince => 'SINCE';
+
+  @override
+  String get visibilityFrom => 'FROM';
+
+  @override
+  String get visibilityUntil => 'UNTIL';
+
+  @override
+  String get notificationAlertTitle => 'Visibility Alert';
+
+  @override
+  String get notificationAlertSubtitle => 'Get notified when star rises';
+
+  @override
+  String get visibilityStatusNeverVisible => 'Never visible';
+
+  @override
+  String get visibilityStatusVisibleNow => 'Visible now';
+
+  @override
+  String get visibilityStatusWaitForDark => 'Wait for dark';
+
+  @override
+  String get visibilityStatusBelowHorizon => 'Below horizon';
+
+  @override
+  String get visibilityNow => 'Now';
+
+  @override
+  String visibilityStatusTonight(String time) {
+    return 'Tonight $time';
+  }
+
+  @override
+  String visibilityStatusTomorrow(String time) {
+    return 'Tomorrow $time';
+  }
+
+  @override
+  String visibilityStatusInDays(int days, int hours) {
+    return '${days}d ${hours}h';
+  }
 }

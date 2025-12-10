@@ -10,10 +10,9 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 // import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import {
   getNextVisibilityStart,
-  getVisibilityEnd,
   getStarAzimuth,
   getDirectionName,
-  formatTime,
+  formatViewingWindow,
   isVisible,
 } from "./starVisibility";
 
@@ -194,7 +193,8 @@ async function checkAndNotifyForStar(
       )
     );
 
-    const visibilityEnd = getVisibilityEnd(
+    // Get the full viewing window (start - end times)
+    const viewingWindow = formatViewingWindow(
       star.ra!,
       star.dec!,
       userData.latitude!,
@@ -204,13 +204,17 @@ async function checkAndNotifyForStar(
 
     let body: string;
     if (currentlyVisible) {
-      if (visibilityEnd) {
-        body = `Your star is now visible in the ${direction} sky. Best viewing until ${formatTime(visibilityEnd)}.`;
+      if (viewingWindow) {
+        body = `Your star is now visible in the ${direction} sky (${viewingWindow}).`;
       } else {
         body = `Your star is now visible in the ${direction} sky.`;
       }
     } else {
-      body = `Your star will be visible soon in the ${direction} sky.`;
+      if (viewingWindow) {
+        body = `Your star will be visible tonight in the ${direction} sky (${viewingWindow}).`;
+      } else {
+        body = `Your star will be visible soon in the ${direction} sky.`;
+      }
     }
 
     const message: admin.messaging.Message = {

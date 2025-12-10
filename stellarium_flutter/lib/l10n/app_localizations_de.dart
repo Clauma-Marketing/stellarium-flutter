@@ -75,6 +75,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get apply => 'Anwenden';
 
   @override
+  String get back => 'Zurück';
+
+  @override
   String get save => 'Speichern';
 
   @override
@@ -87,7 +90,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get removedFromMyStars => 'Aus Meine Sterne entfernt';
 
   @override
-  String get pointAtStar => 'Stern anzeigen';
+  String get pointAtStar => 'Lokalisieren';
 
   @override
   String get removeFromMyStars => 'Aus Meine Sterne entfernen';
@@ -407,7 +410,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nameThisStar => 'Stern benennen';
 
   @override
-  String get viewStarIn3D => 'Stern in 3D ansehen';
+  String get viewStarIn3D => '3D Ansicht';
 
   @override
   String get catalogId => 'Katalog-ID';
@@ -643,4 +646,103 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get hideStarPath => '24h-Pfad ausblenden';
+
+  @override
+  String get loaderQuote1 => 'Dein persönliches Fenster zum Kosmos';
+
+  @override
+  String get loaderQuote2 =>
+      'Jeder Stern trägt einen Namen, der darauf wartet, vergeben zu werden';
+
+  @override
+  String get loaderQuote3 => 'Der Himmel über dir, kartiert und bereit';
+
+  @override
+  String get loaderQuote4 => 'Ein Name, in Licht gemeißelt, für immer deiner';
+
+  @override
+  String get loaderQuote5 => 'Millionen von Sternen — einer gehört dir';
+
+  @override
+  String get loaderQuote6 => 'Wo das uralte Licht auf deinen Blick trifft';
+
+  @override
+  String get loaderQuote7 => 'Das Universum erinnert sich an jeden Namen';
+
+  @override
+  String get loaderQuote8 =>
+      'Schau nach oben. Finde deinen Platz unter den Sternen.';
+
+  @override
+  String get loaderStatus1 => 'Ermittle deine Koordinaten';
+
+  @override
+  String get loaderStatus2 => 'Kartiere die Himmelskugel';
+
+  @override
+  String get loaderStatus3 => 'Erfasse sichtbare Sternbilder';
+
+  @override
+  String get loaderStatus4 => 'Berechne Sternpositionen';
+
+  @override
+  String get loaderStatus5 => 'Bereite deinen Nachthimmel vor';
+
+  @override
+  String get visibilityCalculating => 'Sichtbarkeit wird berechnet...';
+
+  @override
+  String get visibilityVisibleNow => 'Jetzt sichtbar';
+
+  @override
+  String get visibilityTonight => 'Heute Nacht';
+
+  @override
+  String get visibilityVisible => 'sichtbar';
+
+  @override
+  String get visibilitySince => 'SEIT';
+
+  @override
+  String get visibilityFrom => 'VON';
+
+  @override
+  String get visibilityUntil => 'BIS';
+
+  @override
+  String get notificationAlertTitle => 'Sichtbarkeits-Alarm';
+
+  @override
+  String get notificationAlertSubtitle =>
+      'Benachrichtigung wenn der Stern aufgeht';
+
+  @override
+  String get visibilityStatusNeverVisible => 'Nie sichtbar';
+
+  @override
+  String get visibilityStatusVisibleNow => 'Jetzt sichtbar';
+
+  @override
+  String get visibilityStatusWaitForDark => 'Warte auf Dunkelheit';
+
+  @override
+  String get visibilityStatusBelowHorizon => 'Unter dem Horizont';
+
+  @override
+  String get visibilityNow => 'Jetzt';
+
+  @override
+  String visibilityStatusTonight(String time) {
+    return 'Heute $time';
+  }
+
+  @override
+  String visibilityStatusTomorrow(String time) {
+    return 'Morgen $time';
+  }
+
+  @override
+  String visibilityStatusInDays(int days, int hours) {
+    return '${days}T ${hours}Std';
+  }
 }

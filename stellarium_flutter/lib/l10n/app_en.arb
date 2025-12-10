@@ -25,6 +25,7 @@
   "now": "Now",
   "cancel": "Cancel",
   "apply": "Apply",
+  "back": "Back",
 
   "save": "Save",
   "saved": "Saved",
@@ -270,5 +271,64 @@
   "couldNotCaptureImage": "Could not capture image. Please try again.",
 
   "showStarPath": "Show 24h Path",
-  "hideStarPath": "Hide 24h Path"
+  "hideStarPath": "Hide 24h Path",
+
+  "loaderQuote1": "Your personal window to the cosmos",
+  "loaderQuote2": "Every star holds a name waiting to be given",
+  "loaderQuote3": "The sky above you, charted and waiting",
+  "loaderQuote4": "A name etched in light, forever yours",
+  "loaderQuote5": "Millions of stars — one belongs to you",
+  "loaderQuote6": "Where the ancient light meets your gaze",
+  "loaderQuote7": "The universe remembers every name",
+  "loaderQuote8": "Look up. Find your place among the stars.",
+
+  "loaderStatus1": "Locating your coordinates",
+  "loaderStatus2": "Mapping the celestial sphere",
+  "loaderStatus3": "Charting visible constellations",
+  "loaderStatus4": "Calculating star positions",
+  "loaderStatus5": "Preparing your night sky",
+
+  "visibilityCalculating": "Calculating visibility...",
+  "visibilityVisibleNow": "Visible Now",
+  "visibilityTonight": "Tonight",
+  "visibilityVisible": "visible",
+  "visibilitySince": "SINCE",
+  "visibilityFrom": "FROM",
+  "visibilityUntil": "UNTIL",
+
+  "notificationAlertTitle": "Visibility Alert",
+  "notificationAlertSubtitle": "Get notified when star rises",
+
+  "visibilityStatusNeverVisible": "Never visible",
+  "visibilityStatusVisibleNow": "Visible now",
+  "visibilityStatusWaitForDark": "Wait for dark",
+  "visibilityStatusBelowHorizon": "Below horizon",
+  "visibilityNow": "Now",
+  "visibilityStatusTonight": "Tonight {time}",
+  "@visibilityStatusTonight": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusTomorrow": "Tomorrow {time}",
+  "@visibilityStatusTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusInDays": "{days}d {hours}h",
+  "@visibilityStatusInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  }
 }

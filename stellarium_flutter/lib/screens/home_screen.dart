@@ -198,6 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _timeUpdateTimer; // Timer to refresh time display
   String _lastDisplayedTime = ''; // Track last displayed time to avoid unnecessary rebuilds
   bool _starTrackEnabled = false; // Track if star 24h path is visible
+  bool _isEngineReady = false; // Track if Stellarium engine has loaded
 
 
   /// Get current time from engine, falling back to observer or system time
@@ -267,16 +268,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Top bar with location and time
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: _buildTopBar(context),
-          ),
+          // Top bar with location and time (only when engine is ready)
+          if (_isEngineReady)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: _buildTopBar(context),
+            ),
 
           // Time slider (appears below top bar when time is tapped)
-          if (_showTimeSlider)
+          if (_isEngineReady && _showTimeSlider)
             Positioned(
               left: 0,
               right: 0,
@@ -284,8 +286,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _buildTimeSlider(context),
             ),
 
-          // Bottom bar with buttons and search (only when star info not shown)
-          if (!hasStarInfo)
+          // Bottom bar with buttons and search (only when star info not shown and engine is ready)
+          if (_isEngineReady && !hasStarInfo)
             Positioned(
               left: 0,
               right: 0,
@@ -313,8 +315,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-          // Star info panel overlay
-          if (hasStarInfo)
+          // Star info panel overlay (only when engine is ready)
+          if (_isEngineReady && hasStarInfo)
             Positioned(
               left: 0,
               right: 0,
@@ -351,21 +353,65 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       onNameStar: () async {
+        final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
+        final languageCode = locale.languageCode;
+
+        // Get the HIP number from multiple sources
+        String? hipNumber;
+        final modelData = _selectedStarInfo?.modelData;
+
+        // Try from modelData.identifier first
+        if (modelData != null && modelData.identifier.isNotEmpty) {
+          debugPrint('onNameStar: modelData.identifier = ${modelData.identifier}');
+          final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(modelData.identifier);
+          if (hipMatch != null) {
+            hipNumber = hipMatch.group(1);
+            debugPrint('onNameStar: Found HIP from identifier: $hipNumber');
+          }
+        }
+
+        // If not found, try from _selectedObjectInfo.names
+        if (hipNumber == null && _selectedObjectInfo != null) {
+          debugPrint('onNameStar: _selectedObjectInfo.names = ${_selectedObjectInfo!.names}');
+          for (final name in _selectedObjectInfo!.names) {
+            final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(name);
+            if (hipMatch != null) {
+              hipNumber = hipMatch.group(1);
+              debugPrint('onNameStar: Found HIP from names list: $hipNumber');
+              break;
+            }
+          }
+        }
+
+        // Also try _selectedObjectInfo.name as fallback
+        if (hipNumber == null && _selectedObjectInfo != null) {
+          debugPrint('onNameStar: _selectedObjectInfo.name = ${_selectedObjectInfo!.name}');
+          final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(_selectedObjectInfo!.name);
+          if (hipMatch != null) {
+            hipNumber = hipMatch.group(1);
+            debugPrint('onNameStar: Found HIP from name: $hipNumber');
+          }
+        }
+
         _closeStarInfo();
 
-        final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
-        final isGerman = locale.languageCode == 'de';
+        // Build URL based on language
+        final baseUrl = languageCode == 'de'
+            ? 'https://www.sterntaufe-deutschland.de/products/sterntaufe'
+            : 'https://www.star-registration.com/products/standard';
 
-        final url = isGerman
-            ? 'https://sterntaufe-deutschland.de'
-            : 'https://star-registration.com';
+        // Add HIP number as query parameter if available
+        final uri = hipNumber != null
+            ? Uri.parse('$baseUrl?hip=$hipNumber')
+            : Uri.parse(baseUrl);
 
-        final uri = Uri.parse(url);
+        debugPrint('onNameStar: Opening URL: $uri');
+
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       },
-      onViewIn3D: () {
+      onViewIn3D: (effectiveName) {
         final starInfo = _selectedStarInfo!;
         final selectionInfo = _selectedObjectInfo;
         _closeStarInfo();
@@ -373,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => StarViewerScreen(
-              starName: starInfo.registryInfo?.name ?? starInfo.modelData?.shortName ?? starInfo.shortName,
+              starName: effectiveName,
               spectralType: starInfo.modelData?.spectralType,
             ),
           ),
@@ -799,6 +845,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onEngineReady(bool ready) {
     if (!ready) return;
 
+    // Update engine ready state
+    setState(() {
+      _isEngineReady = true;
+    });
+
     // Start timer to keep time display in sync with engine
     _startTimeUpdateTimer();
 
@@ -885,6 +936,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         observer: _observer,
         onLocationChanged: _onLocationChanged,
+        currentTime: _currentTime, // Pass engine time for visibility calculations
         onSubMenuOpening: () {
           // Sub-menu is about to open, keep touch disabled
           _subMenuOpening = true;
@@ -901,20 +953,23 @@ class _HomeScreenState extends State<HomeScreen> {
               _skyViewKey.currentState?.engine?.pointAt(obj);
             }
           });
-          // Show star info directly using the saved star data
-          // Construct names list from saved star identifiers
+          // Create SelectedObjectInfo to use the same flow as clicking on a star
+          // This ensures the registry API is called and coordinates are fetched
           final names = <String>[star.id];
           if (star.scientificName != null && star.scientificName != star.id) {
             names.add(star.scientificName!);
           }
-          final starInfo = StarInfo.fromBasicData(
-            name: star.displayName,
+          final selectionInfo = SelectedObjectInfo(
+            name: star.scientificName ?? star.id,
+            displayName: star.displayName,
+            names: names,
+            type: 'Star',
+            magnitude: star.magnitude,
             ra: star.ra,
             dec: star.dec,
-            magnitude: star.magnitude,
-            names: names,
           );
-          _showStarInfo(starInfo);
+          // Use the same flow as _onObjectSelected to get registry info
+          _onObjectSelected(selectionInfo);
         },
       ),
     ).whenComplete(() {

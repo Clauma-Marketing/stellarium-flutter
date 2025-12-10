@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -26,11 +27,16 @@ class _StarViewerScreenState extends State<StarViewerScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   WebViewController? _webViewController;
+  bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    _startLocalServer();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      final l10n = AppLocalizations.of(context);
+      _startLocalServer(l10n?.back ?? 'Back');
+    }
   }
 
   @override
@@ -39,7 +45,7 @@ class _StarViewerScreenState extends State<StarViewerScreen> {
     super.dispose();
   }
 
-  Future<void> _startLocalServer() async {
+  Future<void> _startLocalServer(String backText) async {
     try {
       // Copy HTML to temp directory
       final tempDir = await getTemporaryDirectory();
@@ -81,6 +87,7 @@ class _StarViewerScreenState extends State<StarViewerScreen> {
       // Build URL with query parameters
       final params = <String, String>{
         'name': widget.starName,
+        'backText': backText,
       };
       if (widget.spectralType != null && widget.spectralType!.isNotEmpty) {
         params['spectralType'] = widget.spectralType!;

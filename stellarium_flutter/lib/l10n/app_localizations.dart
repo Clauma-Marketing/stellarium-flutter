@@ -232,6 +232,12 @@ abstract class AppLocalizations {
   /// **'Apply'**
   String get apply;
 
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
+
   /// No description provided for @save.
   ///
   /// In en, this message translates to:
@@ -1269,6 +1275,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide 24h Path'**
   String get hideStarPath;
+
+  /// No description provided for @loaderQuote1.
+  ///
+  /// In en, this message translates to:
+  /// **'Your personal window to the cosmos'**
+  String get loaderQuote1;
+
+  /// No description provided for @loaderQuote2.
+  ///
+  /// In en, this message translates to:
+  /// **'Every star holds a name waiting to be given'**
+  String get loaderQuote2;
+
+  /// No description provided for @loaderQuote3.
+  ///
+  /// In en, this message translates to:
+  /// **'The sky above you, charted and waiting'**
+  String get loaderQuote3;
+
+  /// No description provided for @loaderQuote4.
+  ///
+  /// In en, this message translates to:
+  /// **'A name etched in light, forever yours'**
+  String get loaderQuote4;
+
+  /// No description provided for @loaderQuote5.
+  ///
+  /// In en, this message translates to:
+  /// **'Millions of stars — one belongs to you'**
+  String get loaderQuote5;
+
+  /// No description provided for @loaderQuote6.
+  ///
+  /// In en, this message translates to:
+  /// **'Where the ancient light meets your gaze'**
+  String get loaderQuote6;
+
+  /// No description provided for @loaderQuote7.
+  ///
+  /// In en, this message translates to:
+  /// **'The universe remembers every name'**
+  String get loaderQuote7;
+
+  /// No description provided for @loaderQuote8.
+  ///
+  /// In en, this message translates to:
+  /// **'Look up. Find your place among the stars.'**
+  String get loaderQuote8;
+
+  /// No description provided for @loaderStatus1.
+  ///
+  /// In en, this message translates to:
+  /// **'Locating your coordinates'**
+  String get loaderStatus1;
+
+  /// No description provided for @loaderStatus2.
+  ///
+  /// In en, this message translates to:
+  /// **'Mapping the celestial sphere'**
+  String get loaderStatus2;
+
+  /// No description provided for @loaderStatus3.
+  ///
+  /// In en, this message translates to:
+  /// **'Charting visible constellations'**
+  String get loaderStatus3;
+
+  /// No description provided for @loaderStatus4.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating star positions'**
+  String get loaderStatus4;
+
+  /// No description provided for @loaderStatus5.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your night sky'**
+  String get loaderStatus5;
+
+  /// No description provided for @visibilityCalculating.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating visibility...'**
+  String get visibilityCalculating;
+
+  /// No description provided for @visibilityVisibleNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible Now'**
+  String get visibilityVisibleNow;
+
+  /// No description provided for @visibilityTonight.
+  ///
+  /// In en, this message translates to:
+  /// **'Tonight'**
+  String get visibilityTonight;
+
+  /// No description provided for @visibilityVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'visible'**
+  String get visibilityVisible;
+
+  /// No description provided for @visibilitySince.
+  ///
+  /// In en, this message translates to:
+  /// **'SINCE'**
+  String get visibilitySince;
+
+  /// No description provided for @visibilityFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'FROM'**
+  String get visibilityFrom;
+
+  /// No description provided for @visibilityUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'UNTIL'**
+  String get visibilityUntil;
+
+  /// No description provided for @notificationAlertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Visibility Alert'**
+  String get notificationAlertTitle;
+
+  /// No description provided for @notificationAlertSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notified when star rises'**
+  String get notificationAlertSubtitle;
+
+  /// No description provided for @visibilityStatusNeverVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Never visible'**
+  String get visibilityStatusNeverVisible;
+
+  /// No description provided for @visibilityStatusVisibleNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible now'**
+  String get visibilityStatusVisibleNow;
+
+  /// No description provided for @visibilityStatusWaitForDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for dark'**
+  String get visibilityStatusWaitForDark;
+
+  /// No description provided for @visibilityStatusBelowHorizon.
+  ///
+  /// In en, this message translates to:
+  /// **'Below horizon'**
+  String get visibilityStatusBelowHorizon;
+
+  /// No description provided for @visibilityNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get visibilityNow;
+
+  /// No description provided for @visibilityStatusTonight.
+  ///
+  /// In en, this message translates to:
+  /// **'Tonight {time}'**
+  String visibilityStatusTonight(String time);
+
+  /// No description provided for @visibilityStatusTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow {time}'**
+  String visibilityStatusTomorrow(String time);
+
+  /// No description provided for @visibilityStatusInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}d {hours}h'**
+  String visibilityStatusInDays(int days, int hours);
 }
 
 class _AppLocalizationsDelegate

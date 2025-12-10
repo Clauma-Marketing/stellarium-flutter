@@ -3,7 +3,6 @@ import UIKit
 import GoogleMaps
 import FirebaseCore
 import FirebaseMessaging
-import workmanager
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -23,16 +22,6 @@ import workmanager
 
     // Register for remote notifications
     application.registerForRemoteNotifications()
-
-    // Initialize WorkManager for background tasks
-    WorkmanagerPlugin.setPluginRegistrantCallback { registry in
-      GeneratedPluginRegistrant.register(with: registry)
-    }
-
-    // Register background task for star visibility calculations
-    UIApplication.shared.setMinimumBackgroundFetchInterval(
-      TimeInterval(6 * 60 * 60) // 6 hours
-    )
 
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

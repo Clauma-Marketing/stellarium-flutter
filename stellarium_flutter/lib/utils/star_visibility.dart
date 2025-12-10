@@ -8,8 +8,12 @@ class StarVisibility {
   static const double _deg2rad = math.pi / 180.0;
   static const double _rad2deg = 180.0 / math.pi;
 
-  /// Horizon altitude threshold (slightly below 0 to account for refraction)
-  static const double _horizonAltitude = -0.5667; // degrees
+  /// Minimum altitude for practical star observation.
+  /// Set to 10 degrees above horizon to account for:
+  /// - Atmospheric extinction (stars dim significantly near horizon)
+  /// - Typical obstructions (trees, buildings)
+  /// - Better viewing conditions
+  static const double _horizonAltitude = 10.0; // degrees
 
   /// Calculate Local Sidereal Time (LST) in degrees
   /// LST is the right ascension currently on the meridian
@@ -241,10 +245,33 @@ class StarVisibility {
     required double starDecDeg,
     required double latitudeDeg,
   }) {
-    // Star is circumpolar if its declination is high enough
-    // that it never dips below the horizon
-    final minAlt = starDecDeg + latitudeDeg - 90;
-    return minAlt > _horizonAltitude;
+    // A star is circumpolar if its minimum altitude is above the horizon.
+    // Minimum altitude occurs when the star is at lower culmination.
+    //
+    // For Northern Hemisphere (lat > 0):
+    //   Star with positive dec is circumpolar if dec > (90 - lat)
+    //   Minimum altitude = dec - (90 - lat) = dec + lat - 90
+    //
+    // For Southern Hemisphere (lat < 0):
+    //   Star with negative dec is circumpolar if dec < -(90 + lat) = lat - 90
+    //   Minimum altitude = -dec - (90 + lat) = -(dec + lat + 90)
+    //
+    // General formula: min altitude = |lat| + |dec| - 90 (when same sign)
+    // or equivalently: circumpolar when |dec| > 90 - |lat| (same hemisphere)
+
+    if (latitudeDeg >= 0) {
+      // Northern hemisphere observer
+      // Star is circumpolar if declination is high enough (positive)
+      // min altitude when star is at lower culmination (north of zenith for circumpolar)
+      final minAlt = starDecDeg - (90 - latitudeDeg);
+      return minAlt > _horizonAltitude;
+    } else {
+      // Southern hemisphere observer
+      // Star is circumpolar if declination is low enough (negative)
+      // min altitude when star is at lower culmination (south of zenith for circumpolar)
+      final minAlt = -starDecDeg - (90 + latitudeDeg);
+      return minAlt > _horizonAltitude;
+    }
   }
 
   /// Check if a star never rises at given latitude
@@ -252,13 +279,28 @@ class StarVisibility {
     required double starDecDeg,
     required double latitudeDeg,
   }) {
-    // Star never rises if its maximum altitude is below horizon
-    final maxAlt = 90 - (latitudeDeg - starDecDeg).abs();
-    return maxAlt < _horizonAltitude;
+    // A star never rises if its maximum altitude is below the horizon.
+    // Maximum altitude = 90 - |lat - dec|
+    //
+    // For Northern Hemisphere (lat > 0):
+    //   Stars with very negative declination never rise
+    //   Never rises if dec < lat - 90
+    //
+    // For Southern Hemisphere (lat < 0):
+    //   Stars with very positive declination never rise
+    //   Never rises if dec > lat + 90
+
+    if (latitudeDeg >= 0) {
+      // Northern hemisphere - stars too far south never rise
+      return starDecDeg < (latitudeDeg - 90 + _horizonAltitude);
+    } else {
+      // Southern hemisphere - stars too far north never rise
+      return starDecDeg > (latitudeDeg + 90 - _horizonAltitude);
+    }
   }
 
   /// Calculate when a star rises above the horizon for a given date
-  /// Returns the DateTime of rise, or null if star doesn't rise
+  /// Returns the DateTime of rise in local time, or null if star doesn't rise/set
   static DateTime? getStarRiseTime({
     required double starRaDeg,
     required double starDecDeg,
@@ -280,43 +322,25 @@ class StarVisibility {
         _getHourAngleForAltitude(_horizonAltitude, starDecDeg, latitudeDeg);
     if (hourAngle == null) return null;
 
-    // Rise happens at negative hour angle (before transit)
-
-    // Find the transit time (when star crosses meridian)
-    final transitTime = _getTransitTime(
+    // Find the transit time (when star crosses meridian) - returns UTC
+    final transitTimeUtc = _getTransitTime(
       starRaDeg: starRaDeg,
       longitudeDeg: longitudeDeg,
       date: date,
     );
 
     // Rise time is transit time minus hour angle (in hours)
-    final riseTime = transitTime.subtract(Duration(
+    // Hour angle is in hours, so multiply by 60 for minutes
+    final riseTimeUtc = transitTimeUtc.subtract(Duration(
       minutes: (hourAngle * 60).round(),
     ));
 
-    // Make sure we return a time on the requested date
-    final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
-    if (riseTime.isBefore(startOfDay)) {
-      // Try next day's rise
-      return getStarRiseTime(
-        starRaDeg: starRaDeg,
-        starDecDeg: starDecDeg,
-        latitudeDeg: latitudeDeg,
-        longitudeDeg: longitudeDeg,
-        date: date.add(const Duration(days: 1)),
-      );
-    }
-
-    if (riseTime.isAfter(endOfDay)) {
-      return null; // Rise is on next day
-    }
-
-    return riseTime;
+    // Convert to local time
+    return riseTimeUtc.toLocal();
   }
 
   /// Calculate when a star sets below the horizon for a given date
+  /// Returns the DateTime of set in local time, or null if star doesn't set
   static DateTime? getStarSetTime({
     required double starRaDeg,
     required double starDecDeg,
@@ -336,53 +360,68 @@ class StarVisibility {
         _getHourAngleForAltitude(_horizonAltitude, starDecDeg, latitudeDeg);
     if (hourAngle == null) return null;
 
-    final transitTime = _getTransitTime(
+    // Get transit time in UTC
+    final transitTimeUtc = _getTransitTime(
       starRaDeg: starRaDeg,
       longitudeDeg: longitudeDeg,
       date: date,
     );
 
     // Set time is transit time plus hour angle
-    final setTime = transitTime.add(Duration(
+    final setTimeUtc = transitTimeUtc.add(Duration(
       minutes: (hourAngle * 60).round(),
     ));
 
-    final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
-    if (setTime.isBefore(startOfDay) || setTime.isAfter(endOfDay)) {
-      return null;
-    }
-
-    return setTime;
+    // Convert to local time
+    return setTimeUtc.toLocal();
   }
 
   /// Get the transit time (when star crosses the meridian) for a given date
+  /// Returns time in UTC for consistent calculations
   static DateTime _getTransitTime({
     required double starRaDeg,
     required double longitudeDeg,
     required DateTime date,
   }) {
-    // Start at noon UTC on the given date
-    final noon = DateTime.utc(date.year, date.month, date.day, 12, 0, 0);
+    // Calculate transit time using the standard formula
+    // Transit occurs when Local Sidereal Time equals the star's Right Ascension
 
-    // LST at noon
-    final lstAtNoon = _getLocalSiderealTime(noon, longitudeDeg);
+    // Convert star RA from degrees to hours
+    final starRAHours = starRaDeg / 15.0;
 
-    // How many degrees until the star transits?
-    double degreesToTransit = starRaDeg - lstAtNoon;
-    while (degreesToTransit < -180) {
-      degreesToTransit += 360;
+    // Get Greenwich Mean Sidereal Time at 0h UT on the date
+    final jd0 = _dateToJulianDate(DateTime.utc(date.year, date.month, date.day));
+    final t = (jd0 - 2451545.0) / 36525.0;
+
+    // GMST at 0h UT in hours (IAU 1982 formula)
+    double gmst0h = 6.697374558 +
+        2400.051336 * t +
+        0.000025862 * t * t;
+    gmst0h = gmst0h % 24;
+    if (gmst0h < 0) gmst0h += 24;
+
+    // Local Sidereal Time at 0h UT
+    final lst0h = gmst0h + longitudeDeg / 15.0;
+
+    // Hour angle at 0h UT (how far star is from meridian)
+    double hourAngle = starRAHours - lst0h;
+
+    // Normalize to find the time until transit (0 to 24 hours)
+    while (hourAngle < 0) {
+      hourAngle += 24;
     }
-    while (degreesToTransit > 180) {
-      degreesToTransit -= 360;
+    while (hourAngle >= 24) {
+      hourAngle -= 24;
     }
 
-    // Convert degrees to time (360 degrees = 24 hours = 1440 minutes)
-    // But sidereal day is ~23h 56m, so 360 deg = 1436.07 minutes sidereal
-    final minutesToTransit = degreesToTransit * (1436.07 / 360.0);
+    // Convert sidereal hours to solar hours
+    // Sidereal day = 23h 56m 4.091s = 23.9344696 hours
+    // So 1 sidereal hour = 23.9344696/24 = 0.9972696 solar hours
+    final solarHours = hourAngle * 0.9972696;
 
-    return noon.add(Duration(minutes: minutesToTransit.round())).toLocal();
+    // Return UTC time
+    return DateTime.utc(date.year, date.month, date.day)
+        .add(Duration(minutes: (solarHours * 60).round()));
   }
 
   /// Get the viewing window for tonight when star is both visible and dark
@@ -460,21 +499,31 @@ class StarVisibility {
       // Window start is the later of: darkness start, star rise
       // Window end is the earlier of: dawn, star set
 
-      if (riseTime != null && riseTime.isAfter(darkStart)) {
-        windowStart = riseTime;
+      // Check if star sets before darkness even starts
+      if (setTime != null && setTime.isBefore(darkStart)) {
+        // Star has already set before it gets dark - check if it rises again tonight
+        if (tomorrowRise != null && tomorrowRise.isAfter(darkStart)) {
+          // Star rises during the night
+          windowStart = tomorrowRise;
+          windowEnd = morningTwilightStart ?? darkEnd;
+        } else {
+          // Star doesn't rise during the dark period
+          return (null, null);
+        }
       } else {
-        // Star already up at darkness start, or rises before
-        windowStart = darkStart;
-      }
+        // Normal case: star is up during some part of the night
+        if (riseTime != null && riseTime.isAfter(darkStart)) {
+          windowStart = riseTime;
+        } else {
+          // Star already up at darkness start, or rises before
+          windowStart = darkStart;
+        }
 
-      if (setTime != null && setTime.isBefore(morningTwilightStart ?? darkEnd)) {
-        windowEnd = setTime;
-      } else if (tomorrowRise != null &&
-          tomorrowRise.isBefore(morningTwilightStart ?? darkEnd)) {
-        // Star sets and rises again before dawn
-        windowEnd = morningTwilightStart ?? darkEnd;
-      } else {
-        windowEnd = morningTwilightStart ?? darkEnd;
+        if (setTime != null && setTime.isBefore(morningTwilightStart ?? darkEnd)) {
+          windowEnd = setTime;
+        } else {
+          windowEnd = morningTwilightStart ?? darkEnd;
+        }
       }
 
       // Validate window
@@ -517,7 +566,7 @@ class StarVisibility {
     // Check today and the next few days
     for (int dayOffset = 0; dayOffset < 3; dayOffset++) {
       final checkDate = today.add(Duration(days: dayOffset));
-      final (windowStart, windowEnd) = getTonightViewingWindow(
+      final (windowStart, _) = getTonightViewingWindow(
         starRaDeg: starRaDeg,
         starDecDeg: starDecDeg,
         latitudeDeg: latitudeDeg,
@@ -531,5 +580,340 @@ class StarVisibility {
     }
 
     return null;
+  }
+
+  /// Get the time when the star becomes non-visible and the reason why.
+  /// Returns (endTime, reason) where reason is 'dawn', 'setting', or null if currently not visible.
+  static (DateTime?, String?) getVisibilityEnd({
+    required double starRaDeg,
+    required double starDecDeg,
+    required double latitudeDeg,
+    required double longitudeDeg,
+    DateTime? fromTime,
+  }) {
+    final now = fromTime ?? DateTime.now();
+
+    // First check if the star is currently visible
+    if (!isVisible(
+      starRaDeg: starRaDeg,
+      starDecDeg: starDecDeg,
+      latitudeDeg: latitudeDeg,
+      longitudeDeg: longitudeDeg,
+      dateTime: now,
+    )) {
+      return (null, null);
+    }
+
+    // Get sun times for today and tomorrow
+    final today = DateTime(now.year, now.month, now.day);
+    final sunTimes = SunTimes(
+      latitude: latitudeDeg,
+      longitude: longitudeDeg,
+      date: today,
+    );
+    final tomorrowSunTimes = SunTimes(
+      latitude: latitudeDeg,
+      longitude: longitudeDeg,
+      date: today.add(const Duration(days: 1)),
+    );
+
+    // Get dawn time (astronomical twilight start)
+    // If it's after midnight, use today's twilight start; otherwise tomorrow's
+    DateTime? dawnTime;
+    if (now.hour < 12) {
+      // After midnight - dawn is today
+      dawnTime = sunTimes.astronomicalTwilightStart;
+    } else {
+      // Before midnight - dawn is tomorrow
+      dawnTime = tomorrowSunTimes.astronomicalTwilightStart;
+    }
+
+    // Get star set time
+    DateTime? setTime;
+    if (isCircumpolar(starDecDeg: starDecDeg, latitudeDeg: latitudeDeg)) {
+      // Star never sets
+      setTime = null;
+    } else if (neverRises(starDecDeg: starDecDeg, latitudeDeg: latitudeDeg)) {
+      // Star never rises - shouldn't happen if currently visible
+      return (null, null);
+    } else {
+      // Get set time for today
+      setTime = getStarSetTime(
+        starRaDeg: starRaDeg,
+        starDecDeg: starDecDeg,
+        latitudeDeg: latitudeDeg,
+        longitudeDeg: longitudeDeg,
+        date: today,
+      );
+
+      // If set time is in the past, check tomorrow
+      if (setTime != null && setTime.isBefore(now)) {
+        setTime = getStarSetTime(
+          starRaDeg: starRaDeg,
+          starDecDeg: starDecDeg,
+          latitudeDeg: latitudeDeg,
+          longitudeDeg: longitudeDeg,
+          date: today.add(const Duration(days: 1)),
+        );
+      }
+    }
+
+    // Determine which comes first: dawn or star setting
+    if (setTime == null && dawnTime == null) {
+      // Polar night with circumpolar star - visible indefinitely
+      return (null, null);
+    } else if (setTime == null) {
+      // Circumpolar star - only dawn ends visibility
+      return (dawnTime, 'dawn');
+    } else if (dawnTime == null) {
+      // No dawn (polar day shouldn't happen if visible) - only setting ends visibility
+      return (setTime, 'setting');
+    } else {
+      // Both could end visibility - return the earlier one
+      if (setTime.isBefore(dawnTime)) {
+        return (setTime, 'setting');
+      } else {
+        return (dawnTime, 'dawn');
+      }
+    }
+  }
+
+  /// Get a human-readable description of when visibility ends
+  static String? getVisibilityEndDescription({
+    required double starRaDeg,
+    required double starDecDeg,
+    required double latitudeDeg,
+    required double longitudeDeg,
+    DateTime? fromTime,
+  }) {
+    final (endTime, reason) = getVisibilityEnd(
+      starRaDeg: starRaDeg,
+      starDecDeg: starDecDeg,
+      latitudeDeg: latitudeDeg,
+      longitudeDeg: longitudeDeg,
+      fromTime: fromTime,
+    );
+
+    if (endTime == null) {
+      return null;
+    }
+
+    final timeStr =
+        '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
+
+    if (reason == 'dawn') {
+      return 'Visible until $timeStr (dawn)';
+    } else if (reason == 'setting') {
+      return 'Visible until $timeStr (sets)';
+    } else {
+      return 'Visible until $timeStr';
+    }
+  }
+
+  /// Format a time with day offset notation (e.g., "23:30", "05:30 (+1)")
+  static String formatTimeWithDayOffset(DateTime time, DateTime referenceDate) {
+    final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    final refDay = DateTime(referenceDate.year, referenceDate.month, referenceDate.day);
+    final timeDay = DateTime(time.year, time.month, time.day);
+    final daysDiff = timeDay.difference(refDay).inDays;
+
+    if (daysDiff == 0) {
+      return timeStr;
+    } else if (daysDiff == 1) {
+      return '$timeStr (+1)';
+    } else {
+      return '$timeStr (+$daysDiff)';
+    }
+  }
+
+  /// Get visibility info for display purposes.
+  /// Returns a VisibilityInfo object with all the information needed for display.
+  ///
+  /// This is the single source of truth for visibility calculations used by both
+  /// the star info sheet and the saved stars list.
+  static VisibilityInfo getVisibilityInfo({
+    required double starRaDeg,
+    required double starDecDeg,
+    required double latitudeDeg,
+    required double longitudeDeg,
+    DateTime? dateTime,
+  }) {
+    final now = dateTime ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Check if star never rises at this location
+    if (neverRises(starDecDeg: starDecDeg, latitudeDeg: latitudeDeg)) {
+      return VisibilityInfo(
+        isCurrentlyVisible: false,
+        status: VisibilityStatus.neverVisible,
+        statusText: 'Never visible',
+      );
+    }
+
+    // Check if currently visible
+    final currentlyVisible = isVisible(
+      starRaDeg: starRaDeg,
+      starDecDeg: starDecDeg,
+      latitudeDeg: latitudeDeg,
+      longitudeDeg: longitudeDeg,
+      dateTime: now,
+    );
+
+    if (currentlyVisible) {
+      // Get the end time for current visibility
+      final (endTime, _) = getVisibilityEnd(
+        starRaDeg: starRaDeg,
+        starDecDeg: starDecDeg,
+        latitudeDeg: latitudeDeg,
+        longitudeDeg: longitudeDeg,
+        fromTime: now,
+      );
+
+      String? endTimeStr;
+      if (endTime != null) {
+        endTimeStr = formatTimeWithDayOffset(endTime, today);
+      }
+
+      return VisibilityInfo(
+        isCurrentlyVisible: true,
+        status: VisibilityStatus.visibleNow,
+        statusText: 'Visible now',
+        startTime: now,
+        startTimeStr: 'Now',
+        endTime: endTime,
+        endTimeStr: endTimeStr,
+      );
+    }
+
+    // Not currently visible - check why and find next visibility
+    final isAbove = isAboveHorizon(
+      starRaDeg: starRaDeg,
+      starDecDeg: starDecDeg,
+      latitudeDeg: latitudeDeg,
+      longitudeDeg: longitudeDeg,
+      dateTime: now,
+    );
+
+    final isCircumpolarStar = isCircumpolar(
+      starDecDeg: starDecDeg,
+      latitudeDeg: latitudeDeg,
+    );
+
+    // Try today first, then tomorrow
+    var (windowStart, windowEnd) = getTonightViewingWindow(
+      starRaDeg: starRaDeg,
+      starDecDeg: starDecDeg,
+      latitudeDeg: latitudeDeg,
+      longitudeDeg: longitudeDeg,
+      date: today,
+    );
+
+    // If no window today or window already passed, try tomorrow
+    if (windowStart == null || windowStart.isBefore(now)) {
+      final tomorrow = today.add(const Duration(days: 1));
+      final (tomorrowStart, tomorrowEnd) = getTonightViewingWindow(
+        starRaDeg: starRaDeg,
+        starDecDeg: starDecDeg,
+        latitudeDeg: latitudeDeg,
+        longitudeDeg: longitudeDeg,
+        date: tomorrow,
+      );
+      if (tomorrowStart != null && tomorrowStart.isAfter(now)) {
+        windowStart = tomorrowStart;
+        windowEnd = tomorrowEnd;
+      }
+    }
+
+    if (windowStart != null && windowStart.isAfter(now)) {
+      // Found next visibility window
+      final startTimeStr = formatTimeWithDayOffset(windowStart, today);
+      String? endTimeStr;
+      if (windowEnd != null) {
+        endTimeStr = formatTimeWithDayOffset(windowEnd, today);
+      }
+
+      // Determine status text based on when visibility starts
+      final diff = windowStart.difference(now);
+      String statusText;
+      if (windowStart.day == now.day) {
+        statusText = 'Tonight $startTimeStr';
+      } else if (diff.inHours < 24) {
+        statusText = 'Tomorrow $startTimeStr';
+      } else {
+        statusText = '${diff.inDays}d ${diff.inHours % 24}h';
+      }
+
+      return VisibilityInfo(
+        isCurrentlyVisible: false,
+        status: VisibilityStatus.visibleLater,
+        statusText: statusText,
+        startTime: windowStart,
+        startTimeStr: startTimeStr,
+        endTime: windowEnd,
+        endTimeStr: endTimeStr,
+      );
+    }
+
+    // No visibility window found
+    if (isCircumpolarStar) {
+      // Circumpolar star - always above horizon, just need dark
+      return VisibilityInfo(
+        isCurrentlyVisible: false,
+        status: VisibilityStatus.waitForDark,
+        statusText: 'Wait for dark',
+      );
+    } else if (isAbove) {
+      return VisibilityInfo(
+        isCurrentlyVisible: false,
+        status: VisibilityStatus.waitForDark,
+        statusText: 'Wait for dark',
+      );
+    } else {
+      return VisibilityInfo(
+        isCurrentlyVisible: false,
+        status: VisibilityStatus.belowHorizon,
+        statusText: 'Below horizon',
+      );
+    }
+  }
+}
+
+/// Enum representing the visibility status of a star
+enum VisibilityStatus {
+  visibleNow,
+  visibleLater,
+  waitForDark,
+  belowHorizon,
+  neverVisible,
+}
+
+/// Class containing visibility information for display
+class VisibilityInfo {
+  final bool isCurrentlyVisible;
+  final VisibilityStatus status;
+  final String statusText;
+  final DateTime? startTime;
+  final String? startTimeStr;
+  final DateTime? endTime;
+  final String? endTimeStr;
+
+  const VisibilityInfo({
+    required this.isCurrentlyVisible,
+    required this.status,
+    required this.statusText,
+    this.startTime,
+    this.startTimeStr,
+    this.endTime,
+    this.endTimeStr,
+  });
+
+  /// Returns a formatted string like "18:30 - 05:30 (+1)" or just the status text
+  String get formattedWindow {
+    if (startTimeStr != null && endTimeStr != null) {
+      return '$startTimeStr - $endTimeStr';
+    } else if (startTimeStr != null) {
+      return startTimeStr!;
+    }
+    return statusText;
   }
 }

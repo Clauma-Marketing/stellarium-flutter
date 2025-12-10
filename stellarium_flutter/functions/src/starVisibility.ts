@@ -7,6 +7,15 @@ const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
 
 /**
+ * Minimum altitude for practical star observation (in degrees).
+ * Set to 10 degrees above horizon to account for:
+ * - Atmospheric extinction (stars dim significantly near horizon)
+ * - Typical obstructions (trees, buildings)
+ * - Better viewing conditions
+ */
+const MIN_OBSERVATION_ALTITUDE = 10.0;
+
+/**
  * Calculate Julian Date from a JavaScript Date
  */
 function getJulianDate(date: Date): number {
@@ -117,7 +126,7 @@ export function getDirectionName(azimuthDeg: number): string {
 }
 
 /**
- * Check if star is above horizon
+ * Check if star is above minimum observation altitude
  */
 export function isAboveHorizon(
   starRaDeg: number,
@@ -133,7 +142,7 @@ export function isAboveHorizon(
     longitudeDeg,
     date
   );
-  return altitude > 0;
+  return altitude > MIN_OBSERVATION_ALTITUDE;
 }
 
 /**
@@ -326,4 +335,83 @@ export function formatTime(date: Date): string {
   const hours = date.getHours().toString().padStart(2, "0");
   const minutes = date.getMinutes().toString().padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+/**
+ * Format time with day offset indicator (e.g., "05:30 (+1)" for next day)
+ */
+export function formatTimeWithDayOffset(time: Date, referenceDate: Date): string {
+  const timeStr = formatTime(time);
+  const refDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const timeDay = new Date(time.getFullYear(), time.getMonth(), time.getDate());
+  const daysDiff = Math.round((timeDay.getTime() - refDay.getTime()) / (24 * 60 * 60 * 1000));
+
+  if (daysDiff === 0) {
+    return timeStr;
+  } else if (daysDiff === 1) {
+    return `${timeStr} (+1)`;
+  } else {
+    return `${timeStr} (+${daysDiff})`;
+  }
+}
+
+/**
+ * Get the viewing window for a star (start and end times)
+ * Returns { start, end } or null if not visible in the search period
+ */
+export function getViewingWindow(
+  starRaDeg: number,
+  starDecDeg: number,
+  latitudeDeg: number,
+  longitudeDeg: number,
+  fromDate?: Date
+): { start: Date; end: Date | null } | null {
+  const now = fromDate || new Date();
+
+  // First check if currently visible
+  if (isVisible(starRaDeg, starDecDeg, latitudeDeg, longitudeDeg, now)) {
+    // Find when visibility ends
+    const end = getVisibilityEnd(starRaDeg, starDecDeg, latitudeDeg, longitudeDeg, now);
+    return { start: now, end };
+  }
+
+  // Find next visibility start
+  const start = getNextVisibilityStart(starRaDeg, starDecDeg, latitudeDeg, longitudeDeg, now);
+  if (!start) {
+    return null;
+  }
+
+  // Find when that visibility window ends
+  // Search forward from just after the start time
+  const searchStart = new Date(start.getTime() + 60 * 1000); // 1 minute after start
+  const end = getVisibilityEnd(starRaDeg, starDecDeg, latitudeDeg, longitudeDeg, searchStart);
+
+  return { start, end };
+}
+
+/**
+ * Format the viewing window as a string (e.g., "18:30 - 05:30 (+1)")
+ */
+export function formatViewingWindow(
+  starRaDeg: number,
+  starDecDeg: number,
+  latitudeDeg: number,
+  longitudeDeg: number,
+  fromDate?: Date
+): string | null {
+  const window = getViewingWindow(starRaDeg, starDecDeg, latitudeDeg, longitudeDeg, fromDate);
+  if (!window) {
+    return null;
+  }
+
+  const now = fromDate || new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const startStr = formatTimeWithDayOffset(window.start, today);
+  if (!window.end) {
+    return startStr;
+  }
+
+  const endStr = formatTimeWithDayOffset(window.end, today);
+  return `${startStr} - ${endStr}`;
 }

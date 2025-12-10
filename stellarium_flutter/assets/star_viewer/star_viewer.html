@@ -115,7 +115,7 @@
       <line x1="19" y1="12" x2="5" y2="12"></line>
       <polyline points="12 19 5 12 12 5"></polyline>
     </svg>
-    Back
+    <span id="back-text">Back</span>
   </button>
   <div id="star-name"></div>
   <div id="spectral-type"></div>
@@ -143,10 +143,12 @@
     const spectralType = params.get('spectralType') || 'G2V';
     const customCoreColor = params.get('coreColor');
     const customSurfaceColor = params.get('surfaceColor');
+    const backText = params.get('backText') || 'Back';
 
-    // Display star name
+    // Display star name and back button text
     document.getElementById('star-name').textContent = starName;
     document.getElementById('spectral-type').textContent = 'Spectral Type: ' + spectralType;
+    document.getElementById('back-text').textContent = backText;
 
     // Spectral type to color mapping (matching your SunConfig)
     function getStarColors(spectral) {
@@ -627,8 +629,9 @@ void main() {
 
     function closeViewer() {
       cancelAnimationFrame(animationId);
-      if (window.flutter_inappwebview) {
-        window.flutter_inappwebview.callHandler('onClose');
+      // Send close message to Flutter via the FlutterChannel
+      if (window.FlutterChannel) {
+        window.FlutterChannel.postMessage('close');
       }
     }
 
