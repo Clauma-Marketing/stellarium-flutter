@@ -9,10 +9,15 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import '../features/onboarding/onboarding_service.dart';
 import '../l10n/app_localizations.dart';
 import '../services/locale_service.dart';
+import '../services/firestore_sync_service.dart';
+import '../services/notification_preferences.dart';
 import '../services/saved_stars_service.dart';
+import '../services/star_notification_service.dart';
 import '../stellarium/stellarium.dart';
+import '../utils/star_visibility.dart';
 
 const String _googleApiKey = 'AIzaSyCc4LPIozIoEHVAMFz5uyQ_LrT1nAlbmfc';
 
@@ -1467,6 +1472,11 @@ class MyStarsBottomSheet extends StatefulWidget {
 }
 
 class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
+  Map<String, String> _visibilityInfo = {};
+  double? _userLat;
+  double? _userLon;
+  bool _isLoadingVisibility = true;
+
   @override
   void initState() {
     super.initState();
@@ -1474,6 +1484,8 @@ class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
     SavedStarsService.instance.load();
     // Listen for changes
     SavedStarsService.instance.addListener(_onStarsChanged);
+    // Load visibility info
+    _loadVisibilityInfo();
   }
 
   @override
@@ -1484,6 +1496,99 @@ class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
 
   void _onStarsChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadVisibilityInfo() async {
+    try {
+      final location = await OnboardingService.getUserLocation();
+      if (location.latitude == null || location.longitude == null) {
+        if (mounted) {
+          setState(() {
+            _isLoadingVisibility = false;
+          });
+        }
+        return;
+      }
+
+      _userLat = location.latitude;
+      _userLon = location.longitude;
+
+      final stars = SavedStarsService.instance.savedStars;
+      final Map<String, String> visInfo = {};
+
+      for (final star in stars) {
+        if (star.ra == null || star.dec == null) {
+          visInfo[star.id] = 'No coordinates';
+          continue;
+        }
+
+        // Check if currently visible
+        final isVisible = StarVisibility.isVisible(
+          starRaDeg: star.ra!,
+          starDecDeg: star.dec!,
+          latitudeDeg: _userLat!,
+          longitudeDeg: _userLon!,
+          dateTime: DateTime.now(),
+        );
+
+        if (isVisible) {
+          visInfo[star.id] = 'Visible now';
+          continue;
+        }
+
+        // Get next visibility start
+        final nextVisibility = StarVisibility.getNextVisibilityStart(
+          starRaDeg: star.ra!,
+          starDecDeg: star.dec!,
+          latitudeDeg: _userLat!,
+          longitudeDeg: _userLon!,
+        );
+
+        if (nextVisibility != null) {
+          final now = DateTime.now();
+          final diff = nextVisibility.difference(now);
+          final timeStr = '${nextVisibility.hour.toString().padLeft(2, '0')}:${nextVisibility.minute.toString().padLeft(2, '0')}';
+
+          if (diff.inHours < 24) {
+            if (nextVisibility.day == now.day) {
+              visInfo[star.id] = 'Tonight $timeStr';
+            } else {
+              visInfo[star.id] = 'Tomorrow $timeStr';
+            }
+          } else {
+            visInfo[star.id] = '${diff.inDays}d ${diff.inHours % 24}h';
+          }
+        } else {
+          // Check if always visible or never visible
+          final isAbove = StarVisibility.isAboveHorizon(
+            starRaDeg: star.ra!,
+            starDecDeg: star.dec!,
+            latitudeDeg: _userLat!,
+            longitudeDeg: _userLon!,
+            dateTime: DateTime.now(),
+          );
+          if (isAbove) {
+            visInfo[star.id] = 'Wait for dark';
+          } else {
+            visInfo[star.id] = 'Below horizon';
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _visibilityInfo = visInfo;
+          _isLoadingVisibility = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading visibility info: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingVisibility = false;
+        });
+      }
+    }
   }
 
   @override
@@ -1685,6 +1790,33 @@ class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
                     fontSize: 12,
                   ),
                 ),
+              // Visibility info
+              if (_isLoadingVisibility)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: Colors.blue.shade300,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Loading...',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (_visibilityInfo.containsKey(star.id))
+                _buildVisibilityBadge(star.id, _visibilityInfo[star.id]!),
             ],
           ),
           trailing: IconButton(
@@ -1697,6 +1829,60 @@ class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
           onTap: () {
             widget.onSelectStar?.call(star);
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVisibilityBadge(String starId, String visibilityText) {
+    Color bgColor;
+    Color textColor;
+    IconData icon;
+
+    if (visibilityText == 'Visible now') {
+      bgColor = Colors.green.withValues(alpha: 0.2);
+      textColor = Colors.green.shade300;
+      icon = Icons.visibility;
+    } else if (visibilityText.startsWith('Tonight') || visibilityText.startsWith('Tomorrow')) {
+      bgColor = Colors.blue.withValues(alpha: 0.2);
+      textColor = Colors.blue.shade300;
+      icon = Icons.schedule;
+    } else if (visibilityText == 'Wait for dark') {
+      bgColor = Colors.orange.withValues(alpha: 0.2);
+      textColor = Colors.orange.shade300;
+      icon = Icons.wb_sunny;
+    } else if (visibilityText == 'Below horizon') {
+      bgColor = Colors.red.withValues(alpha: 0.2);
+      textColor = Colors.red.shade300;
+      icon = Icons.arrow_downward;
+    } else {
+      bgColor = Colors.grey.withValues(alpha: 0.2);
+      textColor = Colors.grey.shade400;
+      icon = Icons.schedule;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: textColor),
+            const SizedBox(width: 4),
+            Text(
+              visibilityText,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2070,11 +2256,41 @@ class AppSettingsBottomSheet extends StatefulWidget {
 class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
   bool _isRestoringPurchases = false;
   AdaptyProfile? _profile;
+  bool _starNotificationsEnabled = true;
 
   @override
   void initState() {
     super.initState();
     _loadSubscriptionInfo();
+    _loadNotificationPreference();
+  }
+
+  Future<void> _loadNotificationPreference() async {
+    final enabled = await NotificationPreferences.getStarNotificationsEnabled();
+    if (mounted) {
+      setState(() {
+        _starNotificationsEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _toggleStarNotifications(bool enabled) async {
+    setState(() {
+      _starNotificationsEnabled = enabled;
+    });
+
+    await NotificationPreferences.setStarNotificationsEnabled(enabled);
+
+    // Sync to Firestore for cloud-based notifications
+    await FirestoreSyncService.instance.updateNotificationPreference(enabled);
+
+    if (enabled) {
+      // Re-schedule notifications when enabled
+      await StarNotificationService.instance.scheduleAllStarNotifications();
+    } else {
+      // Cancel all notifications when disabled
+      await StarNotificationService.instance.cancelAllNotifications();
+    }
   }
 
   Future<void> _loadSubscriptionInfo() async {
@@ -2279,6 +2495,15 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
                     _buildLanguageSelector(context, currentLocale),
 
                     const SizedBox(height: 16),
+
+                    // Notifications Section (only on mobile)
+                    if (!kIsWeb) ...[
+                      _buildSectionHeader('Notifications'),
+                      _buildNotificationsSection(context),
+                      const SizedBox(height: 8),
+                      _buildTestNotificationButton(context),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Subscription Section (only on mobile)
                     if (!kIsWeb) ...[
@@ -2533,6 +2758,136 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildTestNotificationButton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await StarNotificationService.instance.sendTestNotification();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Test notification sent!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.send, size: 18),
+              label: const Text('Test Now'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.blue,
+                side: BorderSide(color: Colors.blue.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await StarNotificationService.instance.scheduleTestNotification();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Notification scheduled in 10 seconds!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.schedule, size: 18),
+              label: const Text('Test 10s'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange,
+                side: BorderSide(color: Colors.orange.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationsSection(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _toggleStarNotifications(!_starNotificationsEnabled),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: _starNotificationsEnabled
+                        ? Colors.blue.withValues(alpha: 0.15)
+                        : Colors.grey.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _starNotificationsEnabled
+                        ? Icons.notifications_active
+                        : Icons.notifications_off,
+                    color: _starNotificationsEnabled ? Colors.blue : Colors.grey,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Star Visibility Alerts',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _starNotificationsEnabled
+                            ? 'Get notified when your saved stars become visible'
+                            : 'Notifications are disabled',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _starNotificationsEnabled,
+                  onChanged: _toggleStarNotifications,
+                  activeThumbColor: Colors.blue[400],
+                  activeTrackColor: Colors.blue.withValues(alpha: 0.3),
+                  inactiveThumbColor: Colors.grey[600],
+                  inactiveTrackColor: Colors.grey[800],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

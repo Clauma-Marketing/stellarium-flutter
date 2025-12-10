@@ -92,7 +92,12 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
 
   @override
   void dispose() {
-    _cameraController?.stopImageStream();
+    // Only stop image stream if camera is initialized and streaming
+    if (_cameraController != null &&
+        _cameraController!.value.isInitialized &&
+        _cameraController!.value.isStreamingImages) {
+      _cameraController!.stopImageStream();
+    }
     _cameraController?.dispose();
     _textRecognizer.close();
     super.dispose();
@@ -180,8 +185,12 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
             _detectedNumber = normalizedNumber;
           });
 
-          // Stop the camera stream
-          await _cameraController?.stopImageStream();
+          // Stop the camera stream (check if streaming first)
+          if (_cameraController != null &&
+              _cameraController!.value.isInitialized &&
+              _cameraController!.value.isStreamingImages) {
+            await _cameraController!.stopImageStream();
+          }
 
           // Vibrate feedback
           HapticFeedback.mediumImpact();

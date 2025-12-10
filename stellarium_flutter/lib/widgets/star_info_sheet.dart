@@ -3,8 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../features/onboarding/onboarding_service.dart';
 import '../l10n/app_localizations.dart';
+import '../services/firestore_sync_service.dart';
+import '../services/notification_preferences.dart';
 import '../services/saved_stars_service.dart';
+import '../services/star_notification_service.dart';
+import '../utils/star_visibility.dart';
 
 /// Star registration info from the celestial registry API
 class StarRegistryInfo {
@@ -400,6 +405,9 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
   String? _feedbackMessage;
   bool _isLoadingRegistry = false;
   StarInfo? _registryInfo;
+  bool _notificationsEnabled = true;
+  String? _nextVisibilityTime;
+  bool _isLoadingVisibility = false;
 
   @override
   void initState() {
@@ -409,6 +417,109 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
     SavedStarsService.instance.load();
     // Start loading registry data if future is provided
     _loadRegistryData();
+    // Load notification preference and visibility info
+    _loadNotificationPreference();
+    _loadVisibilityInfo();
+  }
+
+  Future<void> _loadNotificationPreference() async {
+    final starId = _getStarId();
+    final enabled = await NotificationPreferences.getStarNotificationEnabled(starId);
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _loadVisibilityInfo() async {
+    final modelData = widget.starInfo.modelData;
+    if (modelData == null || modelData.rightAscension == 0 && modelData.declination == 0) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingVisibility = true;
+    });
+
+    try {
+      final location = await OnboardingService.getUserLocation();
+      if (location.latitude == null || location.longitude == null) {
+        if (mounted) {
+          setState(() {
+            _isLoadingVisibility = false;
+          });
+        }
+        return;
+      }
+
+      final nextVisibility = StarVisibility.getNextVisibilityStart(
+        starRaDeg: modelData.rightAscension,
+        starDecDeg: modelData.declination,
+        latitudeDeg: location.latitude!,
+        longitudeDeg: location.longitude!,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLoadingVisibility = false;
+          if (nextVisibility != null) {
+            final now = DateTime.now();
+            if (nextVisibility.day == now.day &&
+                nextVisibility.month == now.month &&
+                nextVisibility.year == now.year) {
+              // Today
+              _nextVisibilityTime =
+                  'Tonight at ${nextVisibility.hour.toString().padLeft(2, '0')}:${nextVisibility.minute.toString().padLeft(2, '0')}';
+            } else if (nextVisibility.difference(now).inDays == 0 ||
+                (nextVisibility.day == now.day + 1 &&
+                    nextVisibility.month == now.month)) {
+              // Tomorrow
+              _nextVisibilityTime =
+                  'Tomorrow at ${nextVisibility.hour.toString().padLeft(2, '0')}:${nextVisibility.minute.toString().padLeft(2, '0')}';
+            } else {
+              _nextVisibilityTime = null;
+            }
+          } else {
+            // Check if currently visible
+            final isVisible = StarVisibility.isVisible(
+              starRaDeg: modelData.rightAscension,
+              starDecDeg: modelData.declination,
+              latitudeDeg: location.latitude!,
+              longitudeDeg: location.longitude!,
+              dateTime: DateTime.now(),
+            );
+            if (isVisible) {
+              _nextVisibilityTime = 'Visible now';
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading visibility info: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingVisibility = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleNotifications() async {
+    final starId = _getStarId();
+    final newValue = !_notificationsEnabled;
+
+    setState(() {
+      _notificationsEnabled = newValue;
+    });
+
+    await NotificationPreferences.setStarNotificationEnabled(starId, newValue);
+
+    // Sync to Firestore for cloud-based notifications
+    await FirestoreSyncService.instance.updateStarNotificationPreference(starId, newValue);
+
+    // Re-schedule notifications (local backup)
+    await StarNotificationService.instance.scheduleAllStarNotifications();
   }
 
   Future<void> _loadRegistryData() async {
@@ -788,6 +899,12 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                     ),
                   ],
 
+                  // Visibility notifications toggle (only show if star has coordinates)
+                  if (modelData != null && (modelData.rightAscension != 0 || modelData.declination != 0)) ...[
+                    const SizedBox(height: 16),
+                    _buildVisibilityNotificationCard(context),
+                  ],
+
                   // Action buttons
                   const SizedBox(height: 24),
 
@@ -1066,6 +1183,115 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVisibilityNotificationCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.notifications_active,
+                color: Colors.blue.shade300,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Visibility Notifications',
+                  style: TextStyle(
+                    color: Colors.blue.shade200,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _notificationsEnabled,
+                onChanged: (value) => _toggleNotifications(),
+                activeThumbColor: Colors.blue.shade300,
+                activeTrackColor: Colors.blue.withValues(alpha: 0.3),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _notificationsEnabled
+                ? 'You\'ll be notified when this star becomes visible above the horizon in dark sky.'
+                : 'Enable to get notified when this star becomes visible.',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 12,
+            ),
+          ),
+          if (_nextVisibilityTime != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _nextVisibilityTime == 'Visible now'
+                        ? Icons.visibility
+                        : Icons.schedule,
+                    color: _nextVisibilityTime == 'Visible now'
+                        ? Colors.green.shade300
+                        : Colors.amber.shade300,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _nextVisibilityTime!,
+                    style: TextStyle(
+                      color: _nextVisibilityTime == 'Visible now'
+                          ? Colors.green.shade300
+                          : Colors.amber.shade300,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (_isLoadingVisibility) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.blue.shade300,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Calculating visibility...',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

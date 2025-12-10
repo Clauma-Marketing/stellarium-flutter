@@ -16,8 +16,12 @@ import 'widgets/star_info_sheet.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
 import 'services/analytics_service.dart';
+import 'services/background_service.dart';
+import 'services/firestore_sync_service.dart';
 import 'services/klaviyo_service.dart';
 import 'services/locale_service.dart';
+import 'services/saved_stars_service.dart';
+import 'services/star_notification_service.dart';
 import 'web_utils.dart';
 
 /// Background message handler for Firebase Messaging.
@@ -27,6 +31,39 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   // Handle push notification for Klaviyo tracking
   await KlaviyoService.instance.handlePush(message.data);
+}
+
+/// Initialize star visibility notification services
+Future<void> _initializeStarNotificationServices() async {
+  try {
+    // Initialize WorkManager for background tasks (local fallback)
+    await BackgroundService.initialize();
+
+    // Initialize notification service
+    await StarNotificationService.instance.initialize();
+
+    // Request notification permissions
+    await StarNotificationService.instance.requestPermissions();
+
+    // Load saved stars
+    await SavedStarsService.instance.load();
+
+    // Initialize Firestore sync for cloud-based notifications
+    await FirestoreSyncService.instance.initialize();
+
+    // Sync all saved stars to Firestore
+    await FirestoreSyncService.instance.syncSavedStars();
+
+    // Register periodic background task for visibility calculations (local fallback)
+    await BackgroundService.registerPeriodicTask();
+
+    // Run initial local calculation (backup for cloud)
+    await StarNotificationService.instance.scheduleAllStarNotifications();
+
+    debugPrint('Star notification services initialized successfully');
+  } catch (e) {
+    debugPrint('Error initializing star notification services: $e');
+  }
 }
 
 void main() async {
@@ -87,6 +124,9 @@ void main() async {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         KlaviyoService.instance.handlePush(message.data);
       });
+
+      // Initialize star visibility notification services
+      await _initializeStarNotificationServices();
     }
 
     runApp(const StellariumApp());

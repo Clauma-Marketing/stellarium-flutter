@@ -86,15 +86,25 @@ dependencies:
   google_maps_flutter: ^2.10.0
 
   # Firebase
-  firebase_core: ^4.2.1
-  firebase_analytics: ^12.0.4
-  firebase_crashlytics: ^5.0.5
+  firebase_core: ^3.9.0
+  firebase_analytics: ^11.4.0
+  firebase_crashlytics: ^4.3.0
+  cloud_firestore: ^5.5.0
 
   # Klaviyo for email marketing
   klaviyo_flutter: ^0.2.0
 
   # Firebase Messaging for push notifications
-  firebase_messaging: ^16.0.4
+  firebase_messaging: ^15.2.0
+
+  # Local notifications for star visibility alerts
+  flutter_local_notifications: ^18.0.1
+
+  # Background task scheduling
+  workmanager: ^0.5.2
+
+  # Timezone support for notification scheduling
+  timezone: ^0.9.4
 
   # Certificate scanner with OCR
   camera: ^0.11.0+2
