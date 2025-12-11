@@ -4,6 +4,9 @@ import '../../widgets/star_info_sheet.dart';
 
 /// Service to manage onboarding state
 class OnboardingService {
+  /// Set to true to always show onboarding (for testing)
+  static const bool forceShowOnboarding = false;
+
   static const String _onboardingCompleteKey = 'onboarding_complete';
   static const String _subscriptionShownKey = 'subscription_shown';
   static const String _userLatitudeKey = 'user_latitude';
@@ -12,8 +15,13 @@ class OnboardingService {
   static const String _foundStarNameKey = 'found_star_name';
   static const String _foundStarIdentifierKey = 'found_star_identifier';
 
+  /// Default location (New York) used when no location is saved
+  static const double defaultLatitude = 40.7128;
+  static const double defaultLongitude = -74.0060;
+
   /// Check if onboarding has been completed
   static Future<bool> isOnboardingComplete() async {
+    if (forceShowOnboarding) return false;
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_onboardingCompleteKey) ?? false;
   }
@@ -50,7 +58,7 @@ class OnboardingService {
     await prefs.setDouble(_userLongitudeKey, longitude);
   }
 
-  /// Get saved user location
+  /// Get saved user location (nullable - returns null if not saved)
   static Future<({double? latitude, double? longitude})> getUserLocation() async {
     final prefs = await SharedPreferences.getInstance();
     final lat = prefs.getDouble(_userLatitudeKey);
@@ -58,7 +66,23 @@ class OnboardingService {
     return (latitude: lat, longitude: lon);
   }
 
+  /// Get user location with default fallback (never returns null)
+  /// Use this when you need a guaranteed location for calculations
+  static Future<({double latitude, double longitude})> getUserLocationOrDefault() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lat = prefs.getDouble(_userLatitudeKey) ?? defaultLatitude;
+    final lon = prefs.getDouble(_userLongitudeKey) ?? defaultLongitude;
+    return (latitude: lat, longitude: lon);
+  }
+
+  /// Check if user has a saved location (not using default)
+  static Future<bool> hasUserLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey(_userLatitudeKey) && prefs.containsKey(_userLongitudeKey);
+  }
+
   /// Save found star from onboarding
+  /// Also marks subscription as shown so users with valid registration skip the paywall
   static Future<void> saveFoundStar(StarInfo starInfo) async {
     final prefs = await SharedPreferences.getInstance();
     final regNumber = starInfo.registryInfo?.registrationNumber;
@@ -67,6 +91,8 @@ class OnboardingService {
 
     if (regNumber != null) {
       await prefs.setString(_foundStarRegistrationKey, regNumber);
+      // Mark subscription as shown so user skips paywall on future launches
+      await prefs.setBool(_subscriptionShownKey, true);
     }
     if (name.isNotEmpty) {
       await prefs.setString(_foundStarNameKey, name);

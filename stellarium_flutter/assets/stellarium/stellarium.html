@@ -365,6 +365,40 @@
         }
       },
 
+      // Select an object without moving the camera (for gyroscope mode)
+      selectObject: function(name) {
+        if (!window.stellarium) return;
+        try {
+          const stel = window.stellarium;
+          // Try different name formats
+          var obj = stel.getObj('NAME ' + name);
+          if (!obj) obj = stel.getObj(name);
+          if (obj) {
+            // Select the object (shows crosshair marker) without moving camera
+            stel.core.selection = obj;
+            console.log('Selected (no camera move):', name);
+
+            // Send object selection to Flutter so info sheet can be shown
+            const names = typeof obj.designations === 'function' ? obj.designations() : (obj.names || [name]);
+            const info = {
+              name: (names && names.length > 0) ? names[0] : name,
+              names: names || [name],
+              type: obj.type || 'unknown',
+              vmag: obj.vmag,
+              ra: obj.ra !== undefined ? obj.ra * stel.R2D : null,
+              dec: obj.de !== undefined ? obj.de * stel.R2D : null,
+              distance: obj.distance
+            };
+            console.log('selectObject: sending objectSelected to Flutter:', info);
+            sendToFlutter('objectSelected', info);
+          } else {
+            console.log('Object not found:', name);
+          }
+        } catch(e) {
+          console.error('selectObject error:', e);
+        }
+      },
+
       lookAt: function(azimuthDeg, altitudeDeg, duration) {
         if (!window.stellarium) return;
         try {

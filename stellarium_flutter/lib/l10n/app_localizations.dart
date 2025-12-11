@@ -859,7 +859,7 @@ abstract class AppLocalizations {
   /// No description provided for @viewStarIn3D.
   ///
   /// In en, this message translates to:
-  /// **'View Star in 3D'**
+  /// **'3D View'**
   String get viewStarIn3D;
 
   /// No description provided for @catalogId.
@@ -886,10 +886,16 @@ abstract class AppLocalizations {
   /// **'Search for a star or object...'**
   String get searchPlaceholder;
 
+  /// No description provided for @welcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover the Cosmos'**
+  String get welcomeTitle;
+
   /// No description provided for @onboardingExploreUniverse.
   ///
   /// In en, this message translates to:
-  /// **'Explore the universe from your pocket'**
+  /// **'Explore the night sky, track celestial events, and find your named star among millions of others.'**
   String get onboardingExploreUniverse;
 
   /// No description provided for @onboardingGetStarted.
@@ -931,14 +937,20 @@ abstract class AppLocalizations {
   /// No description provided for @locationAccessTitle.
   ///
   /// In en, this message translates to:
-  /// **'Location Access'**
+  /// **'Allow Location?'**
   String get locationAccessTitle;
 
   /// No description provided for @locationAccessSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Allow location access to see the sky exactly as it appears from your location'**
+  /// **'See the night sky exactly as it appears from your location. We use your position for accurate star positions.'**
   String get locationAccessSubtitle;
+
+  /// No description provided for @locationAllowAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Location Access'**
+  String get locationAllowAccess;
 
   /// No description provided for @locationAccuratePositions.
   ///
@@ -1021,14 +1033,20 @@ abstract class AppLocalizations {
   /// No description provided for @notificationTitle.
   ///
   /// In en, this message translates to:
-  /// **'Stay Updated'**
+  /// **'Enable Notifications?'**
   String get notificationTitle;
 
   /// No description provided for @notificationSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Get notified about celestial events and optimal viewing conditions'**
+  /// **'Never miss meteor showers and the best nights for stargazing. We\'ll send you timely alerts before they happen.'**
   String get notificationSubtitle;
+
+  /// No description provided for @notificationAllowNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Notifications'**
+  String get notificationAllowNotifications;
 
   /// No description provided for @notificationMoonPhase.
   ///
@@ -1075,14 +1093,26 @@ abstract class AppLocalizations {
   /// No description provided for @attTitle.
   ///
   /// In en, this message translates to:
-  /// **'Privacy & Tracking'**
+  /// **'Allow Tracking?'**
   String get attTitle;
 
   /// No description provided for @attSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Allow tracking to help us improve your experience and show you relevant content'**
+  /// **'Help us improve your cosmic journey. We use data to personalize insights and suggest relevant events.'**
   String get attSubtitle;
+
+  /// No description provided for @attAllowTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Tracking'**
+  String get attAllowTracking;
+
+  /// No description provided for @attDontTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask App Not to Track'**
+  String get attDontTrack;
 
   /// No description provided for @attImproveApp.
   ///

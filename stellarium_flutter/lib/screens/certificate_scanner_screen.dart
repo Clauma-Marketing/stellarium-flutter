@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/analytics_service.dart';
 
 /// Screen for scanning star certificates to extract registration numbers
 class CertificateScannerScreen extends StatefulWidget {
@@ -180,6 +181,7 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
         // Check if we have enough confirmations
         if (_detectionCounts[normalizedNumber]! >= _requiredConfirmations) {
           // Confirmed detection!
+          AnalyticsService.instance.logScannerDetected(registrationNumber: normalizedNumber);
           setState(() {
             _hasDetected = true;
             _detectedNumber = normalizedNumber;
@@ -390,7 +392,10 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            AnalyticsService.instance.logScannerCancelled();
+            Navigator.of(context).pop();
+          },
         ),
         title: Text(l10n.scanCertificate, style: const TextStyle(color: Colors.white)),
         actions: [

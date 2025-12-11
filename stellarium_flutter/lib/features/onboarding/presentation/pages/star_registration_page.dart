@@ -4,13 +4,15 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../../screens/certificate_scanner_screen.dart';
+import '../../../../services/analytics_service.dart';
+import '../../../../services/saved_stars_service.dart';
 import '../../../../widgets/star_info_sheet.dart';
 import '../widgets/animated_starfield.dart';
 import '../widgets/permission_page_template.dart';
 
 /// Star registration page - allows users to enter their star registration number
 class StarRegistrationPage extends StatefulWidget {
-  final VoidCallback onContinue;
+  final void Function({bool starFound}) onContinue;
   final VoidCallback onSkip;
   final void Function(StarInfo starInfo)? onStarFound;
   final int? currentPage;
@@ -37,6 +39,7 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
   String? _errorMessage;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  List<SavedStar> _savedStarsWithRegistration = [];
 
   @override
   void initState() {
@@ -49,6 +52,24 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _pulseController.repeat(reverse: true);
+    _loadSavedStars();
+  }
+
+  Future<void> _loadSavedStars() async {
+    await SavedStarsService.instance.load();
+    setState(() {
+      // Filter to only show stars with registration numbers
+      _savedStarsWithRegistration = SavedStarsService.instance.savedStars
+          .where((star) => star.registrationNumber != null && star.registrationNumber!.isNotEmpty)
+          .toList();
+    });
+  }
+
+  Future<void> _selectSavedStar(SavedStar star) async {
+    if (star.registrationNumber == null) return;
+
+    _registrationController.text = star.registrationNumber!;
+    await _searchRegistrationNumber();
   }
 
   @override
@@ -76,6 +97,9 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
       return;
     }
 
+    // Track registration search
+    AnalyticsService.instance.logRegistrationSearch(registrationNumber: query);
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -85,19 +109,28 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
       final starInfo = await StarRegistryService.searchByRegistrationNumber(query);
 
       if (starInfo != null && starInfo.found) {
+        // Track successful registration find
+        AnalyticsService.instance.logRegistrationFound(
+          registrationNumber: query,
+          starName: starInfo.shortName,
+        );
         setState(() {
           _isLoading = false;
         });
         widget.onStarFound?.call(starInfo);
-        // Continue directly to the sky view
-        widget.onContinue();
+        // Continue directly to the sky view (skip subscription since star was found)
+        widget.onContinue(starFound: true);
       } else if (starInfo != null && starInfo.removalReason != null) {
+        // Track not found (removed)
+        AnalyticsService.instance.logRegistrationNotFound(registrationNumber: query);
         // Star was removed from registry
         setState(() {
           _isLoading = false;
           _errorMessage = 'REMOVED:${starInfo.removalReason}';
         });
       } else {
+        // Track not found
+        AnalyticsService.instance.logRegistrationNotFound(registrationNumber: query);
         setState(() {
           _isLoading = false;
           _errorMessage = 'NOT_FOUND';
@@ -120,13 +153,19 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
   }
 
   Future<void> _openNameStarWebsite() async {
+    // Track name a star click
+    AnalyticsService.instance.logNameStarClicked();
     final uri = Uri.parse('https://www.star-register.com');
-    if (await canLaunchUrl(uri)) {
+    try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Failed to launch URL: $e');
     }
   }
 
   Future<void> _openCertificateScanner() async {
+    // Track scanner opened
+    AnalyticsService.instance.logScannerOpened();
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (context) => const CertificateScannerScreen(),
@@ -167,82 +206,97 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+
     return AnimatedStarfield(
       starCount: 60,
       child: SafeArea(
-        child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).padding.top -
-                  MediaQuery.of(context).padding.bottom,
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 40),
-                // Pulsating icon badge
-                ScaleTransition(
-                  scale: _pulseAnimation,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          primaryBlue,
-                          primaryBlue.withValues(alpha: 0.7),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: primaryBlue.withValues(alpha: 0.5),
-                          blurRadius: 25,
-                          spreadRadius: 5,
+          child: Column(
+            children: [
+              const SizedBox(height: 40),
+              // Pulsating icon with radial gradient background
+              ScaleTransition(
+                scale: _pulseAnimation,
+                child: SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Radial gradient background (overflows container)
+                      Positioned(
+                        top: (120 - 144) / 2,
+                        left: (120 - 144) / 2,
+                        child: Container(
+                          width: 144, // icon size (120) * 1.2
+                          height: 144,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                Colors.black.withValues(alpha: 0.95),
+                                Colors.black.withValues(alpha: 0.9),
+                                Colors.black.withValues(alpha: 0.7),
+                                Colors.black.withValues(alpha: 0.5),
+                                Colors.black.withValues(alpha: 0.3),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.3, 0.5, 0.7, 0.85, 1.0],
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.star,
-                      size: 48,
-                      color: Colors.white,
-                    ),
+                      ),
+                      // Icon image
+                      Image.asset(
+                        'assets/icons/find_star.png',
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.contain,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 32),
-                // Title
-                Text(
-                  l10n.starRegTitle,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+              ),
+              const SizedBox(height: 32),
+              // Title
+              Text(
+                l10n.starRegTitle,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              // Subtitle
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  l10n.starRegSubtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.white70,
                       ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 12),
-                // Subtitle
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    l10n.starRegSubtitle,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white70,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                // Registration number input
-                _buildRegistrationInput(),
-                // Error message
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 16),
-                  _buildErrorWidget(l10n),
-                ],
-                const SizedBox(height: 32),
+              ),
+              // Spacer pushes everything below to the bottom
+              const Spacer(),
+              // Bottom section
+              // Saved stars quick select
+              if (_savedStarsWithRegistration.isNotEmpty) ...[
+                _buildSavedStarsSection(l10n),
+                const SizedBox(height: 24),
+              ],
+              // Registration number input
+              _buildRegistrationInput(),
+              // Error message
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 16),
+                _buildErrorWidget(l10n),
+              ],
+              const SizedBox(height: 32),
               // Page indicator
               if (widget.currentPage != null && widget.totalPages != null) ...[
                 Row(
@@ -337,81 +391,83 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              // Divider with text
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 1,
-                      color: Colors.white.withValues(alpha: 0.2),
+              // Only show "I didn't name a star yet" section if no saved stars
+              if (_savedStarsWithRegistration.isEmpty) ...[
+                const SizedBox(height: 32),
+                // Divider with text
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        l10n.starRegNoStarYet,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.white54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Skip for now button
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: widget.onSkip,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        width: 1.5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                    ),
                     child: Text(
-                      l10n.starRegNoStarYet,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.white54,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 1,
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Skip for now button
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: OutlinedButton(
-                  onPressed: widget.onSkip,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white70,
-                    side: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26),
-                    ),
-                  ),
-                  child: Text(
-                    l10n.onboardingSkipForNow,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      l10n.onboardingSkipForNow,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              // Name a star link
-              TextButton.icon(
-                onPressed: _openNameStarWebsite,
-                icon: Icon(
-                  Icons.star_outline,
-                  size: 18,
-                  color: primaryBlue,
-                ),
-                label: Text(
-                  l10n.starRegNameAStar,
-                  style: TextStyle(
+                const SizedBox(height: 16),
+                // Name a star link
+                TextButton.icon(
+                  onPressed: _openNameStarWebsite,
+                  icon: Icon(
+                    Icons.star_outline,
+                    size: 18,
                     color: primaryBlue,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 15,
+                  ),
+                  label: Text(
+                    l10n.starRegNameAStar,
+                    style: TextStyle(
+                      color: primaryBlue,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
               ],
-            ),
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),
@@ -421,14 +477,21 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
   Widget _buildRegistrationInput() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: Colors.white.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _errorMessage != null
               ? Colors.red.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.2),
+              : Colors.white.withValues(alpha: 0.3),
           width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ],
       ),
       child: TextField(
         controller: _registrationController,
@@ -470,22 +533,88 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.1),
+        color: Colors.black.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber, color: Colors.red, size: 20),
+          Icon(Icons.warning_amber, color: Colors.red.shade300, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               _getLocalizedError(l10n),
-              style: const TextStyle(color: Colors.red, fontSize: 13),
+              style: TextStyle(color: Colors.red.shade300, fontSize: 13),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSavedStarsSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            l10n.myStars,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _savedStarsWithRegistration.map((star) {
+            return GestureDetector(
+              onTap: _isLoading ? null : () => _selectSavedStar(star),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: primaryBlue.withValues(alpha: 0.4),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.star,
+                      size: 16,
+                      color: primaryBlue,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      star.displayName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 

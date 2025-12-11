@@ -1,9 +1,13 @@
 import 'dart:io';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../services/analytics_service.dart';
+import '../../../../services/firestore_sync_service.dart';
+import '../../../../services/klaviyo_service.dart';
+import '../../../../services/locale_service.dart';
 import '../onboarding_service.dart';
 import 'pages/att_permission_page.dart';
 import 'pages/location_permission_page.dart';
@@ -75,6 +79,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await OnboardingService.completeOnboarding();
     // Track onboarding completion
     AnalyticsService.instance.logOnboardingComplete();
+
+    // Initialize services that were deferred from startup to avoid
+    // triggering notification permission dialogs for new users
+    if (!kIsWeb) {
+      // Set up Firebase Messaging foreground handler
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        KlaviyoService.instance.handlePush(message.data);
+      });
+
+      // Initialize Klaviyo if not already initialized
+      if (!KlaviyoService.instance.isInitialized) {
+        final locale = LocaleService.instance.locale;
+        final languageCode = locale?.languageCode ??
+            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+        await KlaviyoService.instance.initialize(languageCode);
+        KlaviyoService.instance.setupTokenRefreshListener();
+      }
+
+      // Initialize Firestore sync
+      await FirestoreSyncService.instance.initialize();
+      await FirestoreSyncService.instance.syncSavedStars();
+    }
+
     widget.onComplete();
   }
 

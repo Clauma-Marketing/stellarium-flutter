@@ -77,8 +77,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     }
   }
 
-  Future<void> _completeAndContinue() async {
-    // Mark subscription screen as shown so it won't appear again
+  void _completeAndContinue() {
+    // Just continue without marking as shown - paywall will show again next launch
+    widget.onComplete();
+  }
+
+  Future<void> _completeWithSubscription() async {
+    // Mark subscription as shown only when user actually subscribes/restores
     await OnboardingService.markSubscriptionShown();
     widget.onComplete();
   }
@@ -86,11 +91,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   Future<void> _launchUrl(String url) async {
     try {
       final Uri uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        debugPrint('Could not launch $url');
-      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('Error launching URL: $e');
     }
@@ -127,7 +128,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     // Track successful subscription
     AnalyticsService.instance.logSubscriptionStart(productId: product.vendorProductId);
     view.dismiss();
-    _completeAndContinue();
+    _completeWithSubscription();
   }
 
   @override
@@ -147,7 +148,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   ) {
     debugPrint('Restore completed');
     view.dismiss();
-    _completeAndContinue();
+    _completeWithSubscription();
   }
 
   @override
@@ -218,7 +219,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     debugPrint('Web payment navigation finished');
     if (error == null && product != null) {
       view.dismiss();
-      _completeAndContinue();
+      _completeWithSubscription();
     }
   }
 

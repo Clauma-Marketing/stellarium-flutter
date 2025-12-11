@@ -76,9 +76,17 @@ class FirestoreSyncService {
     try {
       final userId = await getUserId();
       final location = await OnboardingService.getUserLocation();
-      final fcmToken = await _messaging.getToken();
       final notificationsEnabled =
           await NotificationPreferences.getStarNotificationsEnabled();
+
+      // Only get FCM token if notification permission has already been granted
+      // to avoid triggering the permission dialog
+      String? fcmToken;
+      final settings = await _messaging.getNotificationSettings();
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        fcmToken = await _messaging.getToken();
+      }
 
       // Get timezone
       final timezone = DateTime.now().timeZoneName;

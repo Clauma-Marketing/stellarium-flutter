@@ -9,7 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 import '../l10n/app_localizations.dart';
+import '../services/analytics_service.dart';
 import '../services/locale_service.dart';
 import '../services/firestore_sync_service.dart';
 import '../services/notification_preferences.dart';
@@ -323,6 +325,7 @@ class SettingsBottomSheet extends StatelessWidget {
   }
 
   void _showMyStarsSheet(BuildContext context) {
+    AnalyticsService.instance.logMyStarsOpened();
     Navigator.of(context).pop(); // Close main menu
     onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
     showModalBottomSheet(
@@ -342,6 +345,7 @@ class SettingsBottomSheet extends StatelessWidget {
   }
 
   void _showVisualEffectsSheet(BuildContext context) {
+    AnalyticsService.instance.logVisualEffectsOpened();
     Navigator.of(context).pop(); // Close main menu
     onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
     showModalBottomSheet(
@@ -358,6 +362,7 @@ class SettingsBottomSheet extends StatelessWidget {
   }
 
   void _showTimeLocationSheet(BuildContext context) {
+    AnalyticsService.instance.logTimeLocationOpened();
     Navigator.of(context).pop(); // Close main menu
     onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
     showModalBottomSheet(
@@ -374,6 +379,7 @@ class SettingsBottomSheet extends StatelessWidget {
   }
 
   void _showAppSettingsSheet(BuildContext context) {
+    AnalyticsService.instance.logAppSettingsOpened();
     Navigator.of(context).pop(); // Close main menu
     onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
     showModalBottomSheet(
@@ -414,6 +420,8 @@ class _VisualEffectsBottomSheetState extends State<VisualEffectsBottomSheet> {
   }
 
   void _handleSettingChanged(String key, bool value) {
+    // Track setting change
+    AnalyticsService.instance.logSettingChanged(setting: key, enabled: value);
     // Update local state for immediate UI feedback
     setState(() {
       _localSettings = _updateSettingValue(_localSettings, key, value);
@@ -854,19 +862,22 @@ class TimeLocationBottomSheet extends StatefulWidget {
   State<TimeLocationBottomSheet> createState() => _TimeLocationBottomSheetState();
 }
 
-class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
+class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> with WidgetsBindingObserver {
   GoogleMapController? _mapController;
   late LatLng _selectedLocation;
   final TextEditingController _searchController = TextEditingController();
   String _locationName = '';
   bool _isSearching = false;
   bool _isLoadingLocation = false;
+  bool _locationServicesDisabled = false;
+  bool _locationPermissionDeniedForever = false;
   List<PlaceSuggestion> _searchResults = [];
   Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedLocation = LatLng(
       Observer.rad2deg(widget.observer.latitude),
       Observer.rad2deg(widget.observer.longitude),
@@ -876,10 +887,25 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _mapController?.dispose();
     _debounceTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When app resumes from settings, reset the location error states
+    // so the user can try detecting location again
+    if (state == AppLifecycleState.resumed) {
+      if (_locationServicesDisabled || _locationPermissionDeniedForever) {
+        setState(() {
+          _locationServicesDisabled = false;
+          _locationPermissionDeniedForever = false;
+        });
+      }
+    }
   }
 
   Future<void> _reverseGeocodeAndUpdateField(LatLng location) async {
@@ -991,9 +1017,23 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
   Future<void> _detectCurrentLocation() async {
     setState(() {
       _isLoadingLocation = true;
+      _locationServicesDisabled = false;
+      _locationPermissionDeniedForever = false;
     });
 
     try {
+      // Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() {
+            _isLoadingLocation = false;
+            _locationServicesDisabled = true;
+          });
+        }
+        return;
+      }
+
       // Check permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -1013,13 +1053,11 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
 
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.locationPermissionPermanentlyDenied)),
-          );
+          setState(() {
+            _isLoadingLocation = false;
+            _locationPermissionDeniedForever = true;
+          });
         }
-        setState(() {
-          _isLoadingLocation = false;
-        });
         return;
       }
 
@@ -1327,22 +1365,67 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
                     ),
                   ),
 
-                // Detect location button
+                // Location services disabled or permission denied warning
+                if (_locationServicesDisabled || _locationPermissionDeniedForever)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_off, color: Colors.orange, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _locationPermissionDeniedForever
+                                ? AppLocalizations.of(context)!.locationPermissionPermanentlyDenied
+                                : AppLocalizations.of(context)!.locationServicesDisabled,
+                            style: TextStyle(
+                              color: Colors.orange.shade100,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Detect location button / Open Settings button
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                   child: ElevatedButton.icon(
-                    onPressed: _isLoadingLocation ? null : _detectCurrentLocation,
+                    onPressed: _isLoadingLocation
+                        ? null
+                        : (_locationServicesDisabled || _locationPermissionDeniedForever)
+                            ? () => openAppSettings()
+                            : _detectCurrentLocation,
                     icon: _isLoadingLocation
                         ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.my_location),
-                    label: Text(_isLoadingLocation ? AppLocalizations.of(context)!.detecting : AppLocalizations.of(context)!.useMyLocation),
+                        : Icon((_locationServicesDisabled || _locationPermissionDeniedForever)
+                            ? Icons.settings
+                            : Icons.my_location),
+                    label: Text(
+                      _isLoadingLocation
+                          ? AppLocalizations.of(context)!.detecting
+                          : (_locationServicesDisabled || _locationPermissionDeniedForever)
+                              ? AppLocalizations.of(context)!.locationOpenSettings
+                              : AppLocalizations.of(context)!.useMyLocation,
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.withValues(alpha: 0.2),
-                      foregroundColor: Colors.green,
+                      backgroundColor: (_locationServicesDisabled || _locationPermissionDeniedForever)
+                          ? Colors.orange.withValues(alpha: 0.2)
+                          : Colors.green.withValues(alpha: 0.2),
+                      foregroundColor: (_locationServicesDisabled || _locationPermissionDeniedForever)
+                          ? Colors.orange
+                          : Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -2097,6 +2180,9 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
   }
 
   Future<void> _toggleStarNotifications(bool enabled) async {
+    // Track global notification toggle
+    AnalyticsService.instance.logGlobalNotificationToggle(enabled: enabled);
+
     setState(() {
       _starNotificationsEnabled = enabled;
     });
@@ -2140,6 +2226,9 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
         final hasActiveSubscription = profile.accessLevels.values
             .any((level) => level.isActive);
 
+        // Track restore result
+        AnalyticsService.instance.logRestorePurchases(success: hasActiveSubscription);
+
         if (hasActiveSubscription) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -2157,6 +2246,8 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
         }
       }
     } catch (e) {
+      // Track restore failure
+      AnalyticsService.instance.logRestorePurchases(success: false);
       if (mounted) {
         setState(() {
           _isRestoringPurchases = false;
@@ -2406,6 +2497,10 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
+          // Track language change
+          AnalyticsService.instance.logLanguageChanged(
+            language: locale?.languageCode ?? 'system',
+          );
           LocaleService.instance.setLocale(locale);
           setState(() {});
         },

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'animated_starfield.dart';
 
@@ -16,11 +17,12 @@ class FeatureItem {
 }
 
 /// Primary blue color used throughout onboarding
-const Color primaryBlue = Color(0xFF33B4E8);
+const Color primaryBlue = Color(0xFF3355FF);
 
 /// Template widget for permission request pages during onboarding
 class PermissionPageTemplate extends StatefulWidget {
-  final IconData icon;
+  final IconData? icon;
+  final String? iconImagePath;
   final String title;
   final String subtitle;
   final List<FeatureItem> features;
@@ -37,7 +39,8 @@ class PermissionPageTemplate extends StatefulWidget {
 
   const PermissionPageTemplate({
     super.key,
-    required this.icon,
+    this.icon,
+    this.iconImagePath,
     required this.title,
     required this.subtitle,
     required this.features,
@@ -57,174 +60,125 @@ class PermissionPageTemplate extends StatefulWidget {
   State<PermissionPageTemplate> createState() => _PermissionPageTemplateState();
 }
 
-class _PermissionPageTemplateState extends State<PermissionPageTemplate>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-    _pulseController.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
+class _PermissionPageTemplateState extends State<PermissionPageTemplate> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).languageCode;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return AnimatedStarfield(
       starCount: widget.starCount,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              const SizedBox(height: 40),
-              // Icon and title side by side
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
+      child: Stack(
+        children: [
+          // Large icon with radial fade background - center at 30% from top
+          Positioned(
+            top: screenHeight * 0.30 - (screenWidth * 0.7 / 2), // 30% minus half container height
+            left: 0,
+            right: 0,
+            child: _buildIconWithBackground(screenWidth, screenHeight),
+          ),
+          // Content overlay
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
                 children: [
-                  ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            primaryBlue,
-                            primaryBlue.withValues(alpha: 0.7),
+                  const SizedBox(height: 24),
+                  // Logo header
+                  SvgPicture.asset(
+                    locale == 'de' ? 'assets/logo_de.svg' : 'assets/star-reg_logo.svg',
+                    height: 32,
+                  ),
+                  const Spacer(flex: 8),
+                  // Title with shadow for readability
+                  Text(
+                    widget.title,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.8),
+                              blurRadius: 20,
+                            ),
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              blurRadius: 40,
+                            ),
                           ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: primaryBlue.withValues(alpha: 0.5),
-                            blurRadius: 12,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        widget.icon,
-                        size: 20,
-                        color: Colors.white,
-                      ),
-                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(width: 12),
-                  Flexible(
+                  const SizedBox(height: 16),
+                  // Subtitle with shadow for readability
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text(
-                      widget.title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                      widget.subtitle,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            height: 1.4,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.8),
+                                blurRadius: 15,
+                              ),
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                blurRadius: 30,
+                              ),
+                            ],
                           ),
                       textAlign: TextAlign.center,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Subtitle
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  widget.subtitle,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Features list
-              Expanded(
-                child: ListView(
-                  children: [
-                    ...widget.features.map((feature) => _buildFeatureItem(feature)),
-                    if (widget.customContent != null) ...[
-                      const SizedBox(height: 24),
-                      widget.customContent!,
-                    ],
+                  // Custom content or features
+                  if (widget.customContent != null) ...[
+                    const SizedBox(height: 24),
+                    widget.customContent!,
                   ],
-                ),
-              ),
-              // Privacy notice
-              if (widget.privacyNotice != null) ...[
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    widget.privacyNotice!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white38,
+                  if (widget.features.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    ...widget.features.map((feature) => _buildFeatureItem(feature)),
+                  ],
+                  const Spacer(flex: 1),
+                  // Page indicator
+                  if (widget.currentPage != null && widget.totalPages != null) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(widget.totalPages!, (index) {
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: widget.currentPage == index ? 24 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            color: widget.currentPage == index
+                                ? primaryBlue
+                                : Colors.white.withValues(alpha: 0.3),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  // Primary button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: widget.isLoading ? null : widget.onPrimaryPressed,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
                         ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-              // Page indicator
-              if (widget.currentPage != null && widget.totalPages != null) ...[
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(widget.totalPages!, (index) {
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: widget.currentPage == index ? 24 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        color: widget.currentPage == index
-                            ? primaryBlue
-                            : Colors.white.withValues(alpha: 0.3),
                       ),
-                    );
-                  }),
-                ),
-              ],
-              const SizedBox(height: 24),
-              // Primary button
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: widget.isLoading ? null : widget.onPrimaryPressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    elevation: 4,
-                    shadowColor: primaryBlue.withValues(alpha: 0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26),
-                    ),
-                    padding: EdgeInsets.zero,
-                  ),
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [primaryBlue, Color(0xFF64B5F6)],
-                      ),
-                      borderRadius: BorderRadius.circular(26),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
                       child: widget.isLoading
                           ? const SizedBox(
                               width: 24,
@@ -237,36 +191,101 @@ class _PermissionPageTemplateState extends State<PermissionPageTemplate>
                           : Text(
                               widget.primaryButtonText,
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 17,
                                 fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
+                                letterSpacing: 0.3,
                               ),
                             ),
                     ),
                   ),
-                ),
-              ),
-              // Secondary button
-              if (widget.secondaryButtonText != null && widget.onSecondaryPressed != null) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: widget.onSecondaryPressed,
-                    child: Text(
-                      widget.secondaryButtonText!,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
+                  // Secondary button
+                  if (widget.secondaryButtonText != null && widget.onSecondaryPressed != null) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: TextButton(
+                        onPressed: widget.onSecondaryPressed,
+                        child: Text(
+                          widget.secondaryButtonText!,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 32),
-            ],
+                  ],
+                  SizedBox(height: widget.secondaryButtonText != null ? 24 : 48),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIconWithBackground(double screenWidth, double screenHeight) {
+    // Icon size relative to screen
+    final double iconSize = screenWidth * 0.55;
+    // Background gradient - size of icon + 20%
+    final double backgroundSize = iconSize * 1.4;
+    // Container size for layout (smaller, based on icon)
+    final double containerSize = screenWidth * 0.7;
+
+    return SizedBox(
+      width: screenWidth,
+      height: containerSize,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          // Radial gradient background (black circle fading out) - larger than container
+          Positioned(
+            top: (containerSize - backgroundSize) / 2,
+            left: (screenWidth - backgroundSize) / 2,
+            child: Container(
+              width: backgroundSize,
+              height: backgroundSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.black.withValues(alpha: 0.95),
+                    Colors.black.withValues(alpha: 0.9),
+                    Colors.black.withValues(alpha: 0.7),
+                    Colors.black.withValues(alpha: 0.5),
+                    Colors.black.withValues(alpha: 0.3),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.3, 0.5, 0.7, 0.85, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // Icon image or fallback icon - centered in container
+          if (widget.iconImagePath != null)
+            Image.asset(
+              widget.iconImagePath!,
+              width: iconSize,
+              height: iconSize,
+              fit: BoxFit.contain,
+            )
+          else if (widget.icon != null)
+            Icon(
+              widget.icon,
+              size: iconSize * 0.5,
+              color: primaryBlue,
+            ),
+        ],
       ),
     );
   }

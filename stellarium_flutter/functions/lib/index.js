@@ -115,6 +115,7 @@ exports.checkStarVisibility = (0, scheduler_1.onSchedule)({
  * and send it if appropriate.
  */
 async function checkAndNotifyForStar(userId, starId, star, userData) {
+    var _a, _b, _c;
     const now = new Date();
     // Check if star is currently visible
     const currentlyVisible = (0, starVisibility_1.isVisible)(star.ra, star.dec, userData.latitude, userData.longitude, now);
@@ -148,8 +149,10 @@ async function checkAndNotifyForStar(userId, starId, star, userData) {
     // Build and send notification
     try {
         const direction = (0, starVisibility_1.getDirectionName)((0, starVisibility_1.getStarAzimuth)(star.ra, star.dec, userData.latitude, userData.longitude, notificationTime));
-        // Get the full viewing window (start - end times)
-        const viewingWindow = (0, starVisibility_1.formatViewingWindow)(star.ra, star.dec, userData.latitude, userData.longitude, notificationTime);
+        // Get the full viewing window (start - end times) in user's local timezone
+        // Default to UTC (0) if timezone offset is not available
+        const timezoneOffset = (_a = userData.timezoneOffsetMinutes) !== null && _a !== void 0 ? _a : 0;
+        const viewingWindow = (0, starVisibility_1.formatViewingWindowLocal)(star.ra, star.dec, userData.latitude, userData.longitude, timezoneOffset, notificationTime);
         let body;
         if (currentlyVisible) {
             if (viewingWindow) {
@@ -197,7 +200,9 @@ async function checkAndNotifyForStar(userId, starId, star, userData) {
         await messaging.send(message);
         // Record that we sent this notification
         await recordNotificationSent(userId, starId);
-        console.log(`Sent notification to ${userId} for star ${star.displayName}`);
+        console.log(`Sent notification to ${userId} for star ${star.displayName}:`);
+        console.log(`  Title: ${(_b = message.notification) === null || _b === void 0 ? void 0 : _b.title}`);
+        console.log(`  Body: ${(_c = message.notification) === null || _c === void 0 ? void 0 : _c.body}`);
         return true;
     }
     catch (error) {

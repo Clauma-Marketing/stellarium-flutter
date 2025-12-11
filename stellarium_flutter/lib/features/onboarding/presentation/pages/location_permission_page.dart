@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../../services/locale_service.dart';
 import '../widgets/permission_page_template.dart';
 
@@ -38,23 +39,6 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
   Position? _position;
   String? _locationName;
 
-  List<FeatureItem> _getFeatures(AppLocalizations l10n) => [
-    FeatureItem(
-      icon: Icons.my_location,
-      title: l10n.locationAccuratePositions,
-      description: l10n.locationAccuratePositionsDesc,
-    ),
-    FeatureItem(
-      icon: Icons.explore,
-      title: l10n.locationCompassNav,
-      description: l10n.locationCompassNavDesc,
-    ),
-    FeatureItem(
-      icon: Icons.schedule,
-      title: l10n.locationRiseSetTimes,
-      description: l10n.locationRiseSetTimesDesc,
-    ),
-  ];
 
   Future<void> _requestLocationPermission() async {
     if (!mounted) return;
@@ -115,6 +99,9 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       // Always save location even if widget unmounted (user skipped while loading)
       widget.onLocationObtained?.call(position.latitude, position.longitude);
 
+      // Track permission granted
+      AnalyticsService.instance.logPermissionGranted(permission: 'location');
+
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -146,6 +133,9 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       // Always save location even if widget unmounted (user skipped while loading)
       widget.onLocationObtained?.call(position.latitude, position.longitude);
 
+      // Track permission granted
+      AnalyticsService.instance.logPermissionGranted(permission: 'location');
+
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -162,6 +152,11 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
         _errorMessage = 'LOCATION_FAILED_BROWSER';
       });
     }
+  }
+
+  void _skipPermission() {
+    AnalyticsService.instance.logPermissionSkipped(permission: 'location');
+    widget.onSkip();
   }
 
   void _openSettings() {
@@ -250,19 +245,18 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
     }
 
     return PermissionPageTemplate(
-      icon: Icons.location_on,
+      iconImagePath: 'assets/icons/location.png',
       title: l10n.locationAccessTitle,
       subtitle: l10n.locationAccessSubtitle,
-      features: _getFeatures(l10n),
+      features: const [],
       primaryButtonText: _errorMessage == 'LOCATION_PERMISSION_PERMANENTLY_DENIED'
           ? l10n.locationOpenSettings
-          : (_isLoading ? l10n.locationGettingLocation : l10n.onboardingContinue),
+          : (_isLoading ? l10n.locationGettingLocation : l10n.locationAllowAccess),
       secondaryButtonText: l10n.onboardingSkipForNow,
       onPrimaryPressed: _errorMessage == 'LOCATION_PERMISSION_PERMANENTLY_DENIED'
           ? _openSettings
           : _requestLocationPermission,
-      onSecondaryPressed: _isLoading ? null : widget.onSkip,
-      privacyNotice: l10n.locationPrivacyNotice,
+      onSecondaryPressed: _isLoading ? null : _skipPermission,
       isLoading: _isLoading,
       customContent: _errorMessage != null ? _buildErrorWidget(l10n) : null,
       currentPage: widget.currentPage,
@@ -295,7 +289,7 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
 
   Widget _buildConfirmationView(AppLocalizations l10n) {
     return PermissionPageTemplate(
-      icon: Icons.check_circle,
+      iconImagePath: 'assets/icons/location.png',
       title: l10n.locationConfirmedTitle,
       subtitle: l10n.locationConfirmedSubtitle,
       features: const [],

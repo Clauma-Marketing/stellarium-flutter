@@ -39,8 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Default observer - will be updated with saved location
   Observer _observer = Observer.now(
-    latitude: Observer.deg2rad(40.7128), // New York (default)
-    longitude: Observer.deg2rad(-74.0060),
+    latitude: Observer.deg2rad(OnboardingService.defaultLatitude),
+    longitude: Observer.deg2rad(OnboardingService.defaultLongitude),
   );
 
   @override
@@ -56,24 +56,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadSavedLocation() async {
-    final location = await OnboardingService.getUserLocation();
-    if (location.latitude != null && location.longitude != null) {
-      setState(() {
-        _observer = Observer.now(
-          latitude: Observer.deg2rad(location.latitude!),
-          longitude: Observer.deg2rad(location.longitude!),
-        );
-      });
-      // Also update the engine/webview location
-      _skyViewKey.currentState?.webView?.setLocation(
-        location.latitude!,
-        location.longitude!,
+    final location = await OnboardingService.getUserLocationOrDefault();
+    setState(() {
+      _observer = Observer.now(
+        latitude: Observer.deg2rad(location.latitude),
+        longitude: Observer.deg2rad(location.longitude),
       );
-      _skyViewKey.currentState?.engine?.setLocation(
-        latitude: Observer.deg2rad(location.latitude!),
-        longitude: Observer.deg2rad(location.longitude!),
-      );
-    }
+    });
+    // Also update the engine/webview location
+    _skyViewKey.currentState?.webView?.setLocation(
+      location.latitude,
+      location.longitude,
+    );
+    _skyViewKey.currentState?.engine?.setLocation(
+      latitude: Observer.deg2rad(location.latitude),
+      longitude: Observer.deg2rad(location.longitude),
+    );
     // Reverse geocode to get location name
     _reverseGeocodeCurrentLocation();
   }
@@ -184,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   final StellariumSettings _settings = StellariumSettings();
-  bool _gyroscopeEnabled = true; // Enable gyroscope/movement by default
+  bool _gyroscopeEnabled = false; // Start disabled, enable when gyroscope is confirmed available
   bool _gyroscopeAvailable = false;
   bool _subMenuOpening = false; // Track if sub-menu is about to open
   StarInfo? _selectedStarInfo; // Currently selected star info (shown inline, not modal)
@@ -260,6 +258,10 @@ class _HomeScreenState extends State<HomeScreen> {
               onGyroscopeAvailabilityChanged: (available) {
                 setState(() {
                   _gyroscopeAvailable = available;
+                  // Auto-enable gyroscope when it becomes available
+                  if (available && !_gyroscopeEnabled) {
+                    _gyroscopeEnabled = true;
+                  }
                 });
               },
               onObjectSelected: _onObjectSelected,
@@ -298,17 +300,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 gyroscopeAvailable: _gyroscopeAvailable,
                 searchController: _searchController,
                 onAtmosphereTap: () {
-                  _onSettingChanged('atmosphere', !_settings.atmosphere);
+                  final newValue = !_settings.atmosphere;
+                  AnalyticsService.instance.logAtmosphereToggle(enabled: newValue);
+                  _onSettingChanged('atmosphere', newValue);
                 },
                 onGyroscopeTap: () {
                   setState(() {
                     _gyroscopeEnabled = !_gyroscopeEnabled;
+                    AnalyticsService.instance.logGyroscopeToggle(enabled: _gyroscopeEnabled);
                   });
                 },
-                onSearchTap: _showSearchHistory,
+                onSearchTap: () {
+                  AnalyticsService.instance.logSearchFocused();
+                  _showSearchHistory();
+                },
                 onSearchSubmitted: _searchAndPoint,
                 onSearchChanged: _onSearchChanged,
-                onHamburgerTap: _showSettingsBottomSheet,
+                onHamburgerTap: () {
+                  AnalyticsService.instance.logMenuOpened();
+                  _showSettingsBottomSheet();
+                },
                 onScanTap: _openScanner,
                 searchSuggestions: _searchSuggestions,
                 onSuggestionTap: _onSuggestionTap,
@@ -341,18 +352,16 @@ class _HomeScreenState extends State<HomeScreen> {
       registryFuture: _registryFuture,
       onClose: _closeStarInfo,
       onPointAt: () {
+        // Track point at action
+        AnalyticsService.instance.logStarPointAt(starName: _selectedStarInfo!.shortName);
         final modelData = _selectedStarInfo!.modelData;
         if (modelData != null && modelData.identifier.isNotEmpty) {
-          final searchId = modelData.searchIdentifier;
-          _skyViewKey.currentState?.webView?.pointAt(searchId);
-          _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
-            if (obj != null) {
-              _skyViewKey.currentState?.engine?.pointAt(obj);
-            }
-          });
+          _pointAtOrSelect(modelData.searchIdentifier);
         }
       },
       onNameStar: () async {
+        // Track name star click
+        AnalyticsService.instance.logNameStarClicked();
         final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
         final languageCode = locale.languageCode;
 
@@ -393,8 +402,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
-        _closeStarInfo();
-
         // Build URL based on language
         final baseUrl = languageCode == 'de'
             ? 'https://www.sterntaufe-deutschland.de/products/sterntaufe'
@@ -407,11 +414,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
         debugPrint('onNameStar: Opening URL: $uri');
 
-        if (await canLaunchUrl(uri)) {
+        // Launch URL first, then close the info panel
+        try {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (e) {
+          debugPrint('onNameStar: Failed to launch URL: $e');
         }
+
+        _closeStarInfo();
       },
       onViewIn3D: (effectiveName) {
+        // Track 3D view action
+        AnalyticsService.instance.logStarView3D(starName: effectiveName);
         final starInfo = _selectedStarInfo!;
         final selectionInfo = _selectedObjectInfo;
         _closeStarInfo();
@@ -436,6 +450,11 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       starTrackEnabled: _starTrackEnabled,
       onToggleStarTrack: (enabled) {
+        // Track star path toggle
+        AnalyticsService.instance.logStarPathToggle(
+          starName: _selectedStarInfo!.shortName,
+          enabled: enabled,
+        );
         setState(() {
           _starTrackEnabled = enabled;
         });
@@ -456,6 +475,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _skyViewKey.currentState?.webView?.clearCustomLabel();
     _skyViewKey.currentState?.webView?.stopGuidance();
     _skyViewKey.currentState?.webView?.setStarTrackVisible(false);
+  }
+
+  /// Helper to point at or select a star based on gyroscope mode.
+  /// In gyroscope mode, only selects the object (shows marker) without moving camera.
+  /// In normal mode, points at the object and moves camera to it.
+  void _pointAtOrSelect(String searchId) {
+    if (_gyroscopeEnabled) {
+      _skyViewKey.currentState?.webView?.selectObject(searchId);
+    } else {
+      _skyViewKey.currentState?.webView?.pointAt(searchId);
+      _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
+        if (obj != null) {
+          _skyViewKey.currentState?.engine?.pointAt(obj);
+        }
+      });
+    }
   }
 
   void _showTimeLocationSheet() {
@@ -946,16 +981,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _skyViewKey.currentState?.webView?.setTouchEnabled(true);
         },
         onSelectStar: (star) {
-          // Only point at the star if gyroscope is not enabled
-          // When gyroscope is active, pointing disrupts the gyroscope control
-          if (!_gyroscopeEnabled) {
-            _skyViewKey.currentState?.webView?.pointAt(star.searchQuery);
-            _skyViewKey.currentState?.engine?.search(star.searchQuery).then((obj) {
-              if (obj != null) {
-                _skyViewKey.currentState?.engine?.pointAt(obj);
-              }
-            });
-          }
+          _pointAtOrSelect(star.searchQuery);
           // Create SelectedObjectInfo to use the same flow as clicking on a star
           // This ensures the registry API is called and coordinates are fetched
           final names = <String>[star.id];
@@ -1147,6 +1173,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onSuggestionTap(SearchSuggestion suggestion) {
+    // Track suggestion selection
+    AnalyticsService.instance.logSearchSuggestionSelected(suggestion: suggestion.value);
     // Execute the search from history
     setState(() {
       _searchSuggestions = [];
@@ -1156,6 +1184,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Opens the certificate scanner and searches for the detected registration number
   Future<void> _openScanner() async {
+    // Track scanner opened
+    AnalyticsService.instance.logScannerOpened();
+
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (context) => const CertificateScannerScreen(),
@@ -1199,17 +1230,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Clear selection custom label - persistent labels handle saved star names
     _skyViewKey.currentState?.webView?.clearCustomLabel();
 
-    // Point at the object via WebView (mobile)
-    _skyViewKey.currentState?.webView?.pointAt(trimmedQuery);
-
-    // Point at the object via engine (web) - need to search first
-    final engine = _skyViewKey.currentState?.engine;
-    if (engine != null) {
-      final obj = await engine.search(trimmedQuery);
-      if (obj != null) {
-        engine.pointAt(obj);
-      }
-    }
+    _pointAtOrSelect(trimmedQuery);
   }
 
   Future<void> _searchRegistrationNumber(String registrationNumber) async {
@@ -1236,13 +1257,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Auto-point at the star using formatted identifier (e.g., "HIP 14778")
         final modelData = starInfo.modelData;
         if (modelData != null && modelData.identifier.isNotEmpty) {
-          final searchId = modelData.searchIdentifier;
-          _skyViewKey.currentState?.webView?.pointAt(searchId);
-          _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
-            if (obj != null) {
-              _skyViewKey.currentState?.engine?.pointAt(obj);
-            }
-          });
+          _pointAtOrSelect(modelData.searchIdentifier);
 
           // Show registered name as custom label if available and auto-save
           if (starInfo.isRegistered && starInfo.registryInfo != null) {

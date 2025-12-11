@@ -570,9 +570,15 @@ class StellariumWebViewState extends State<StellariumWebView>
     _safeRunJavaScript('stellariumAPI.setFov($fovDeg, $duration)');
   }
 
-  /// Point at a celestial object by name
+  /// Point at a celestial object by name (moves camera to object)
   void pointAt(String name, [double duration = 1.0]) {
     _safeRunJavaScript('stellariumAPI.pointAt("$name", $duration)');
+  }
+
+  /// Select a celestial object by name without moving the camera
+  /// Use this in gyroscope mode to show the selection marker without changing view
+  void selectObject(String name) {
+    _safeRunJavaScript('stellariumAPI.selectObject("$name")');
   }
 
   /// Look at a specific direction (azimuth/altitude in radians)

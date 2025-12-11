@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../features/onboarding/onboarding_service.dart';
 import '../l10n/app_localizations.dart';
+import '../services/analytics_service.dart';
 import '../services/firestore_sync_service.dart';
 import '../services/notification_preferences.dart';
 import '../services/saved_stars_service.dart';
@@ -561,22 +562,15 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
     });
 
     try {
-      final location = await OnboardingService.getUserLocation();
-      if (location.latitude == null || location.longitude == null) {
-        if (mounted) {
-          setState(() {
-            _isLoadingVisibility = false;
-          });
-        }
-        return;
-      }
+      // Get location with default fallback (never returns null)
+      final location = await OnboardingService.getUserLocationOrDefault();
 
       // Use the shared visibility info helper for consistent calculations
       final visibility = StarVisibility.getVisibilityInfo(
         starRaDeg: modelData.rightAscension,
         starDecDeg: modelData.declination,
-        latitudeDeg: location.latitude!,
-        longitudeDeg: location.longitude!,
+        latitudeDeg: location.latitude,
+        longitudeDeg: location.longitude,
       );
 
       if (mounted) {
@@ -598,6 +592,12 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
   Future<void> _toggleNotifications() async {
     final starId = _getStarId();
     final newValue = !_notificationsEnabled;
+
+    // Track notification toggle
+    AnalyticsService.instance.logStarNotificationToggle(
+      starName: widget.starInfo.shortName,
+      enabled: newValue,
+    );
 
     setState(() {
       _notificationsEnabled = newValue;
@@ -753,6 +753,13 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
 
     final service = SavedStarsService.instance;
     final nowSaved = await service.toggleStar(star);
+
+    // Track save/remove action
+    if (nowSaved) {
+      AnalyticsService.instance.logStarSave(starName: star.displayName);
+    } else {
+      AnalyticsService.instance.logStarRemove(starName: star.displayName);
+    }
 
     // Service notifies listeners, which triggers setState
     // Just update the feedback message

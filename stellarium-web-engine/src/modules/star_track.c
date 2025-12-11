@@ -32,6 +32,11 @@ typedef struct star_track {
         int     nb_points;         // Number of points in the path
         double  (*path_azalt)[2];  // Path positions in azimuth/altitude
         double  *hours;            // Hour of day for each point
+        const obj_t *selection;    // Pointer to cached selection object
+        double   cached_lat;       // Observer latitude when cached
+        double   cached_lon;       // Observer longitude when cached
+        double   cached_utc;       // Observer UTC (day) when cached
+        bool     valid;            // Whether cache is valid
     } cache;
 
 } star_track_t;
@@ -53,6 +58,11 @@ static int star_track_init(obj_t *obj, json_value *args)
     track->cache.nb_points = 0;
     track->cache.path_azalt = NULL;
     track->cache.hours = NULL;
+    track->cache.selection = NULL;
+    track->cache.cached_lat = 0;
+    track->cache.cached_lon = 0;
+    track->cache.cached_utc = 0;
+    track->cache.valid = false;
     return 0;
 }
 
@@ -94,14 +104,46 @@ static void compute_azalt_at_time(const obj_t *selection,
 }
 
 /*
+ * Check if the cache needs to be updated.
+ * Returns true if the cache is stale or invalid.
+ */
+static bool cache_needs_update(star_track_t *track, const obj_t *selection,
+                               const observer_t *obs)
+{
+    if (!track->cache.valid) return true;
+    if (track->cache.nb_points != PATH_POINTS) return true;
+
+    // Check if selection changed (compare pointers)
+    if (selection != track->cache.selection) return true;
+
+    // Check if observer location changed significantly (> 0.01 degrees)
+    double lat_diff = fabs(obs->phi - track->cache.cached_lat);
+    double lon_diff = fabs(obs->elong - track->cache.cached_lon);
+    if (lat_diff > 0.0002 || lon_diff > 0.0002) return true;  // ~0.01 degrees in radians
+
+    // Check if day changed (path needs recalc for new date)
+    double current_day = floor(obs->utc);
+    double cached_day = floor(track->cache.cached_utc);
+    if (current_day != cached_day) return true;
+
+    return false;
+}
+
+/*
  * Update the cached path data for the selected object.
  * Computes positions at fixed clock hours (0:00, 0:10, 0:20, etc.)
  * to prevent flickering of labels when time changes.
+ * Only recalculates when selection, location, or date changes.
  */
 static void update_path_cache(star_track_t *track, const obj_t *selection,
                               const observer_t *obs)
 {
     int i;
+
+    // Check if we need to recalculate
+    if (!cache_needs_update(track, selection, obs)) {
+        return;  // Cache is still valid, skip expensive calculations
+    }
 
     // Allocate or reallocate cache arrays if needed
     if (track->cache.nb_points != PATH_POINTS) {
@@ -130,6 +172,13 @@ static void update_path_cache(star_track_t *track, const obj_t *selection,
                               &track->cache.path_azalt[i][0],
                               &track->cache.path_azalt[i][1]);
     }
+
+    // Update cache metadata
+    track->cache.selection = selection;
+    track->cache.cached_lat = obs->phi;
+    track->cache.cached_lon = obs->elong;
+    track->cache.cached_utc = obs->utc;
+    track->cache.valid = true;
 }
 
 /*

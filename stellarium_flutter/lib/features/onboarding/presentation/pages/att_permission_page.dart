@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../../services/analytics_service.dart';
 import '../widgets/permission_page_template.dart';
 
 /// ATT (App Tracking Transparency) permission page - iOS only
@@ -29,23 +30,6 @@ class AttPermissionPage extends StatefulWidget {
 class _AttPermissionPageState extends State<AttPermissionPage> {
   bool _isLoading = false;
 
-  List<FeatureItem> _getFeatures(AppLocalizations l10n) => [
-    FeatureItem(
-      icon: Icons.analytics_outlined,
-      title: l10n.attImproveApp,
-      description: l10n.attImproveAppDesc,
-    ),
-    FeatureItem(
-      icon: Icons.ads_click,
-      title: l10n.attRelevantContent,
-      description: l10n.attRelevantContentDesc,
-    ),
-    FeatureItem(
-      icon: Icons.privacy_tip_outlined,
-      title: l10n.attPrivacyMatters,
-      description: l10n.attPrivacyMattersDesc,
-    ),
-  ];
 
   Future<void> _requestAttPermission() async {
     setState(() {
@@ -60,7 +44,13 @@ class _AttPermissionPageState extends State<AttPermissionPage> {
 
         if (status == TrackingStatus.notDetermined) {
           // Request permission
-          await AppTrackingTransparency.requestTrackingAuthorization();
+          final newStatus = await AppTrackingTransparency.requestTrackingAuthorization();
+          // Track result
+          if (newStatus == TrackingStatus.authorized) {
+            AnalyticsService.instance.logPermissionGranted(permission: 'att');
+          } else {
+            AnalyticsService.instance.logPermissionSkipped(permission: 'att');
+          }
         }
       }
     } catch (e) {
@@ -74,19 +64,23 @@ class _AttPermissionPageState extends State<AttPermissionPage> {
     widget.onContinue();
   }
 
+  void _skipPermission() {
+    AnalyticsService.instance.logPermissionSkipped(permission: 'att');
+    widget.onSkip();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return PermissionPageTemplate(
-      icon: Icons.shield_outlined,
+      iconImagePath: 'assets/icons/privacy.png',
       title: l10n.attTitle,
       subtitle: l10n.attSubtitle,
-      features: _getFeatures(l10n),
-      primaryButtonText: _isLoading ? l10n.onboardingRequesting : l10n.onboardingContinue,
-      secondaryButtonText: l10n.onboardingSkip,
+      features: const [],
+      primaryButtonText: _isLoading ? l10n.onboardingRequesting : l10n.attAllowTracking,
+      secondaryButtonText: l10n.attDontTrack,
       onPrimaryPressed: _requestAttPermission,
-      onSecondaryPressed: widget.onSkip,
-      privacyNotice: l10n.attPrivacyNotice,
+      onSecondaryPressed: _skipPermission,
       isLoading: _isLoading,
       currentPage: widget.currentPage,
       totalPages: widget.totalPages,

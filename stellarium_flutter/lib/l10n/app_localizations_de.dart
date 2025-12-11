@@ -425,8 +425,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get searchPlaceholder => 'Stern oder Objekt suchen...';
 
   @override
+  String get welcomeTitle => 'Entdecke den Kosmos';
+
+  @override
   String get onboardingExploreUniverse =>
-      'Entdecke das Universum aus deiner Tasche';
+      'Erkunde den Nachthimmel, verfolge Himmelsereignisse und finde deinen benannten Stern unter Millionen anderen.';
 
   @override
   String get onboardingGetStarted => 'Los geht\'s';
@@ -447,11 +450,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get onboardingRequesting => 'Anfrage läuft...';
 
   @override
-  String get locationAccessTitle => 'Standortzugriff';
+  String get locationAccessTitle => 'Standort erlauben?';
 
   @override
   String get locationAccessSubtitle =>
-      'Erlaube Standortzugriff, um den Himmel genau so zu sehen, wie er von deinem Standort aus erscheint';
+      'Sieh den Nachthimmel genau so, wie er von deinem Standort aus erscheint. Wir nutzen deine Position für genaue Sternpositionen.';
+
+  @override
+  String get locationAllowAccess => 'Standortzugriff erlauben';
 
   @override
   String get locationAccuratePositions => 'Genaue Sternpositionen';
@@ -500,11 +506,14 @@ class AppLocalizationsDe extends AppLocalizations {
       'Standortermittlung fehlgeschlagen. Bitte erlaube den Standortzugriff in deinem Browser.';
 
   @override
-  String get notificationTitle => 'Bleib informiert';
+  String get notificationTitle => 'Benachrichtigungen aktivieren?';
 
   @override
   String get notificationSubtitle =>
-      'Erhalte Benachrichtigungen über Himmelsereignisse und optimale Beobachtungsbedingungen';
+      'Verpasse nie Sternschnuppen und die besten Nächte für die Sternenbeobachtung. Wir senden dir rechtzeitig Hinweise, bevor sie stattfinden.';
+
+  @override
+  String get notificationAllowNotifications => 'Benachrichtigungen erlauben';
 
   @override
   String get notificationMoonPhase => 'Mondphasen-Hinweise';
@@ -532,11 +541,17 @@ class AppLocalizationsDe extends AppLocalizations {
       'Du kannst die Benachrichtigungseinstellungen jederzeit in der App ändern.';
 
   @override
-  String get attTitle => 'Datenschutz & Tracking';
+  String get attTitle => 'Tracking erlauben?';
 
   @override
   String get attSubtitle =>
-      'Erlaube Tracking, um uns zu helfen, dein Erlebnis zu verbessern und dir relevante Inhalte zu zeigen';
+      'Hilf uns, deine kosmische Reise zu verbessern. Wir nutzen Daten, um Einblicke zu personalisieren und relevante Ereignisse vorzuschlagen.';
+
+  @override
+  String get attAllowTracking => 'Tracking erlauben';
+
+  @override
+  String get attDontTrack => 'App auffordern, nicht zu tracken';
 
   @override
   String get attImproveApp => 'App verbessern';

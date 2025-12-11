@@ -12,7 +12,7 @@ import {
   getNextVisibilityStart,
   getStarAzimuth,
   getDirectionName,
-  formatViewingWindow,
+  formatViewingWindowLocal,
   isVisible,
 } from "./starVisibility";
 
@@ -193,12 +193,15 @@ async function checkAndNotifyForStar(
       )
     );
 
-    // Get the full viewing window (start - end times)
-    const viewingWindow = formatViewingWindow(
+    // Get the full viewing window (start - end times) in user's local timezone
+    // Default to UTC (0) if timezone offset is not available
+    const timezoneOffset = userData.timezoneOffsetMinutes ?? 0;
+    const viewingWindow = formatViewingWindowLocal(
       star.ra!,
       star.dec!,
       userData.latitude!,
       userData.longitude!,
+      timezoneOffset,
       notificationTime
     );
 
@@ -250,7 +253,9 @@ async function checkAndNotifyForStar(
     // Record that we sent this notification
     await recordNotificationSent(userId, starId);
 
-    console.log(`Sent notification to ${userId} for star ${star.displayName}`);
+    console.log(`Sent notification to ${userId} for star ${star.displayName}:`);
+    console.log(`  Title: ${message.notification?.title}`);
+    console.log(`  Body: ${message.notification?.body}`);
     return true;
   } catch (error) {
     console.error(`Error sending notification to ${userId}:`, error);

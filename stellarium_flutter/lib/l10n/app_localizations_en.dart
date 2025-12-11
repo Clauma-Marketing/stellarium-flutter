@@ -406,7 +406,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nameThisStar => 'Name this Star';
 
   @override
-  String get viewStarIn3D => 'View Star in 3D';
+  String get viewStarIn3D => '3D View';
 
   @override
   String get catalogId => 'Catalog ID';
@@ -421,8 +421,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchPlaceholder => 'Search for a star or object...';
 
   @override
+  String get welcomeTitle => 'Discover the Cosmos';
+
+  @override
   String get onboardingExploreUniverse =>
-      'Explore the universe from your pocket';
+      'Explore the night sky, track celestial events, and find your named star among millions of others.';
 
   @override
   String get onboardingGetStarted => 'Get Started';
@@ -443,11 +446,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingRequesting => 'Requesting...';
 
   @override
-  String get locationAccessTitle => 'Location Access';
+  String get locationAccessTitle => 'Allow Location?';
 
   @override
   String get locationAccessSubtitle =>
-      'Allow location access to see the sky exactly as it appears from your location';
+      'See the night sky exactly as it appears from your location. We use your position for accurate star positions.';
+
+  @override
+  String get locationAllowAccess => 'Allow Location Access';
 
   @override
   String get locationAccuratePositions => 'Accurate Star Positions';
@@ -496,11 +502,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Failed to get location. Please allow location access in your browser.';
 
   @override
-  String get notificationTitle => 'Stay Updated';
+  String get notificationTitle => 'Enable Notifications?';
 
   @override
   String get notificationSubtitle =>
-      'Get notified about celestial events and optimal viewing conditions';
+      'Never miss meteor showers and the best nights for stargazing. We\'ll send you timely alerts before they happen.';
+
+  @override
+  String get notificationAllowNotifications => 'Allow Notifications';
 
   @override
   String get notificationMoonPhase => 'Moon Phase Alerts';
@@ -527,11 +536,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'You can change notification settings anytime in the app.';
 
   @override
-  String get attTitle => 'Privacy & Tracking';
+  String get attTitle => 'Allow Tracking?';
 
   @override
   String get attSubtitle =>
-      'Allow tracking to help us improve your experience and show you relevant content';
+      'Help us improve your cosmic journey. We use data to personalize insights and suggest relevant events.';
+
+  @override
+  String get attAllowTracking => 'Allow Tracking';
+
+  @override
+  String get attDontTrack => 'Ask App Not to Track';
 
   @override
   String get attImproveApp => 'Improve the App';
