@@ -946,13 +946,16 @@ class _HomeScreenState extends State<HomeScreen> {
           _skyViewKey.currentState?.webView?.setTouchEnabled(true);
         },
         onSelectStar: (star) {
-          // Point at the star from My Stars menu
-          _skyViewKey.currentState?.webView?.pointAt(star.searchQuery);
-          _skyViewKey.currentState?.engine?.search(star.searchQuery).then((obj) {
-            if (obj != null) {
-              _skyViewKey.currentState?.engine?.pointAt(obj);
-            }
-          });
+          // Only point at the star if gyroscope is not enabled
+          // When gyroscope is active, pointing disrupts the gyroscope control
+          if (!_gyroscopeEnabled) {
+            _skyViewKey.currentState?.webView?.pointAt(star.searchQuery);
+            _skyViewKey.currentState?.engine?.search(star.searchQuery).then((obj) {
+              if (obj != null) {
+                _skyViewKey.currentState?.engine?.pointAt(obj);
+              }
+            });
+          }
           // Create SelectedObjectInfo to use the same flow as clicking on a star
           // This ensures the registry API is called and coordinates are fetched
           final names = <String>[star.id];
