@@ -55,6 +55,93 @@
       }
     }
 
+    // Network request debugging (enabled when loaded with ?debugNet=1)
+    (function installNetworkDebug() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has('debugNet')) return;
+
+        const log = (event, extra) => {
+          try {
+            sendToFlutter('network', Object.assign({
+              event: event,
+              time: Date.now()
+            }, extra || {}));
+          } catch (e) {
+            // Ignore logging failures
+          }
+        };
+
+        // Patch fetch to log requests/responses
+        if (window.fetch) {
+          const originalFetch = window.fetch;
+          window.fetch = function(input, init) {
+            let url = null;
+            let method = 'GET';
+            try {
+              url = (typeof input === 'string') ? input : (input && input.url);
+              method = (init && init.method) || (input && input.method) || 'GET';
+            } catch (e) {}
+            return originalFetch.apply(this, arguments)
+              .then(res => {
+                if (res.status !== 200) {
+                  log('fetchResponse', { url: res.url, status: res.status, ok: res.ok, method: method });
+                }
+                return res;
+              })
+              .catch(err => {
+                log('fetchError', { url: url, method: method, error: String(err) });
+                throw err;
+              });
+          };
+        }
+
+        // Patch XMLHttpRequest to log requests/responses
+        if (window.XMLHttpRequest) {
+          const origOpen = XMLHttpRequest.prototype.open;
+          const origSend = XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.open = function(method, url) {
+            try {
+              this.__netDebug = { method: method, url: url };
+            } catch (e) {}
+            return origOpen.apply(this, arguments);
+          };
+          XMLHttpRequest.prototype.send = function(body) {
+            try {
+              this.addEventListener('loadend', () => {
+                const status = this.status;
+                if (status !== 200) {
+                  const info = this.__netDebug || {};
+                  log('xhrResponse', {
+                    url: this.responseURL || info.url,
+                    method: info.method,
+                    status: status
+                  });
+                }
+              });
+            } catch (e) {}
+            return origSend.apply(this, arguments);
+          };
+        }
+
+        // Log resource load failures (scripts, images, wasm, css, etc.)
+        window.addEventListener('error', function(e) {
+          try {
+            const t = e && e.target;
+            const url = t && (t.src || t.href);
+            if (url) {
+              log('resourceError', { url: url, tag: t.tagName });
+            }
+          } catch (err) {}
+        }, true);
+
+        log('installed', { userAgent: navigator.userAgent });
+        console.log('Stellarium network debug enabled');
+      } catch (e) {
+        console.log('Network debug install error', e);
+      }
+    })();
+
     // Convert JavaScript Date to Modified Julian Date (MJD)
     // Uses local time values to match Flutter's convention
     function dateToMjd(date) {
@@ -129,30 +216,105 @@
           const core = stel.core;
           const baseUrl = 'https://data.star-register.com/';
 
-          // Add data sources
-          core.stars.addDataSource({ url: baseUrl + 'surveys/stars/v1' });
-          core.skycultures.addDataSource({
-            url: baseUrl + 'skycultures/v2/western',
-            key: 'western'
-          });
-          core.dsos.addDataSource({ url: baseUrl + 'surveys/dso/v1' });
-          core.milkyway.addDataSource({ url: baseUrl + 'surveys/milkyway/v1' });
-          core.planets.addDataSource({
-            url: baseUrl + 'surveys/sso/moon',
-            key: 'moon'
-          });
-          core.planets.addDataSource({
-            url: baseUrl + 'surveys/sso/sun',
-            key: 'sun'
-          });
-          core.landscapes.addDataSource({
-            url: baseUrl + 'landscapes/v1/guereins',
-            key: 'guereins'
-          });
+	          // Add data sources
+	          core.stars.addDataSource({ url: baseUrl + 'surveys/stars/v1' });
+	          core.stars.addDataSource({
+	            url: baseUrl + 'surveys/gaia/v1',
+	            key: 'gaia'
+	          });
+	          core.skycultures.addDataSource({
+	            url: baseUrl + 'skycultures/v2/western',
+	            key: 'western'
+	          });
+	          core.dsos.addDataSource({ url: baseUrl + 'surveys/dso/v1' });
+	          core.milkyway.addDataSource({ url: baseUrl + 'surveys/milkyway/v1' });
+	          core.dss.addDataSource({ url: baseUrl + 'surveys/dss/v1' });
+	          core.minor_planets.addDataSource({
+	            url: baseUrl + 'mpc/v1/mpcorb.dat',
+	            key: 'mpc_asteroids'
+	          });
+	          core.comets.addDataSource({
+	            url: baseUrl + 'mpc/v1/CometEls.txt?v=2019-12-17',
+	            key: 'mpc_comets'
+	          });
+	          core.satellites.addDataSource({
+	            url: baseUrl + 'skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16',
+	            key: 'jsonl/sat'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/moon/v1',
+	            key: 'moon'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/sun/v1',
+	            key: 'sun'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/callisto/v1',
+	            key: 'callisto'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/default/v1',
+	            key: 'default'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/europa/v1',
+	            key: 'europa'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/ganymede/v1',
+	            key: 'ganymede'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/io/v1',
+	            key: 'io'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/jupiter/v1',
+	            key: 'jupiter'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/mars/v1',
+	            key: 'mars'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/mercury/v1',
+	            key: 'mercury'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/moon-normal/v1',
+	            key: 'moon-normal'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/neptune/v1',
+	            key: 'neptune'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/saturn/v1',
+	            key: 'saturn'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/uranus/v1',
+	            key: 'uranus'
+	          });
+	          core.planets.addDataSource({
+	            url: baseUrl + 'surveys/sso/venus/v1',
+	            key: 'venus'
+	          });
+	          core.landscapes.addDataSource({
+	            url: baseUrl + 'landscapes/v1/guereins',
+	            key: 'guereins'
+	          });
 
-          // Default location (New York)
-          stel.observer.longitude = -74.0060 * stel.D2R;
-          stel.observer.latitude = 40.7128 * stel.D2R;
+	          // Constellation art in the engine is quite subtle by default.
+	          // Increase illustration brightness/opacity so the artwork is clearer.
+	          if (core.constellations && core.constellations.illustrations_bscale != null) {
+	            core.constellations.illustrations_bscale = 5.8;
+	          }
+
+	          // Default location (New York)
+	          stel.observer.longitude = -74.0060 * stel.D2R;
+	          stel.observer.latitude = 40.7128 * stel.D2R;
 
           // Set time to current time (now) and enable real-time progression
           var now = new Date();

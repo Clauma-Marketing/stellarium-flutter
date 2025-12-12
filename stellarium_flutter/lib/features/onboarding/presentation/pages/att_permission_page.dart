@@ -30,11 +30,9 @@ class AttPermissionPage extends StatefulWidget {
 class _AttPermissionPageState extends State<AttPermissionPage> {
   bool _isLoading = false;
 
-
   Future<void> _requestAttPermission() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (!mounted) return;
+    setState(() => _isLoading = true);
 
     try {
       // Only request on iOS
@@ -43,10 +41,17 @@ class _AttPermissionPageState extends State<AttPermissionPage> {
         final status = await AppTrackingTransparency.trackingAuthorizationStatus;
 
         if (status == TrackingStatus.notDetermined) {
-          // Request permission
-          final newStatus = await AppTrackingTransparency.requestTrackingAuthorization();
-          // Track result
+          final newStatus =
+              await AppTrackingTransparency.requestTrackingAuthorization();
           if (newStatus == TrackingStatus.authorized) {
+            AnalyticsService.instance.logPermissionGranted(permission: 'att');
+          } else {
+            AnalyticsService.instance.logPermissionSkipped(permission: 'att');
+          }
+        } else {
+          // User already made a choice previously; iOS won't show the prompt again.
+          // Proceed with onboarding regardless.
+          if (status == TrackingStatus.authorized) {
             AnalyticsService.instance.logPermissionGranted(permission: 'att');
           } else {
             AnalyticsService.instance.logPermissionSkipped(permission: 'att');
@@ -57,10 +62,10 @@ class _AttPermissionPageState extends State<AttPermissionPage> {
       debugPrint('ATT permission error: $e');
     }
 
-    setState(() {
-      _isLoading = false;
-    });
-
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+    // Always continue onboarding, even if permission dialog can't be shown.
     widget.onContinue();
   }
 

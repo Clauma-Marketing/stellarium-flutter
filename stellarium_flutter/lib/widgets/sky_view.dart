@@ -160,6 +160,17 @@ class SkyViewState extends State<SkyView> {
   double _motionYawOffsetRad = 0.0;
   bool _motionYawOffsetInitialized = false;
 
+  // Compass accuracy tracking (Android only) for calibration UX and yaw seeding.
+  double? _compassAccuracyDeg;
+  bool _compassNeedsCalibration = false;
+  int? _compassBadSinceMs;
+  static const double _compassGoodThresholdDeg = 30.0; // high/medium
+  static const double _compassBadThresholdDeg = 45.0; // low/unreliable
+  // Some Android devices report very large/unstable accuracy values; don't
+  // show the calibration overlay beyond this limit.
+  static const double _compassPopupMaxAccuracyDeg = 50.0;
+  static const int _compassBadHoldMs = 800;
+
   // ============================================================================
   // COMPASS 180° FLIP COMPENSATION
   // ============================================================================
@@ -385,6 +396,9 @@ class SkyViewState extends State<SkyView> {
     _lastTouchChangeMs = null;
     _motionYawOffsetInitialized = false;
     _motionYawOffsetRad = 0.0;
+    _compassAccuracyDeg = null;
+    _compassNeedsCalibration = false;
+    _compassBadSinceMs = null;
 
     if (_useMotionCore) {
       // Ensure raw-sensor subscriptions are stopped. Keep compass running for
@@ -410,6 +424,8 @@ class SkyViewState extends State<SkyView> {
     _compassFlipped = false;
     debugPrint('Compass: starting subscription...');
     _compassSubscription = FlutterCompass.events?.listen((event) {
+      _compassAccuracyDeg = event.accuracy;
+      _updateCompassCalibrationState(_compassAccuracyDeg);
       if (event.heading != null) {
         _compassHeading = event.heading!;
 
@@ -565,6 +581,9 @@ class SkyViewState extends State<SkyView> {
     _lastGyroTimestampMicros = null;
     _touchActive = false;
     _lastTouchChangeMs = null;
+    _compassAccuracyDeg = null;
+    _compassNeedsCalibration = false;
+    _compassBadSinceMs = null;
 
     // Re-enable touch panning in the WebView
     _webViewKey.currentState?.setGyroscopeEnabled(false);
@@ -671,15 +690,20 @@ class SkyViewState extends State<SkyView> {
     if (gNorm < 0.1) return;
 
     final upZ = gravity.z / gNorm;
-    // MotionCore gravity axis is inverted vs sensors_plus on some devices,
-    // so use the opposite sign to match previous "tilt up = positive altitude".
-    final altitude = math.asin(upZ.clamp(-1.0, 1.0));
+    // MotionCore gravity axis differs per platform. iOS CoreMotion reports
+    // gravity.z with opposite sign to Android's TYPE_GRAVITY. Match the
+    // previous behavior: tilt up => look up.
+    final altitudeSign =
+        defaultTargetPlatform == TargetPlatform.android ? -1.0 : 1.0;
+    final altitude = math.asin((altitudeSign * upZ).clamp(-1.0, 1.0));
 
     final yaw = data.yaw;
 
     // Align MotionCore yaw to magnetic north using the filtered compass heading.
     // iOS MotionCore uses an arbitrary reference frame, so we compute an offset.
-    if (!_motionYawOffsetInitialized && _compassAvailable) {
+    if (!_motionYawOffsetInitialized &&
+        _compassAvailable &&
+        _isCompassAccurate) {
       final compassAzimuthRad = _filteredCompassHeading * math.pi / 180.0;
       _motionYawOffsetRad = _normalizeRadians(compassAzimuthRad + yaw);
       _motionYawOffsetInitialized = true;
@@ -951,6 +975,10 @@ class SkyViewState extends State<SkyView> {
               ),
               // Overlays
               if (widget.showFps || widget.showCoordinates) _buildOverlays(),
+              if (_compassNeedsCalibration &&
+                  widget.gyroscopeEnabled &&
+                  defaultTargetPlatform == TargetPlatform.android)
+                Positioned.fill(child: _buildCompassCalibrationOverlay()),
             ],
           ),
         );
@@ -1113,6 +1141,96 @@ class SkyViewState extends State<SkyView> {
                 ),
               ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool get _isCompassAccurate {
+    if (defaultTargetPlatform != TargetPlatform.android) return true;
+    return _compassAccuracyDeg != null &&
+        _compassAccuracyDeg! <= _compassGoodThresholdDeg;
+  }
+
+  void _updateCompassCalibrationState(double? accuracyDeg) {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    if (!widget.gyroscopeEnabled) {
+      _compassBadSinceMs = null;
+      if (_compassNeedsCalibration && mounted) {
+        setState(() => _compassNeedsCalibration = false);
+      }
+      return;
+    }
+
+    final isBad = accuracyDeg == null ||
+        (accuracyDeg >= _compassBadThresholdDeg &&
+            accuracyDeg <= _compassPopupMaxAccuracyDeg);
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    if (isBad) {
+      _compassBadSinceMs ??= nowMs;
+      if (!_compassNeedsCalibration &&
+          nowMs - _compassBadSinceMs! >= _compassBadHoldMs &&
+          mounted) {
+        setState(() => _compassNeedsCalibration = true);
+      }
+    } else {
+      _compassBadSinceMs = null;
+      if (_compassNeedsCalibration && mounted) {
+        setState(() => _compassNeedsCalibration = false);
+      }
+    }
+  }
+
+  Widget _buildCompassCalibrationOverlay() {
+    final accuracyText = _compassAccuracyDeg != null
+        ? 'Accuracy: ±${_compassAccuracyDeg!.toStringAsFixed(0)}°'
+        : 'Accuracy: unknown';
+
+    return AbsorbPointer(
+      child: Container(
+        color: Colors.black54,
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.black87,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Compass calibration needed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Image.asset(
+                  'assets/compass-calibration.gif',
+                  width: 220,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Move your phone in a figure‑8 motion until the compass stabilizes.',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  accuracyText,
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
           ),
         ),
       ),

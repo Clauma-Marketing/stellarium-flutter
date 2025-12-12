@@ -733,12 +733,12 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             onChangeStart: (_) {
               // Pause time while dragging to prevent fighting
-              _skyViewKey.currentState?.engine?.setTimeSpeed(0.0);
+              _setTimeSpeed(0.0);
             },
             onChangeEnd: (_) {
               // Resume time if it wasn't paused before, or keep it paused
               if (!_isTimePaused) {
-                _skyViewKey.currentState?.engine?.setTimeSpeed(1.0);
+                _setTimeSpeed(1.0);
               }
             },
           ),
@@ -784,7 +784,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _sliderDate = DateTime(now.year, now.month, now.day);
                         _isTimePaused = false;
                       });
-                      _skyViewKey.currentState?.engine?.setTimeSpeed(1.0);
+                      _setTimeSpeed(1.0);
                     },
                     icon: const Icon(Icons.history, color: Colors.white70),
                     tooltip: 'Back to real time',
@@ -799,7 +799,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() {
                         _isTimePaused = newPausedState;
                       });
-                      _skyViewKey.currentState?.engine?.setTimeSpeed(newPausedState ? 0.0 : 1.0);
+                      _setTimeSpeed(newPausedState ? 0.0 : 1.0);
                     },
                     icon: Icon(
                       _isTimePaused ? Icons.play_arrow : Icons.pause,
@@ -1069,6 +1069,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Apply to engine (web)
     _skyViewKey.currentState?.engine?.setTime(dateTime);
+  }
+
+  void _setTimeSpeed(double speed) {
+    final skyView = _skyViewKey.currentState;
+    // Web engine (web builds)
+    skyView?.engine?.setTimeSpeed(speed);
+    // WebView JS engine (mobile builds)
+    skyView?.webView?.setTimeSpeed(speed);
   }
 
   void _onSettingChanged(String key, bool value) {

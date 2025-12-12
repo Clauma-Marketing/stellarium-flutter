@@ -383,6 +383,9 @@ class StellariumWebViewState extends State<StellariumWebView>
           await request.response.addStream(file.openRead());
         } else {
           request.response.statusCode = HttpStatus.notFound;
+          if (kDebugMode) {
+            debugPrint('Stellarium local server 404: $path');
+          }
         }
         await request.response.close();
       });
@@ -392,7 +395,8 @@ class StellariumWebViewState extends State<StellariumWebView>
         return;
       }
 
-      _localServerUrl = 'http://127.0.0.1:$port/stellarium.html';
+      final debugQuery = kDebugMode ? '?debugNet=1' : '';
+      _localServerUrl = 'http://127.0.0.1:$port/stellarium.html$debugQuery';
       debugPrint('Stellarium local server started at: $_localServerUrl');
 
       // Small delay to allow any previous platform views to fully clean up
@@ -508,6 +512,19 @@ class StellariumWebViewState extends State<StellariumWebView>
         final url = data?['url'] as String?;
         if (url != null) {
           _debugFetchUrl(url);
+        }
+        break;
+      case 'network':
+        if (kDebugMode && data != null) {
+          final status = data['status'];
+          final event = data['event'];
+          final isErrorEvent = event == 'fetchError' ||
+              event == 'xhrError' ||
+              event == 'resourceError';
+          final isBadStatus = status is num && status != 200;
+          if (isErrorEvent || isBadStatus) {
+            debugPrint('WebView network: $data');
+          }
         }
         break;
     }
