@@ -12,7 +12,6 @@ import 'package:sensors_plus/sensors_plus.dart';
 import '../stellarium/stellarium.dart';
 import 'stellarium_webview.dart';
 
-
 /// A widget that displays the Stellarium sky view with gesture controls.
 class SkyView extends StatefulWidget {
   /// Optional initial observer settings
@@ -69,6 +68,9 @@ class SkyViewState extends State<SkyView> {
   String? _errorMessage;
   double _fps = 0.0;
   Observer _observer = Observer.now();
+
+  // Current field of view in degrees (used to scale gyro sensitivity on zoom).
+  double _currentFovDeg = 60.0;
 
   // WebView for mobile platforms
   final GlobalKey<StellariumWebViewState> _webViewKey = GlobalKey();
@@ -144,7 +146,6 @@ class SkyViewState extends State<SkyView> {
   bool _gyroHeadingInitialized = false;
   int? _lastGyroTimestampMicros;
 
-
   // ============================================================================
   // COMPASS 180° FLIP COMPENSATION
   // ============================================================================
@@ -183,19 +184,35 @@ class SkyViewState extends State<SkyView> {
   static const double _compassDeadZone = 0.0;
   static const double _altitudeDeadZone = 0.0;
   static const double _compassFusionGainStill = 0.0; // Gyro-only while running
-  static const double _compassFusionGainMoving = 0.0; // No compass correction while turning
+  static const double _compassFusionGainMoving =
+      0.0; // No compass correction while turning
   static const double _maxGyroDtSeconds = 0.25;
   static const double _motionStillYawRadPerSec = 0.03; // ~1.7°/s
   static const double _correctionDeadZoneRad = 0.01; // ~0.57°
-  static const double _yawStartThresholdRadPerSec = 0.12; // Require >6.9°/s to start motion
-  static const double _yawStopThresholdRadPerSec = 0.05; // Drop below 2.9°/s to stop
-  static const int _yawStartHoldMs = 150; // Require sustained motion to engage
-  static const int _yawStopHoldMs = 200; // Require sustained stillness to disengage
-  static const double _stillHeadingDamp = 0.1; // Light smoothing when effectively still
+  static const double _yawStartThresholdRadPerSec =
+      0.07; // Require >4.0°/s to start motion
+  static const double _yawStopThresholdRadPerSec =
+      0.03; // Drop below 1.7°/s to stop
+  static const int _yawStartHoldMs = 90; // Require sustained motion to engage
+  static const int _yawStopHoldMs =
+      140; // Require sustained stillness to disengage
+  static const double _stillHeadingDamp =
+      0.1; // Light smoothing when effectively still
+
+  // Output smoothing to reduce jitter when holding still.
+  // We smooth the azimuth/altitude we send to the engine, and apply a small
+  // dead-zone for micro-movements.
+  static const double _azimuthOutputDeadZoneRad = 0.0012; // ~0.07°
+  static const double _altitudeOutputDeadZoneRad = 0.0012; // ~0.07°
+  static const double _gyroMotionThresholdRadPerSec =
+      0.035; // ~2.0°/s overall motion
 
   // Last applied values (for dead zone comparison)
   double _lastAppliedAzimuth = 0.0;
   double _lastAppliedAltitude = 0.0;
+  double _smoothedAzimuth = 0.0;
+  double _smoothedAltitude = math.pi / 4;
+  bool _smoothedOrientationInitialized = false;
   bool _yawActive = false;
   int? _yawAboveSinceMs;
   int? _yawBelowSinceMs;
@@ -235,7 +252,8 @@ class SkyViewState extends State<SkyView> {
       bool gyroError = false;
       final testSub = gyroscopeEventStream().listen(
         (event) {
-          debugPrint('Gyroscope: test event received: x=${event.x}, y=${event.y}, z=${event.z}');
+          debugPrint(
+              'Gyroscope: test event received: x=${event.x}, y=${event.y}, z=${event.z}');
         },
         onError: (error, stackTrace) {
           gyroError = true;
@@ -274,7 +292,8 @@ class SkyViewState extends State<SkyView> {
       final compassTestSub = FlutterCompass.events?.listen((event) {
         if (!compassReceived && event.heading != null) {
           compassReceived = true;
-          debugPrint('Compass: test heading received: ${event.heading!.toStringAsFixed(1)}°');
+          debugPrint(
+              'Compass: test heading received: ${event.heading!.toStringAsFixed(1)}°');
         }
       }, onError: (e) {
         debugPrint('Compass: test error: $e');
@@ -283,7 +302,8 @@ class SkyViewState extends State<SkyView> {
       await compassTestSub?.cancel();
       debugPrint('Compass: available = $compassReceived');
       if (!compassReceived) {
-        debugPrint('Compass: WARNING - No heading received! AR mode may not work correctly.');
+        debugPrint(
+            'Compass: WARNING - No heading received! AR mode may not work correctly.');
       }
     } catch (e) {
       debugPrint('Compass: not available, error: $e');
@@ -318,7 +338,9 @@ class SkyViewState extends State<SkyView> {
     _lastGyroTimestampMicros = null;
     _lastAppliedAzimuth = 0.0;
     _lastAppliedAltitude = 0.0;
-
+    _smoothedAzimuth = 0.0;
+    _smoothedAltitude = _currentAltitude;
+    _smoothedOrientationInitialized = false;
 
     // Start compass for heading (uses Core Location on iOS for reliable compass)
     _compassSubscription?.cancel();
@@ -362,7 +384,8 @@ class SkyViewState extends State<SkyView> {
 
           // Adaptive filtering: heavy when still, moderate when moving for smooth motion
           final absDiff = diff.abs();
-          final double alpha = absDiff < 2.0 ? 0.1 : (absDiff < 8.0 ? 0.25 : 0.4);
+          final double alpha =
+              absDiff < 2.0 ? 0.1 : (absDiff < 8.0 ? 0.25 : 0.4);
 
           _filteredCompassHeading += alpha * diff;
           // Normalize to 0-360 range
@@ -372,7 +395,8 @@ class SkyViewState extends State<SkyView> {
 
         if (!_compassAvailable) {
           _compassAvailable = true;
-          debugPrint('Compass: first heading received: ${_compassHeading.toStringAsFixed(1)}°');
+          debugPrint(
+              'Compass: first heading received: ${_compassHeading.toStringAsFixed(1)}°');
         }
       }
     }, onError: (e) {
@@ -388,7 +412,9 @@ class SkyViewState extends State<SkyView> {
       final ay = event.y;
       final az = event.z;
       // Initialize filter with first reading, then apply adaptive filter
-      if (_filteredAccX == 0.0 && _filteredAccY == 0.0 && _filteredAccZ == 0.0) {
+      if (_filteredAccX == 0.0 &&
+          _filteredAccY == 0.0 &&
+          _filteredAccZ == 0.0) {
         _filteredAccX = ax;
         _filteredAccY = ay;
         _filteredAccZ = az;
@@ -398,7 +424,8 @@ class SkyViewState extends State<SkyView> {
         final diffY = ay - _filteredAccY;
         final diffZ = az - _filteredAccZ;
         final diffMag = diffX.abs() + diffY.abs() + diffZ.abs();
-        final double alpha = diffMag < 0.5 ? 0.08 : (diffMag < 2.0 ? 0.18 : 0.3);
+        final double alpha =
+            diffMag < 0.5 ? 0.08 : (diffMag < 2.0 ? 0.18 : 0.3);
 
         _filteredAccX = _filteredAccX + alpha * diffX;
         _filteredAccY = _filteredAccY + alpha * diffY;
@@ -454,7 +481,8 @@ class SkyViewState extends State<SkyView> {
     // Periodic debug output (every 60 frames ≈ 1 second)
     _debugFrameCount++;
     if (_debugFrameCount % 60 == 0) {
-      debugPrint('DEBUG: compass=${_filteredCompassHeading.toStringAsFixed(1)}° (raw=${_compassHeading.toStringAsFixed(1)}°), alt=${altitudeDeg.toStringAsFixed(1)}°${_compassFlipped ? " FLIP" : ""}');
+      debugPrint(
+          'DEBUG: compass=${_filteredCompassHeading.toStringAsFixed(1)}° (raw=${_compassHeading.toStringAsFixed(1)}°), alt=${altitudeDeg.toStringAsFixed(1)}°, fov=${_currentFovDeg.toStringAsFixed(1)}°${_compassFlipped ? " FLIP" : ""}');
     }
   }
 
@@ -502,7 +530,9 @@ class SkyViewState extends State<SkyView> {
 
     // Project gyro onto gravity/up vector so yaw tracks correctly regardless of phone tilt
     double yawRate = event.z;
-    final accNorm = math.sqrt(_filteredAccX * _filteredAccX + _filteredAccY * _filteredAccY + _filteredAccZ * _filteredAccZ);
+    final accNorm = math.sqrt(_filteredAccX * _filteredAccX +
+        _filteredAccY * _filteredAccY +
+        _filteredAccZ * _filteredAccZ);
     if (accNorm > 0.1) {
       final upX = _filteredAccX / accNorm;
       final upY = _filteredAccY / accNorm;
@@ -550,20 +580,55 @@ class SkyViewState extends State<SkyView> {
 
     // Light damping when effectively still to avoid micro jitter
     if (!_yawActive) {
-      _gyroHeadingRad = _lerpAngleRadians(_currentAzimuth, _gyroHeadingRad, _stillHeadingDamp);
+      _gyroHeadingRad = _lerpAngleRadians(
+          _currentAzimuth, _gyroHeadingRad, _stillHeadingDamp);
     }
     _currentAzimuth = _gyroHeadingRad;
 
-    // Always forward the latest reading (engine handles smoothing)
+    // Smooth the output we send to Stellarium to avoid micro jitter.
+    final gyroMag =
+        math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
+    final targetAzimuth = _currentAzimuth;
+    final targetAltitude = _currentAltitude;
 
-    // Smooth toward target to avoid frame-to-frame zig-zag while moving
-    // Update last applied values
-    _lastAppliedAzimuth = _currentAzimuth;
-    _lastAppliedAltitude = _currentAltitude;
+    if (!_smoothedOrientationInitialized) {
+      _smoothedAzimuth = targetAzimuth;
+      _smoothedAltitude = targetAltitude;
+      _smoothedOrientationInitialized = true;
+    } else {
+      final azDelta =
+          _shortestAngleRadians(targetAzimuth - _smoothedAzimuth).abs();
+      final altDelta = (targetAltitude - _smoothedAltitude).abs();
+
+      final deviceMoving =
+          _yawActive || gyroMag > _gyroMotionThresholdRadPerSec;
+      final azAlpha = _adaptiveOutputAlpha(azDelta, moving: deviceMoving);
+      final altAlpha = _adaptiveOutputAlpha(altDelta, moving: deviceMoving);
+
+      // When zoomed in (small FOV), make tilt less sensitive by increasing
+      // dead-zone and slowing the smoothing toward the target altitude.
+      final zoomFactor = _zoomFactorForFovDeg(_currentFovDeg);
+      final effectiveAltDeadZone = _altitudeOutputDeadZoneRad * zoomFactor;
+      final effectiveAltAlpha =
+          (altAlpha / math.pow(zoomFactor, 1.3)).clamp(0.01, 0.6).toDouble();
+
+      if (azDelta > _azimuthOutputDeadZoneRad) {
+        _smoothedAzimuth =
+            _lerpAngleRadians(_smoothedAzimuth, targetAzimuth, azAlpha);
+      }
+      if (altDelta > effectiveAltDeadZone) {
+        _smoothedAltitude = _smoothedAltitude +
+            (targetAltitude - _smoothedAltitude) * effectiveAltAlpha;
+      }
+    }
+
+    _lastAppliedAzimuth = _smoothedAzimuth;
+    _lastAppliedAltitude = _smoothedAltitude;
 
     // Apply to WebView (mobile) or engine (web)
     if (!kIsWeb) {
-      _webViewKey.currentState?.lookAt(_lastAppliedAzimuth, _lastAppliedAltitude, 0.0);
+      _webViewKey.currentState
+          ?.lookAt(_lastAppliedAzimuth, _lastAppliedAltitude, 0.0);
     } else {
       _engine?.lookAt(
         azimuth: _lastAppliedAzimuth,
@@ -596,9 +661,11 @@ class SkyViewState extends State<SkyView> {
   void _onEngineRender() {
     if (!mounted) return;
 
+    final obs = _engine?.observer ?? _observer;
     setState(() {
       _fps = _engine?.fps ?? 0.0;
-      _observer = _engine?.observer ?? _observer;
+      _observer = obs;
+      _currentFovDeg = Observer.rad2deg(obs.fov);
     });
 
     widget.onObserverChanged?.call(_observer);
@@ -737,14 +804,19 @@ class SkyViewState extends State<SkyView> {
             _releaseSlot(event.pointer);
 
             // Tap detection - check if this was a tap (small movement, short duration)
-            if (_touchStartX != null && _touchStartY != null && _touchStartTime != null) {
+            if (_touchStartX != null &&
+                _touchStartY != null &&
+                _touchStartTime != null) {
               final dx = (x - _touchStartX!).abs();
               final dy = (y - _touchStartY!).abs();
-              final duration = DateTime.now().millisecondsSinceEpoch - _touchStartTime!;
+              final duration =
+                  DateTime.now().millisecondsSinceEpoch - _touchStartTime!;
               const tapThreshold = 15.0;
               const tapMaxDuration = 300;
 
-              if (dx < tapThreshold && dy < tapThreshold && duration < tapMaxDuration) {
+              if (dx < tapThreshold &&
+                  dy < tapThreshold &&
+                  duration < tapMaxDuration) {
                 debugPrint('[SKYVIEW] Tap detected at ($x, $y)');
                 // Tap detection is handled by the WebView's JavaScript
               }
@@ -788,6 +860,11 @@ class SkyViewState extends State<SkyView> {
                   },
                   onObjectSelected: widget.onObjectSelected,
                   onTimeChanged: widget.onTimeChanged,
+                  onFovChanged: (fovDeg) {
+                    _currentFovDeg = fovDeg;
+                    debugPrint(
+                        '[SKYVIEW] FOV changed: ${fovDeg.toStringAsFixed(2)}° (zoomFactor=${_zoomFactorForFovDeg(fovDeg).toStringAsFixed(2)})');
+                  },
                 ),
               ),
               // Overlays
@@ -817,7 +894,8 @@ class SkyViewState extends State<SkyView> {
         return Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: (event) {
-            debugPrint('[SKYVIEW] onPointerDown at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
+            debugPrint(
+                '[SKYVIEW] onPointerDown at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
             if (_touchBlocked) return;
             _engine?.onPointerDown(
               event.pointer,
@@ -829,7 +907,8 @@ class SkyViewState extends State<SkyView> {
             if (_touchBlocked) return;
             // When gyroscope is enabled, block single-finger panning but allow
             // multi-finger gestures (pinch-to-zoom)
-            if (widget.gyroscopeEnabled) return; // Web doesn't track multi-touch the same way
+            if (widget.gyroscopeEnabled)
+              return; // Web doesn't track multi-touch the same way
             _engine?.onPointerMove(
               event.pointer,
               event.localPosition.dx * dpr,
@@ -837,7 +916,8 @@ class SkyViewState extends State<SkyView> {
             );
           },
           onPointerUp: (event) {
-            debugPrint('[SKYVIEW] onPointerUp at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
+            debugPrint(
+                '[SKYVIEW] onPointerUp at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
             if (_touchBlocked) return;
             _engine?.onPointerUp(
               event.pointer,
@@ -957,6 +1037,29 @@ class SkyViewState extends State<SkyView> {
     );
   }
 
+  double _adaptiveOutputAlpha(double deltaRad, {required bool moving}) {
+    // Adaptive exponential smoothing:
+    // - When moving, follow quickly to feel responsive.
+    // - When still, heavily smooth small deltas to kill jitter.
+    if (moving) {
+      if (deltaRad < 0.0087) return 0.25; // <0.5°
+      if (deltaRad < 0.0349) return 0.40; // <2°
+      return 0.55;
+    }
+    if (deltaRad < 0.0035) return 0.04; // <0.2°
+    if (deltaRad < 0.0175) return 0.08; // <1°
+    if (deltaRad < 0.0524) return 0.12; // <3°
+    return 0.20;
+  }
+
+  double _zoomFactorForFovDeg(double fovDeg) {
+    // Base sensitivity tuned for ~60° FOV.
+    // As FOV shrinks (zoom in), return a factor >1 to damp tilt sensitivity.
+    final clampedFov = fovDeg.clamp(5.0, 80.0);
+    final factor = 60.0 / clampedFov;
+    return factor.clamp(1.0, 8.0).toDouble();
+  }
+
   double _normalizeRadians(double value) {
     final twoPi = math.pi * 2;
     value %= twoPi;
@@ -975,5 +1078,4 @@ class SkyViewState extends State<SkyView> {
     final delta = _shortestAngleRadians(to - from);
     return _normalizeRadians(from + delta * alpha);
   }
-
 }

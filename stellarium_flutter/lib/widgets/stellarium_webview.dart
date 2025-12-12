@@ -61,6 +61,7 @@ class StellariumWebView extends StatefulWidget {
   final void Function(String error)? onError;
   final void Function(SelectedObjectInfo info)? onObjectSelected;
   final void Function(double utc)? onTimeChanged;
+  final void Function(double fovDeg)? onFovChanged;
 
   const StellariumWebView({
     super.key,
@@ -71,6 +72,7 @@ class StellariumWebView extends StatefulWidget {
     this.onError,
     this.onObjectSelected,
     this.onTimeChanged,
+    this.onFovChanged,
   });
 
   @override
@@ -89,7 +91,8 @@ class StellariumWebViewState extends State<StellariumWebView>
 
   // Unique key for WebViewWidget to prevent view ID conflicts on recreation
   // Using ValueKey with timestamp to ensure uniqueness across widget recreations
-  late final Key _webViewKey = ValueKey('stellarium_webview_${DateTime.now().microsecondsSinceEpoch}');
+  late final Key _webViewKey =
+      ValueKey('stellarium_webview_${DateTime.now().microsecondsSinceEpoch}');
 
   // Animation controllers
   late AnimationController _ringOuterController;
@@ -117,24 +120,24 @@ class StellariumWebViewState extends State<StellariumWebView>
 
   /// Get localized quotes
   List<String> _getQuotes(AppLocalizations l10n) => [
-    l10n.loaderQuote1,
-    l10n.loaderQuote2,
-    l10n.loaderQuote3,
-    l10n.loaderQuote4,
-    l10n.loaderQuote5,
-    l10n.loaderQuote6,
-    l10n.loaderQuote7,
-    l10n.loaderQuote8,
-  ];
+        l10n.loaderQuote1,
+        l10n.loaderQuote2,
+        l10n.loaderQuote3,
+        l10n.loaderQuote4,
+        l10n.loaderQuote5,
+        l10n.loaderQuote6,
+        l10n.loaderQuote7,
+        l10n.loaderQuote8,
+      ];
 
   /// Get localized status messages
   List<String> _getStatusMessages(AppLocalizations l10n) => [
-    l10n.loaderStatus1,
-    l10n.loaderStatus2,
-    l10n.loaderStatus3,
-    l10n.loaderStatus4,
-    l10n.loaderStatus5,
-  ];
+        l10n.loaderStatus1,
+        l10n.loaderStatus2,
+        l10n.loaderStatus3,
+        l10n.loaderStatus4,
+        l10n.loaderStatus5,
+      ];
 
   // Color constants matching the HTML design
   static const Color _ink = Color(0xFF0a0a0f);
@@ -283,7 +286,8 @@ class StellariumWebViewState extends State<StellariumWebView>
     if (!mounted || _shouldHideLoader) return;
 
     setState(() {
-      _currentStatusIndex = (_currentStatusIndex + 1) % _shuffledStatuses.length;
+      _currentStatusIndex =
+          (_currentStatusIndex + 1) % _shuffledStatuses.length;
     });
 
     Future.delayed(const Duration(milliseconds: 1400), () {
@@ -339,17 +343,20 @@ class StellariumWebViewState extends State<StellariumWebView>
       }
 
       // Copy HTML file
-      final htmlContent = await rootBundle.loadString('assets/stellarium/stellarium.html');
+      final htmlContent =
+          await rootBundle.loadString('assets/stellarium/stellarium.html');
       final htmlFile = File('${stellariumDir.path}/stellarium.html');
       await htmlFile.writeAsString(htmlContent);
 
       // Copy JS file
-      final jsData = await rootBundle.load('assets/stellarium/stellarium-web-engine.js');
+      final jsData =
+          await rootBundle.load('assets/stellarium/stellarium-web-engine.js');
       final jsFile = File('${stellariumDir.path}/stellarium-web-engine.js');
       await jsFile.writeAsBytes(jsData.buffer.asUint8List());
 
       // Copy WASM file
-      final wasmData = await rootBundle.load('assets/stellarium/stellarium-web-engine.wasm');
+      final wasmData =
+          await rootBundle.load('assets/stellarium/stellarium-web-engine.wasm');
       final wasmFile = File('${stellariumDir.path}/stellarium-web-engine.wasm');
       await wasmFile.writeAsBytes(wasmData.buffer.asUint8List());
 
@@ -439,8 +446,7 @@ class StellariumWebViewState extends State<StellariumWebView>
 
     // Enable mixed content on Android (HTTP page loading HTTPS resources)
     if (Platform.isAndroid) {
-      final androidController =
-          controller.platform as AndroidWebViewController;
+      final androidController = controller.platform as AndroidWebViewController;
       androidController.setMediaPlaybackRequiresUserGesture(false);
       // Allow mixed content (HTTP origin loading HTTPS resources)
       androidController.setMixedContentMode(MixedContentMode.alwaysAllow);
@@ -481,7 +487,8 @@ class StellariumWebViewState extends State<StellariumWebView>
         debugPrint('WebView: objectSelected event received: $data');
         if (data != null) {
           final info = SelectedObjectInfo.fromJson(data);
-          debugPrint('WebView: calling onObjectSelected with name: ${info.name}');
+          debugPrint(
+              'WebView: calling onObjectSelected with name: ${info.name}');
           widget.onObjectSelected?.call(info);
         }
         break;
@@ -489,6 +496,12 @@ class StellariumWebViewState extends State<StellariumWebView>
         final utc = (data?['utc'] as num?)?.toDouble();
         if (utc != null) {
           widget.onTimeChanged?.call(utc);
+        }
+        break;
+      case 'fovChanged':
+        final fovDeg = (data?['fov'] as num?)?.toDouble();
+        if (fovDeg != null) {
+          widget.onFovChanged?.call(fovDeg);
         }
         break;
       case 'debugFetch':
@@ -539,7 +552,8 @@ class StellariumWebViewState extends State<StellariumWebView>
 
   /// Set the observer's location
   void setLocation(double latitude, double longitude, [double altitude = 0]) {
-    _safeRunJavaScript('stellariumAPI.setLocation($latitude, $longitude, $altitude)');
+    _safeRunJavaScript(
+        'stellariumAPI.setLocation($latitude, $longitude, $altitude)');
   }
 
   /// Set a single display setting
@@ -583,7 +597,8 @@ class StellariumWebViewState extends State<StellariumWebView>
 
   /// Look at a specific direction (azimuth/altitude in radians)
   void lookAt(double azimuthRad, double altitudeRad, [double duration = 0.0]) {
-    _safeRunJavaScript('stellariumAPI.lookAtRadians($azimuthRad, $altitudeRad, $duration)');
+    _safeRunJavaScript(
+        'stellariumAPI.lookAtRadians($azimuthRad, $altitudeRad, $duration)');
   }
 
   /// Enable or disable gyroscope mode (disables touch panning when enabled)
@@ -632,7 +647,8 @@ class StellariumWebViewState extends State<StellariumWebView>
   void addPersistentLabel(String identifier, String label) {
     final escapedId = identifier.replaceAll('"', '\\"').replaceAll("'", "\\'");
     final escapedLabel = label.replaceAll('"', '\\"').replaceAll("'", "\\'");
-    _safeRunJavaScript('stellariumAPI.addPersistentLabel("$escapedId", "$escapedLabel")');
+    _safeRunJavaScript(
+        'stellariumAPI.addPersistentLabel("$escapedId", "$escapedLabel")');
   }
 
   /// Remove a persistent label for a star
@@ -673,7 +689,10 @@ class StellariumWebViewState extends State<StellariumWebView>
     }
 
     // Show loader until both: server is ready AND minimum time has elapsed AND engine is ready
-    final showLoader = _isLoading || _localServerUrl == null || _webViewController == null || !_shouldHideLoader;
+    final showLoader = _isLoading ||
+        _localServerUrl == null ||
+        _webViewController == null ||
+        !_shouldHideLoader;
 
     if (showLoader && _webViewController == null) {
       // Still setting up the server
@@ -689,7 +708,8 @@ class StellariumWebViewState extends State<StellariumWebView>
             child: WebViewWidget(
               key: _webViewKey,
               controller: _webViewController!,
-              gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+              gestureRecognizers: const <
+                  Factory<OneSequenceGestureRecognizer>>{},
             ),
           ),
 
@@ -749,7 +769,8 @@ class StellariumWebViewState extends State<StellariumWebView>
                   child: Padding(
                     padding: EdgeInsets.only(
                       top: screenHeight < 700 ? 20 : 40,
-                      bottom: MediaQuery.of(context).padding.bottom + (screenHeight < 700 ? 30 : 50),
+                      bottom: MediaQuery.of(context).padding.bottom +
+                          (screenHeight < 700 ? 30 : 50),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -758,223 +779,260 @@ class StellariumWebViewState extends State<StellariumWebView>
                         SizedBox(
                           width: frameSize,
                           height: frameSize,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Outermost decorative ring (dashed)
-                          RotationTransition(
-                            turns: Tween(begin: 0.0, end: 1.0).animate(
-                              CurvedAnimation(
-                                parent: _ringOuterController,
-                                curve: Curves.linear,
-                              ),
-                            ),
-                            child: CustomPaint(
-                              size: Size(frameSize, frameSize),
-                              painter: _DashedCirclePainter(
-                                color: _dust.withValues(alpha: 0.4),
-                                strokeWidth: 1,
-                                dashLength: 8,
-                                gapLength: 4,
-                              ),
-                            ),
-                          ),
-
-                          // Outer ring with markers
-                          RotationTransition(
-                            turns: _ringOuterController,
-                            child: SizedBox(
-                              width: frameSize * 0.88,
-                              height: frameSize * 0.88,
-                              child: Stack(
-                                children: [
-                                  // Ring border (no fill, just border)
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: _silver, width: 2),
-                                    ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Outermost decorative ring (dashed)
+                              RotationTransition(
+                                turns: Tween(begin: 0.0, end: 1.0).animate(
+                                  CurvedAnimation(
+                                    parent: _ringOuterController,
+                                    curve: Curves.linear,
                                   ),
-                                  // Top gold marker
-                                  Align(
-                                    alignment: Alignment.topCenter,
-                                    child: Transform.translate(
-                                      offset: const Offset(0, -6),
-                                      child: AnimatedBuilder(
-                                        animation: _markerPulseController,
-                                        builder: (context, child) {
-                                          final scale = 1.0 + (_markerPulseController.value * 0.3);
-                                          return Transform.scale(
-                                            scale: scale,
-                                            child: Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: _gold,
-                                                boxShadow: [
-                                                  BoxShadow(color: _gold, blurRadius: 15),
-                                                  BoxShadow(color: _gold, blurRadius: 30),
-                                                  BoxShadow(color: _goldDim, blurRadius: 45),
-                                                ],
-                                              ),
+                                ),
+                                child: CustomPaint(
+                                  size: Size(frameSize, frameSize),
+                                  painter: _DashedCirclePainter(
+                                    color: _dust.withValues(alpha: 0.4),
+                                    strokeWidth: 1,
+                                    dashLength: 8,
+                                    gapLength: 4,
+                                  ),
+                                ),
+                              ),
+
+                              // Outer ring with markers
+                              RotationTransition(
+                                turns: _ringOuterController,
+                                child: SizedBox(
+                                  width: frameSize * 0.88,
+                                  height: frameSize * 0.88,
+                                  child: Stack(
+                                    children: [
+                                      // Ring border (no fill, just border)
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: _silver, width: 2),
+                                        ),
+                                      ),
+                                      // Top gold marker
+                                      Align(
+                                        alignment: Alignment.topCenter,
+                                        child: Transform.translate(
+                                          offset: const Offset(0, -6),
+                                          child: AnimatedBuilder(
+                                            animation: _markerPulseController,
+                                            builder: (context, child) {
+                                              final scale = 1.0 +
+                                                  (_markerPulseController
+                                                          .value *
+                                                      0.3);
+                                              return Transform.scale(
+                                                scale: scale,
+                                                child: Container(
+                                                  width: 12,
+                                                  height: 12,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: _gold,
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                          color: _gold,
+                                                          blurRadius: 15),
+                                                      BoxShadow(
+                                                          color: _gold,
+                                                          blurRadius: 30),
+                                                      BoxShadow(
+                                                          color: _goldDim,
+                                                          blurRadius: 45),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      // Bottom pearl marker
+                                      Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: Transform.translate(
+                                          offset: const Offset(0, 5),
+                                          child: Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: _pearl,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                    color: _pearl,
+                                                    blurRadius: 10),
+                                                BoxShadow(
+                                                    color: _pearl.withValues(
+                                                        alpha: 0.5),
+                                                    blurRadius: 20),
+                                              ],
                                             ),
-                                          );
-                                        },
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  // Bottom pearl marker
-                                  Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: Transform.translate(
-                                      offset: const Offset(0, 5),
-                                      child: Container(
-                                        width: 8,
-                                        height: 8,
+                                ),
+                              ),
+
+                              // Arc segments
+                              RotationTransition(
+                                turns: _arcController,
+                                child: CustomPaint(
+                                  size:
+                                      Size(frameSize * 0.95, frameSize * 0.95),
+                                  painter: _ArcPainter(
+                                      color: _goldDim, strokeWidth: 2),
+                                ),
+                              ),
+                              RotationTransition(
+                                turns: Tween(begin: 0.0, end: -1.0)
+                                    .animate(_arcController),
+                                child: CustomPaint(
+                                  size:
+                                      Size(frameSize * 0.80, frameSize * 0.80),
+                                  painter: _ArcPainter(
+                                      color: _pearl.withValues(alpha: 0.3),
+                                      strokeWidth: 2),
+                                ),
+                              ),
+
+                              // Middle ring (conic gradient effect)
+                              RotationTransition(
+                                turns: Tween(begin: 0.0, end: -1.0)
+                                    .animate(_ringMiddleController),
+                                child: CustomPaint(
+                                  size:
+                                      Size(frameSize * 0.72, frameSize * 0.72),
+                                  painter: _ConicRingPainter(color: _dust),
+                                ),
+                              ),
+
+                              // Inner ring with marker
+                              RotationTransition(
+                                turns: _ringInnerController,
+                                child: SizedBox(
+                                  width: frameSize * 0.58,
+                                  height: frameSize * 0.58,
+                                  child: Stack(
+                                    children: [
+                                      Container(
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: _pearl,
-                                          boxShadow: [
-                                            BoxShadow(color: _pearl, blurRadius: 10),
-                                            BoxShadow(color: _pearl.withValues(alpha: 0.5), blurRadius: 20),
-                                          ],
+                                          border: Border.all(
+                                              color: _dust, width: 1),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Transform.translate(
+                                          offset: const Offset(-4, 0),
+                                          child: Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: _pearl,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                    color: _pearl,
+                                                    blurRadius: 8)
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              // Innermost glow ring
+                              AnimatedBuilder(
+                                animation: _glowController,
+                                builder: (context, child) {
+                                  final scale =
+                                      1.0 + (_glowController.value * 0.15);
+                                  final opacity =
+                                      0.6 + (_glowController.value * 0.4);
+                                  return Transform.scale(
+                                    scale: scale,
+                                    child: Opacity(
+                                      opacity: opacity,
+                                      child: Container(
+                                        width: frameSize * 0.48,
+                                        height: frameSize * 0.48,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: RadialGradient(
+                                            colors: [
+                                              _gold.withValues(alpha: 0.08),
+                                              Colors.transparent,
+                                            ],
+                                            stops: const [0.0, 0.7],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  );
+                                },
                               ),
-                            ),
-                          ),
 
-                          // Arc segments
-                          RotationTransition(
-                            turns: _arcController,
-                            child: CustomPaint(
-                              size: Size(frameSize * 0.95, frameSize * 0.95),
-                              painter: _ArcPainter(color: _goldDim, strokeWidth: 2),
-                            ),
-                          ),
-                          RotationTransition(
-                            turns: Tween(begin: 0.0, end: -1.0).animate(_arcController),
-                            child: CustomPaint(
-                              size: Size(frameSize * 0.80, frameSize * 0.80),
-                              painter: _ArcPainter(color: _pearl.withValues(alpha: 0.3), strokeWidth: 2),
-                            ),
-                          ),
+                              // Orbiting particles
+                              ..._buildParticles(frameSize),
 
-                          // Middle ring (conic gradient effect)
-                          RotationTransition(
-                            turns: Tween(begin: 0.0, end: -1.0).animate(_ringMiddleController),
-                            child: CustomPaint(
-                              size: Size(frameSize * 0.72, frameSize * 0.72),
-                              painter: _ConicRingPainter(color: _dust),
-                            ),
-                          ),
-
-                          // Inner ring with marker
-                          RotationTransition(
-                            turns: _ringInnerController,
-                            child: SizedBox(
-                              width: frameSize * 0.58,
-                              height: frameSize * 0.58,
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: _dust, width: 1),
-                                    ),
-                                  ),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Transform.translate(
-                                      offset: const Offset(-4, 0),
-                                      child: Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: _pearl,
-                                          boxShadow: [BoxShadow(color: _pearl, blurRadius: 8)],
+                              // Central constellation
+                              AnimatedBuilder(
+                                animation: _constellationController,
+                                builder: (context, child) {
+                                  final scale = 1.0 +
+                                      (_constellationController.value * 0.03);
+                                  final opacity = 0.9 +
+                                      (_constellationController.value * 0.1);
+                                  return Transform.scale(
+                                    scale: scale,
+                                    child: Opacity(
+                                      opacity: opacity,
+                                      child: CustomPaint(
+                                        size: Size(
+                                            frameSize * 0.44, frameSize * 0.44),
+                                        painter: _ConstellationPainter(
+                                          lineColor: _dust,
+                                          starColor: _pearl,
+                                          glowColor: _gold,
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  );
+                                },
                               ),
-                            ),
+                            ],
                           ),
-
-                          // Innermost glow ring
-                          AnimatedBuilder(
-                            animation: _glowController,
-                            builder: (context, child) {
-                              final scale = 1.0 + (_glowController.value * 0.15);
-                              final opacity = 0.6 + (_glowController.value * 0.4);
-                              return Transform.scale(
-                                scale: scale,
-                                child: Opacity(
-                                  opacity: opacity,
-                                  child: Container(
-                                    width: frameSize * 0.48,
-                                    height: frameSize * 0.48,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: RadialGradient(
-                                        colors: [
-                                          _gold.withValues(alpha: 0.08),
-                                          Colors.transparent,
-                                        ],
-                                        stops: const [0.0, 0.7],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-
-                          // Orbiting particles
-                          ..._buildParticles(frameSize),
-
-                          // Central constellation
-                          AnimatedBuilder(
-                            animation: _constellationController,
-                            builder: (context, child) {
-                              final scale = 1.0 + (_constellationController.value * 0.03);
-                              final opacity = 0.9 + (_constellationController.value * 0.1);
-                              return Transform.scale(
-                                scale: scale,
-                                child: Opacity(
-                                  opacity: opacity,
-                                  child: CustomPaint(
-                                    size: Size(frameSize * 0.44, frameSize * 0.44),
-                                    painter: _ConstellationPainter(
-                                      lineColor: _dust,
-                                      starColor: _pearl,
-                                      glowColor: _gold,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
 
                         SizedBox(height: screenHeight < 700 ? 24 : 40),
 
                         // Logo
                         Builder(
                           builder: (context) {
-                            final locale = Localizations.maybeLocaleOf(context)?.languageCode
-                                ?? ui.PlatformDispatcher.instance.locale.languageCode;
+                            final locale = Localizations.maybeLocaleOf(context)
+                                    ?.languageCode ??
+                                ui.PlatformDispatcher.instance.locale
+                                    .languageCode;
                             final isGerman = locale == 'de';
                             return SvgPicture.asset(
-                              isGerman ? 'assets/logo_de.svg' : 'assets/star-reg_logo.svg',
+                              isGerman
+                                  ? 'assets/logo_de.svg'
+                                  : 'assets/star-reg_logo.svg',
                               height: screenHeight < 700 ? 28 : 32,
                             );
                           },
@@ -995,7 +1053,8 @@ class StellariumWebViewState extends State<StellariumWebView>
                               ).animate(_quoteController),
                               child: Text(
                                 _shuffledQuotes.isNotEmpty
-                                    ? _shuffledQuotes[_currentQuoteIndex % _shuffledQuotes.length]
+                                    ? _shuffledQuotes[_currentQuoteIndex %
+                                        _shuffledQuotes.length]
                                     : '',
                                 style: TextStyle(
                                   color: _pearl,
@@ -1108,7 +1167,8 @@ class StellariumWebViewState extends State<StellariumWebView>
 
   Widget _buildStatusText() {
     final text = _shuffledStatuses.isNotEmpty
-        ? _shuffledStatuses[_currentStatusIndex % _shuffledStatuses.length].toUpperCase()
+        ? _shuffledStatuses[_currentStatusIndex % _shuffledStatuses.length]
+            .toUpperCase()
         : '';
     // Simple static text - wave animation was causing readability issues
     return Text(
@@ -1167,7 +1227,8 @@ class StellariumWebViewState extends State<StellariumWebView>
                     color: _gold,
                     borderRadius: BorderRadius.circular(2),
                     boxShadow: [
-                      BoxShadow(color: _gold.withValues(alpha: 0.8), blurRadius: 3),
+                      BoxShadow(
+                          color: _gold.withValues(alpha: 0.8), blurRadius: 3),
                     ],
                   ),
                 ),
@@ -1212,7 +1273,8 @@ class StellariumWebViewState extends State<StellariumWebView>
   List<Widget> _buildCorners() {
     const cornerSize = 60.0;
     const topMargin = 30.0;
-    const bottomMargin = 80.0; // Larger bottom margin to avoid overlapping progress bar
+    const bottomMargin =
+        80.0; // Larger bottom margin to avoid overlapping progress bar
 
     return [
       // Top-left
@@ -1467,17 +1529,21 @@ class _ConstellationPainter extends CustomPainter {
 
     // Star positions (scaled from HTML SVG viewBox 0-140)
     final stars = [
-      Offset(70 * scale, 20 * scale),   // 0: top
-      Offset(45 * scale, 50 * scale),   // 1: upper left
-      Offset(30 * scale, 90 * scale),   // 2: lower left
-      Offset(95 * scale, 55 * scale),   // 3: upper right
-      Offset(110 * scale, 95 * scale),  // 4: lower right
-      Offset(70 * scale, 120 * scale),  // 5: bottom
+      Offset(70 * scale, 20 * scale), // 0: top
+      Offset(45 * scale, 50 * scale), // 1: upper left
+      Offset(30 * scale, 90 * scale), // 2: lower left
+      Offset(95 * scale, 55 * scale), // 3: upper right
+      Offset(110 * scale, 95 * scale), // 4: lower right
+      Offset(70 * scale, 120 * scale), // 5: bottom
     ];
 
     // Connection lines
     final lines = [
-      [0, 1], [1, 2], [1, 3], [3, 4], [3, 5],
+      [0, 1],
+      [1, 2],
+      [1, 3],
+      [3, 4],
+      [3, 5],
     ];
 
     // Draw lines

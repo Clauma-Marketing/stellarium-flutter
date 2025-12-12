@@ -164,27 +164,51 @@
           }
           console.log('Set initial time to now:', now.toISOString(), 'MJD:', mjd);
 
-          // Set up time change listener for explicit changes
+          // Set up time + fov change listener for explicit changes
           var lastUtc = stel.observer.utc;
+          var lastFov = stel.observer.fov;
           stel.change(function(obj, attr) {
             // Check if observer UTC changed
             if (attr === 'utc' || (obj === stel.observer && stel.observer.utc !== lastUtc)) {
               lastUtc = stel.observer.utc;
               sendToFlutter('timeChanged', { utc: lastUtc });
             }
+
+            // Check if FOV (zoom) changed
+            if (attr === 'fov' || (obj === stel.observer && stel.observer.fov !== lastFov)) {
+              const newFov = stel.observer.fov;
+              if (Math.abs(newFov - lastFov) > 1e-4) { // ~0.006°
+                lastFov = newFov;
+                const fovDeg = lastFov * stel.R2D;
+                console.log('fovChanged:', fovDeg.toFixed(2) + '°');
+                sendToFlutter('fovChanged', { fov: fovDeg });
+              }
+            }
           });
 
           // Set up periodic time update for real-time progression
-          // Check every second if time has changed (due to real-time simulation)
+          // Check every second if time or fov has changed (due to real-time simulation)
           setInterval(function() {
             if (stel.observer.utc !== lastUtc) {
               lastUtc = stel.observer.utc;
               sendToFlutter('timeChanged', { utc: lastUtc });
             }
+            if (Math.abs(stel.observer.fov - lastFov) > 1e-4) {
+              lastFov = stel.observer.fov;
+              const fovDeg = lastFov * stel.R2D;
+              console.log('fovChanged(interval):', fovDeg.toFixed(2) + '°');
+              sendToFlutter('fovChanged', { fov: fovDeg });
+            }
           }, 1000);
 
           // Notify Flutter
           sendToFlutter('ready', {});
+          // Send initial FOV so Flutter can scale gyro sensitivity
+          try {
+            const fovDeg = stel.observer.fov * stel.R2D;
+            console.log('fovChanged(initial):', fovDeg.toFixed(2) + '°');
+            sendToFlutter('fovChanged', { fov: fovDeg });
+          } catch (e) {}
 
           console.log('Stellarium ready');
         }
