@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'package:motion_core/motion_core.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../stellarium/stellarium.dart';
@@ -129,9 +130,17 @@ class SkyViewState extends State<SkyView> {
   StreamSubscription<GyroscopeEvent>? _gyroSubscription;
   StreamSubscription<CompassEvent>? _compassSubscription;
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
+  StreamSubscription<MotionData>? _motionSubscription;
   bool _gyroscopeAvailable = false;
   bool _compassAvailable = false;
   bool _isCalibrated = false;
+  bool _useMotionCore = false;
+
+  // When interacting with the screen in gyroscope mode, we temporarily damp
+  // orientation updates to avoid tap-induced shake, especially when zoomed in.
+  static const int _touchStabilizeAfterMs = 300;
+  bool _touchActive = false;
+  int? _lastTouchChangeMs;
 
   // Track current view direction (radians)
   double _currentAzimuth = 0.0;
@@ -145,6 +154,11 @@ class SkyViewState extends State<SkyView> {
   double _gyroHeadingRad = 0.0;
   bool _gyroHeadingInitialized = false;
   int? _lastGyroTimestampMicros;
+
+  // MotionCore on iOS uses an arbitrary reference frame for yaw. We align it to
+  // magnetic north using the filtered compass heading.
+  double _motionYawOffsetRad = 0.0;
+  bool _motionYawOffsetInitialized = false;
 
   // ============================================================================
   // COMPASS 180° FLIP COMPENSATION
@@ -247,6 +261,32 @@ class SkyViewState extends State<SkyView> {
     // Check if device has required sensors
     debugPrint('Sensors: checking availability...');
 
+    // Prefer native fused attitude if available
+    try {
+      final motionAvailable = await MotionCore.isAvailable();
+      if (motionAvailable) {
+        _useMotionCore = true;
+        _gyroscopeAvailable = true;
+        debugPrint('MotionCore: available = true');
+      } else {
+        _useMotionCore = false;
+        debugPrint(
+            'MotionCore: available = false, falling back to raw sensors');
+      }
+    } catch (e, stackTrace) {
+      _useMotionCore = false;
+      debugPrint('MotionCore availability error: $e');
+      FirebaseCrashlytics.instance.recordError(e, stackTrace);
+    }
+
+    if (_useMotionCore) {
+      widget.onGyroscopeAvailabilityChanged?.call(_gyroscopeAvailable);
+      if (widget.gyroscopeEnabled && _gyroscopeAvailable) {
+        _startGyroscope();
+      }
+      return;
+    }
+
     // Test gyroscope
     try {
       bool gyroError = false;
@@ -341,6 +381,28 @@ class SkyViewState extends State<SkyView> {
     _smoothedAzimuth = 0.0;
     _smoothedAltitude = _currentAltitude;
     _smoothedOrientationInitialized = false;
+    _touchActive = false;
+    _lastTouchChangeMs = null;
+    _motionYawOffsetInitialized = false;
+    _motionYawOffsetRad = 0.0;
+
+    if (_useMotionCore) {
+      // Ensure raw-sensor subscriptions are stopped. Keep compass running for
+      // yaw alignment to north.
+      _gyroSubscription?.cancel();
+      _gyroSubscription = null;
+      _accelerometerSubscription?.cancel();
+      _accelerometerSubscription = null;
+
+      _motionSubscription?.cancel();
+      _motionSubscription = MotionCore.motionStream.listen(
+        _onMotionData,
+        onError: (e, stackTrace) {
+          debugPrint('MotionCore stream error: $e');
+          FirebaseCrashlytics.instance.recordError(e, stackTrace);
+        },
+      );
+    }
 
     // Start compass for heading (uses Core Location on iOS for reliable compass)
     _compassSubscription?.cancel();
@@ -402,6 +464,8 @@ class SkyViewState extends State<SkyView> {
     }, onError: (e) {
       debugPrint('Compass error: $e');
     });
+
+    if (_useMotionCore) return;
 
     // Start accelerometer for device tilt (altitude)
     _accelerometerSubscription?.cancel();
@@ -487,6 +551,8 @@ class SkyViewState extends State<SkyView> {
   }
 
   void _stopGyroscope() {
+    _motionSubscription?.cancel();
+    _motionSubscription = null;
     _gyroSubscription?.cancel();
     _gyroSubscription = null;
     _compassSubscription?.cancel();
@@ -497,6 +563,8 @@ class SkyViewState extends State<SkyView> {
     _compassAvailable = false;
     _gyroHeadingInitialized = false;
     _lastGyroTimestampMicros = null;
+    _touchActive = false;
+    _lastTouchChangeMs = null;
 
     // Re-enable touch panning in the WebView
     _webViewKey.currentState?.setGyroscopeEnabled(false);
@@ -585,57 +653,59 @@ class SkyViewState extends State<SkyView> {
     }
     _currentAzimuth = _gyroHeadingRad;
 
-    // Smooth the output we send to Stellarium to avoid micro jitter.
     final gyroMag =
         math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
-    final targetAzimuth = _currentAzimuth;
-    final targetAltitude = _currentAltitude;
+    final deviceMoving = _yawActive || gyroMag > _gyroMotionThresholdRadPerSec;
+    _applySmoothedOrientation(
+      targetAzimuth: _currentAzimuth,
+      targetAltitude: _currentAltitude,
+      deviceMoving: deviceMoving,
+    );
+  }
 
-    if (!_smoothedOrientationInitialized) {
-      _smoothedAzimuth = targetAzimuth;
-      _smoothedAltitude = targetAltitude;
-      _smoothedOrientationInitialized = true;
-    } else {
-      final azDelta =
-          _shortestAngleRadians(targetAzimuth - _smoothedAzimuth).abs();
-      final altDelta = (targetAltitude - _smoothedAltitude).abs();
+  void _onMotionData(MotionData data) {
+    if (!_isInitialized) return;
 
-      final deviceMoving =
-          _yawActive || gyroMag > _gyroMotionThresholdRadPerSec;
-      final azAlpha = _adaptiveOutputAlpha(azDelta, moving: deviceMoving);
-      final altAlpha = _adaptiveOutputAlpha(altDelta, moving: deviceMoving);
+    final gravity = data.gravity;
+    final gNorm = gravity.length;
+    if (gNorm < 0.1) return;
 
-      // When zoomed in (small FOV), make tilt less sensitive by increasing
-      // dead-zone and slowing the smoothing toward the target altitude.
-      final zoomFactor = _zoomFactorForFovDeg(_currentFovDeg);
-      final effectiveAltDeadZone = _altitudeOutputDeadZoneRad * zoomFactor;
-      final effectiveAltAlpha =
-          (altAlpha / math.pow(zoomFactor, 1.3)).clamp(0.01, 0.6).toDouble();
+    final upZ = gravity.z / gNorm;
+    // MotionCore gravity axis is inverted vs sensors_plus on some devices,
+    // so use the opposite sign to match previous "tilt up = positive altitude".
+    final altitude = math.asin(upZ.clamp(-1.0, 1.0));
 
-      if (azDelta > _azimuthOutputDeadZoneRad) {
-        _smoothedAzimuth =
-            _lerpAngleRadians(_smoothedAzimuth, targetAzimuth, azAlpha);
-      }
-      if (altDelta > effectiveAltDeadZone) {
-        _smoothedAltitude = _smoothedAltitude +
-            (targetAltitude - _smoothedAltitude) * effectiveAltAlpha;
-      }
+    final yaw = data.yaw;
+
+    // Align MotionCore yaw to magnetic north using the filtered compass heading.
+    // iOS MotionCore uses an arbitrary reference frame, so we compute an offset.
+    if (!_motionYawOffsetInitialized && _compassAvailable) {
+      final compassAzimuthRad = _filteredCompassHeading * math.pi / 180.0;
+      _motionYawOffsetRad = _normalizeRadians(compassAzimuthRad + yaw);
+      _motionYawOffsetInitialized = true;
+      debugPrint(
+          '[SKYVIEW] MotionCore yaw calibrated to compass (offset=${_motionYawOffsetRad.toStringAsFixed(3)} rad)');
     }
 
-    _lastAppliedAzimuth = _smoothedAzimuth;
-    _lastAppliedAltitude = _smoothedAltitude;
+    // MotionCore yaw uses right-hand rule (positive CCW). Negate so clockwise
+    // turns increase azimuth like the engine expects, then apply offset if known.
+    final azimuth = _normalizeRadians(
+        -yaw + (_motionYawOffsetInitialized ? _motionYawOffsetRad : 0.0));
 
-    // Apply to WebView (mobile) or engine (web)
-    if (!kIsWeb) {
-      _webViewKey.currentState
-          ?.lookAt(_lastAppliedAzimuth, _lastAppliedAltitude, 0.0);
-    } else {
-      _engine?.lookAt(
-        azimuth: _lastAppliedAzimuth,
-        altitude: _lastAppliedAltitude,
-        animationDuration: 0.0,
-      );
-    }
+    final zoomFactor = _zoomFactorForFovDeg(_currentFovDeg);
+    final movementThresholdRad = 0.005 * zoomFactor;
+    final azDelta = _shortestAngleRadians(azimuth - _smoothedAzimuth).abs();
+    final altDelta = (altitude - _smoothedAltitude).abs();
+
+    _applySmoothedOrientation(
+      targetAzimuth: azimuth,
+      targetAltitude: altitude,
+      // Require a larger angular change to enter "moving" mode when zoomed in,
+      // so micro hand jitter stays in the heavy-still filter.
+      deviceMoving: !_smoothedOrientationInitialized ||
+          azDelta > movementThresholdRad ||
+          altDelta > movementThresholdRad,
+    );
   }
 
   Future<void> _initEngine() async {
@@ -776,6 +846,10 @@ class SkyViewState extends State<SkyView> {
             final x = event.localPosition.dx;
             final y = event.localPosition.dy;
             _webViewKey.currentState?.onPointerDown(slot, x, y);
+            if (widget.gyroscopeEnabled) {
+              _touchActive = true;
+              _lastTouchChangeMs = DateTime.now().millisecondsSinceEpoch;
+            }
             // Track for tap detection
             _touchStartX = x;
             _touchStartY = y;
@@ -802,6 +876,10 @@ class SkyViewState extends State<SkyView> {
             final y = event.localPosition.dy;
             _webViewKey.currentState?.onPointerUp(slot, x, y);
             _releaseSlot(event.pointer);
+            if (widget.gyroscopeEnabled) {
+              _touchActive = _pointerSlots.isNotEmpty;
+              _lastTouchChangeMs = DateTime.now().millisecondsSinceEpoch;
+            }
 
             // Tap detection - check if this was a tap (small movement, short duration)
             if (_touchStartX != null &&
@@ -827,6 +905,10 @@ class SkyViewState extends State<SkyView> {
           },
           onPointerCancel: (event) {
             _releaseSlot(event.pointer);
+            if (widget.gyroscopeEnabled) {
+              _touchActive = _pointerSlots.isNotEmpty;
+              _lastTouchChangeMs = DateTime.now().millisecondsSinceEpoch;
+            }
             _touchStartX = null;
             _touchStartY = null;
             _touchStartTime = null;
@@ -1035,6 +1117,78 @@ class SkyViewState extends State<SkyView> {
         ),
       ),
     );
+  }
+
+  bool get _touchStabilizing {
+    if (_touchActive) return true;
+    if (_lastTouchChangeMs == null) return false;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    return nowMs - _lastTouchChangeMs! < _touchStabilizeAfterMs;
+  }
+
+  void _applySmoothedOrientation({
+    required double targetAzimuth,
+    required double targetAltitude,
+    required bool deviceMoving,
+  }) {
+    if (!_smoothedOrientationInitialized) {
+      _smoothedAzimuth = targetAzimuth;
+      _smoothedAltitude = targetAltitude;
+      _smoothedOrientationInitialized = true;
+    } else {
+      final azDelta =
+          _shortestAngleRadians(targetAzimuth - _smoothedAzimuth).abs();
+      final altDelta = (targetAltitude - _smoothedAltitude).abs();
+
+      final touchStabilizing = _touchStabilizing;
+      final movingForFilter = deviceMoving && !touchStabilizing;
+
+      final azAlpha = _adaptiveOutputAlpha(azDelta, moving: movingForFilter);
+      final altAlpha = _adaptiveOutputAlpha(altDelta, moving: movingForFilter);
+
+      // When zoomed in (small FOV), make tilt less sensitive by increasing
+      // dead-zone and slowing the smoothing toward the target angles.
+      final zoomFactor = _zoomFactorForFovDeg(_currentFovDeg);
+      final stabilizationFactor = touchStabilizing ? 2.0 : 1.0;
+      final deadZoneZoomExp = movingForFilter ? 1.0 : 1.4;
+      final zoomDeadZoneScale =
+          math.pow(zoomFactor, deadZoneZoomExp).toDouble();
+      final effectiveAzDeadZone =
+          _azimuthOutputDeadZoneRad * zoomDeadZoneScale * stabilizationFactor;
+      final effectiveAzAlpha =
+          (azAlpha / (math.pow(zoomFactor, 1.0) * stabilizationFactor))
+              .clamp(0.005, 0.8)
+              .toDouble();
+      final effectiveAltDeadZone =
+          _altitudeOutputDeadZoneRad * zoomDeadZoneScale * stabilizationFactor;
+      final effectiveAltAlpha =
+          (altAlpha / (math.pow(zoomFactor, 1.3) * stabilizationFactor))
+              .clamp(0.005, 0.6)
+              .toDouble();
+
+      if (azDelta > effectiveAzDeadZone) {
+        _smoothedAzimuth = _lerpAngleRadians(
+            _smoothedAzimuth, targetAzimuth, effectiveAzAlpha);
+      }
+      if (altDelta > effectiveAltDeadZone) {
+        _smoothedAltitude = _smoothedAltitude +
+            (targetAltitude - _smoothedAltitude) * effectiveAltAlpha;
+      }
+    }
+
+    _lastAppliedAzimuth = _smoothedAzimuth;
+    _lastAppliedAltitude = _smoothedAltitude;
+
+    if (!kIsWeb) {
+      _webViewKey.currentState
+          ?.lookAt(_lastAppliedAzimuth, _lastAppliedAltitude, 0.0);
+    } else {
+      _engine?.lookAt(
+        azimuth: _lastAppliedAzimuth,
+        altitude: _lastAppliedAltitude,
+        animationDuration: 0.0,
+      );
+    }
   }
 
   double _adaptiveOutputAlpha(double deltaRad, {required bool moving}) {

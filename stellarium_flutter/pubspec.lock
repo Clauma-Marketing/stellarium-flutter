@@ -645,6 +645,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.17.0"
+  motion_core:
+    dependency: "direct main"
+    description:
+      name: motion_core
+      sha256: "97cd8a0b5db84b9b793d627fde673aded5b533d3e607c923aa716405b32d2e1e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.4"
   package_info_plus:
     dependency: transitive
     description:

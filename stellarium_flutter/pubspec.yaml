@@ -103,6 +103,7 @@ dependencies:
   # Certificate scanner with OCR
   camera: ^0.11.0+2
   google_mlkit_text_recognition: ^0.14.0
+  motion_core: 0.0.4
 
 dev_dependencies:
   flutter_test:
