@@ -139,6 +139,10 @@ class SkyViewState extends State<SkyView> {
   double _compassHeading = 0.0;
   double _filteredCompassHeading = 0.0;
   bool _compassInitialized = false;
+  double _compassAzimuthRad = 0.0;
+  double _gyroHeadingRad = 0.0;
+  bool _gyroHeadingInitialized = false;
+  int? _lastGyroTimestampMicros;
 
 
   // ============================================================================
@@ -175,13 +179,26 @@ class SkyViewState extends State<SkyView> {
   // Debug frame counter
   int _debugFrameCount = 0;
 
-  // Dead zone thresholds - ignore micro-movements below these values (in degrees)
-  static const double _compassDeadZone = 0.5; // Ignore compass changes < 0.5°
-  static const double _altitudeDeadZone = 0.3; // Ignore altitude changes < 0.3°
+  // Dead zone thresholds - set to 0 so we forward every change to the engine
+  static const double _compassDeadZone = 0.0;
+  static const double _altitudeDeadZone = 0.0;
+  static const double _compassFusionGainStill = 0.0; // Gyro-only while running
+  static const double _compassFusionGainMoving = 0.0; // No compass correction while turning
+  static const double _maxGyroDtSeconds = 0.25;
+  static const double _motionStillYawRadPerSec = 0.03; // ~1.7°/s
+  static const double _correctionDeadZoneRad = 0.01; // ~0.57°
+  static const double _yawStartThresholdRadPerSec = 0.12; // Require >6.9°/s to start motion
+  static const double _yawStopThresholdRadPerSec = 0.05; // Drop below 2.9°/s to stop
+  static const int _yawStartHoldMs = 150; // Require sustained motion to engage
+  static const int _yawStopHoldMs = 200; // Require sustained stillness to disengage
+  static const double _stillHeadingDamp = 0.1; // Light smoothing when effectively still
 
   // Last applied values (for dead zone comparison)
   double _lastAppliedAzimuth = 0.0;
   double _lastAppliedAltitude = 0.0;
+  bool _yawActive = false;
+  int? _yawAboveSinceMs;
+  int? _yawBelowSinceMs;
 
   @override
   void initState() {
@@ -295,6 +312,12 @@ class SkyViewState extends State<SkyView> {
     _filteredAccX = 0.0;
     _filteredAccY = 0.0;
     _filteredAccZ = 0.0;
+    _gyroHeadingInitialized = false;
+    _gyroHeadingRad = 0.0;
+    _compassAzimuthRad = 0.0;
+    _lastGyroTimestampMicros = null;
+    _lastAppliedAzimuth = 0.0;
+    _lastAppliedAltitude = 0.0;
 
 
     // Start compass for heading (uses Core Location on iOS for reliable compass)
@@ -339,7 +362,7 @@ class SkyViewState extends State<SkyView> {
 
           // Adaptive filtering: heavy when still, moderate when moving for smooth motion
           final absDiff = diff.abs();
-          final double alpha = absDiff < 2.0 ? 0.05 : (absDiff < 8.0 ? 0.15 : 0.3);
+          final double alpha = absDiff < 2.0 ? 0.1 : (absDiff < 8.0 ? 0.25 : 0.4);
 
           _filteredCompassHeading += alpha * diff;
           // Normalize to 0-360 range
@@ -375,7 +398,7 @@ class SkyViewState extends State<SkyView> {
         final diffY = ay - _filteredAccY;
         final diffZ = az - _filteredAccZ;
         final diffMag = diffX.abs() + diffY.abs() + diffZ.abs();
-        final double alpha = diffMag < 0.5 ? 0.05 : (diffMag < 2.0 ? 0.12 : 0.25);
+        final double alpha = diffMag < 0.5 ? 0.08 : (diffMag < 2.0 ? 0.18 : 0.3);
 
         _filteredAccX = _filteredAccX + alpha * diffX;
         _filteredAccY = _filteredAccY + alpha * diffY;
@@ -416,8 +439,12 @@ class SkyViewState extends State<SkyView> {
 
     final altitudeDeg = _currentAltitude.abs() * 180.0 / math.pi;
 
-    // Simply use compass directly - no filtering or freezing
-    _currentAzimuth = _filteredCompassHeading * math.pi / 180.0;
+    // Track compass heading (radians) and use it to seed the gyro integrator
+    _compassAzimuthRad = _filteredCompassHeading * math.pi / 180.0;
+    if (!_gyroHeadingInitialized) {
+      _gyroHeadingRad = _compassAzimuthRad;
+      _gyroHeadingInitialized = true;
+    }
 
     if (!_isCalibrated) {
       _isCalibrated = true;
@@ -440,6 +467,8 @@ class SkyViewState extends State<SkyView> {
     _accelerometerSubscription = null;
     _isCalibrated = false;
     _compassAvailable = false;
+    _gyroHeadingInitialized = false;
+    _lastGyroTimestampMicros = null;
 
     // Re-enable touch panning in the WebView
     _webViewKey.currentState?.setGyroscopeEnabled(false);
@@ -451,35 +480,94 @@ class SkyViewState extends State<SkyView> {
     // Update orientation from accelerometer/compass
     _updateOrientationFromSensors();
 
-    if (!_isCalibrated) return;
-
-    // Apply dead zone - ignore micro-movements to reduce jitter
-    final azimuthDeg = _currentAzimuth * 180.0 / math.pi;
-    final altitudeDeg = _currentAltitude * 180.0 / math.pi;
-    final lastAzimuthDeg = _lastAppliedAzimuth * 180.0 / math.pi;
-    final lastAltitudeDeg = _lastAppliedAltitude * 180.0 / math.pi;
-
-    // Calculate angular difference (handle wrap-around for azimuth)
-    double azimuthDiff = (azimuthDeg - lastAzimuthDeg).abs();
-    if (azimuthDiff > 180) azimuthDiff = 360 - azimuthDiff;
-    final altitudeDiff = (altitudeDeg - lastAltitudeDeg).abs();
-
-    // Only update if movement exceeds dead zone
-    if (azimuthDiff < _compassDeadZone && altitudeDiff < _altitudeDeadZone) {
-      return; // Skip micro-movement
+    if (!_isCalibrated || !_gyroHeadingInitialized) {
+      _lastGyroTimestampMicros ??= DateTime.now().microsecondsSinceEpoch;
+      _currentAzimuth = _gyroHeadingRad;
+      return;
     }
 
+    // Integrate gyroscope (z = yaw) for responsiveness, correct drift toward compass
+    final nowMicros = DateTime.now().microsecondsSinceEpoch;
+    if (_lastGyroTimestampMicros == null) {
+      _lastGyroTimestampMicros = nowMicros;
+      _currentAzimuth = _gyroHeadingRad;
+      return;
+    }
+    final dt = (nowMicros - _lastGyroTimestampMicros!) / 1000000.0;
+    _lastGyroTimestampMicros = nowMicros;
+    if (dt <= 0 || dt > _maxGyroDtSeconds) {
+      _currentAzimuth = _gyroHeadingRad;
+      return;
+    }
+
+    // Project gyro onto gravity/up vector so yaw tracks correctly regardless of phone tilt
+    double yawRate = event.z;
+    final accNorm = math.sqrt(_filteredAccX * _filteredAccX + _filteredAccY * _filteredAccY + _filteredAccZ * _filteredAccZ);
+    if (accNorm > 0.1) {
+      final upX = _filteredAccX / accNorm;
+      final upY = _filteredAccY / accNorm;
+      final upZ = _filteredAccZ / accNorm;
+      yawRate = event.x * upX + event.y * upY + event.z * upZ;
+    }
+    double absYawRate = yawRate.abs();
+
+    final nowMs = nowMicros ~/ 1000;
+
+    // Hysteresis with hold times: only treat as moving if above start threshold for a bit,
+    // and require sustained stillness before stopping.
+    if (_yawActive) {
+      if (absYawRate < _yawStopThresholdRadPerSec) {
+        _yawBelowSinceMs ??= nowMs;
+        if (nowMs - _yawBelowSinceMs! >= _yawStopHoldMs) {
+          _yawActive = false;
+          _yawAboveSinceMs = null;
+          _yawBelowSinceMs = null;
+        }
+      } else {
+        _yawBelowSinceMs = null;
+      }
+    } else {
+      if (absYawRate > _yawStartThresholdRadPerSec) {
+        _yawAboveSinceMs ??= nowMs;
+        if (nowMs - _yawAboveSinceMs! >= _yawStartHoldMs) {
+          _yawActive = true;
+          _yawBelowSinceMs = null;
+        }
+      } else {
+        _yawAboveSinceMs = null;
+      }
+    }
+
+    if (!_yawActive) {
+      yawRate = 0.0;
+      absYawRate = 0.0;
+    }
+
+    // Gyro coordinates are right-handed; negate yaw so clockwise turns increase heading like the compass
+    _gyroHeadingRad = _normalizeRadians(_gyroHeadingRad - yawRate * dt);
+
+    // Compass is only used for initial seeding; no ongoing correction while running
+
+    // Light damping when effectively still to avoid micro jitter
+    if (!_yawActive) {
+      _gyroHeadingRad = _lerpAngleRadians(_currentAzimuth, _gyroHeadingRad, _stillHeadingDamp);
+    }
+    _currentAzimuth = _gyroHeadingRad;
+
+    // Always forward the latest reading (engine handles smoothing)
+
+    // Smooth toward target to avoid frame-to-frame zig-zag while moving
     // Update last applied values
     _lastAppliedAzimuth = _currentAzimuth;
     _lastAppliedAltitude = _currentAltitude;
 
     // Apply to WebView (mobile) or engine (web)
     if (!kIsWeb) {
-      _webViewKey.currentState?.lookAt(_currentAzimuth, _currentAltitude, 0.05);
+      _webViewKey.currentState?.lookAt(_lastAppliedAzimuth, _lastAppliedAltitude, 0.0);
     } else {
       _engine?.lookAt(
-        azimuth: _currentAzimuth,
-        altitude: _currentAltitude,
+        azimuth: _lastAppliedAzimuth,
+        altitude: _lastAppliedAltitude,
         animationDuration: 0.0,
       );
     }
@@ -867,6 +955,25 @@ class SkyViewState extends State<SkyView> {
         ),
       ),
     );
+  }
+
+  double _normalizeRadians(double value) {
+    final twoPi = math.pi * 2;
+    value %= twoPi;
+    if (value < 0) value += twoPi;
+    return value;
+  }
+
+  double _shortestAngleRadians(double angle) {
+    final twoPi = math.pi * 2;
+    angle = (angle + math.pi) % twoPi;
+    if (angle < 0) angle += twoPi;
+    return angle - math.pi;
+  }
+
+  double _lerpAngleRadians(double from, double to, double alpha) {
+    final delta = _shortestAngleRadians(to - from);
+    return _normalizeRadians(from + delta * alpha);
   }
 
 }
