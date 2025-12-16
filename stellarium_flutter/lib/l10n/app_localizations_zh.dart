@@ -9,7 +9,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => 'Night Sky Guide';
+  String get appTitle => 'Star Registration Planetarium';
 
   @override
   String get menu => '菜单';
@@ -73,6 +73,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get apply => '应用';
+
+  @override
+  String get back => '返回';
 
   @override
   String get save => '保存';
@@ -411,7 +414,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchPlaceholder => '搜索星星或天体...';
 
   @override
-  String get onboardingExploreUniverse => '在口袋里探索宇宙';
+  String get welcomeTitle => '探索宇宙';
+
+  @override
+  String get onboardingExploreUniverse => '探索夜空，追踪天文事件，在数百万颗星星中找到您命名的那颗星。';
 
   @override
   String get onboardingGetStarted => '开始使用';
@@ -432,10 +438,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingRequesting => '请求中...';
 
   @override
-  String get locationAccessTitle => '位置访问';
+  String get locationAccessTitle => '允许位置访问？';
 
   @override
-  String get locationAccessSubtitle => '允许访问位置，以便准确显示您所在位置的天空';
+  String get locationAccessSubtitle => '看到夜空正如您所在位置看到的一样。我们使用您的位置来获取准确的星星位置。';
+
+  @override
+  String get locationAllowAccess => '允许位置访问';
 
   @override
   String get locationAccuratePositions => '精确的星星位置';
@@ -477,10 +486,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get locationFailedBrowser => '获取位置失败。请在浏览器中允许位置访问。';
 
   @override
-  String get notificationTitle => '保持更新';
+  String get notificationTitle => '启用通知？';
 
   @override
-  String get notificationSubtitle => '获取天文事件和最佳观测条件的通知';
+  String get notificationSubtitle => '不错过流星雨和最佳观星夜晚。我们会在事件发生前及时向您发送提醒。';
+
+  @override
+  String get notificationAllowNotifications => '允许通知';
 
   @override
   String get notificationMoonPhase => '月相提醒';
@@ -504,10 +516,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notificationPrivacyNotice => '您可以随时在应用中更改通知设置。';
 
   @override
-  String get attTitle => '隐私与追踪';
+  String get attTitle => '允许追踪？';
 
   @override
-  String get attSubtitle => '允许追踪以帮助我们改善您的体验并向您展示相关内容';
+  String get attSubtitle => '帮助我们改善您的宇宙之旅。我们使用数据来个性化见解并建议相关事件。';
+
+  @override
+  String get attAllowTracking => '允许追踪';
+
+  @override
+  String get attDontTrack => '请求应用不追踪';
 
   @override
   String get attImproveApp => '改进应用';
@@ -600,4 +618,118 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get couldNotCaptureImage => '无法拍摄图像。请重试。';
+
+  @override
+  String get showStarPath => '显示24小时轨迹';
+
+  @override
+  String get hideStarPath => '隐藏24小时轨迹';
+
+  @override
+  String get loaderQuote1 => '您通往宇宙的私人窗口';
+
+  @override
+  String get loaderQuote2 => '每颗星星都有一个等待被赋予的名字';
+
+  @override
+  String get loaderQuote3 => '头顶的天空，已绘制完成，等待您的探索';
+
+  @override
+  String get loaderQuote4 => '一个镌刻在光芒中的名字，永远属于您';
+
+  @override
+  String get loaderQuote5 => '数百万颗星星——有一颗属于您';
+
+  @override
+  String get loaderQuote6 => '古老的光芒与您的目光相遇';
+
+  @override
+  String get loaderQuote7 => '宇宙铭记每一个名字';
+
+  @override
+  String get loaderQuote8 => '仰望星空，在群星中找到属于您的位置';
+
+  @override
+  String get loaderStatus1 => '正在定位您的坐标';
+
+  @override
+  String get loaderStatus2 => '正在绘制天球';
+
+  @override
+  String get loaderStatus3 => '正在标注可见星座';
+
+  @override
+  String get loaderStatus4 => '正在计算星星位置';
+
+  @override
+  String get loaderStatus5 => '正在准备您的夜空';
+
+  @override
+  String get visibilityCalculating => '正在计算可见性...';
+
+  @override
+  String get visibilityVisibleNow => '当前可见';
+
+  @override
+  String get visibilityTonight => '今晚';
+
+  @override
+  String get visibilityVisible => '可见';
+
+  @override
+  String get visibilitySince => '开始于';
+
+  @override
+  String get visibilityFrom => '从';
+
+  @override
+  String get visibilityUntil => '直到';
+
+  @override
+  String get notificationAlertTitle => '可见性提醒';
+
+  @override
+  String get notificationAlertSubtitle => '当星星升起时通知我';
+
+  @override
+  String get visibilityStatusNeverVisible => '永远不可见';
+
+  @override
+  String get visibilityStatusVisibleNow => '当前可见';
+
+  @override
+  String get visibilityStatusWaitForDark => '等待天黑';
+
+  @override
+  String get visibilityStatusBelowHorizon => '在地平线以下';
+
+  @override
+  String get visibilityNow => '现在';
+
+  @override
+  String visibilityStatusTonight(String time) {
+    return '今晚 $time';
+  }
+
+  @override
+  String visibilityStatusTomorrow(String time) {
+    return '明天 $time';
+  }
+
+  @override
+  String visibilityStatusInDays(int days, int hours) {
+    return '$days天$hours小时';
+  }
+
+  @override
+  String get legal => '法律条款';
+
+  @override
+  String get legalSubtitle => '使用条款和隐私政策';
+
+  @override
+  String get termsOfUse => '使用条款';
+
+  @override
+  String get privacyPolicy => '隐私政策';
 }

@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Night Sky Guide';
+  String get appTitle => 'Star Registration Planetarium';
 
   @override
   String get menu => 'Menu';
@@ -73,6 +73,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apply => 'Apply';
+
+  @override
+  String get back => 'Back';
 
   @override
   String get save => 'Save';
@@ -403,7 +406,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nameThisStar => 'Name this Star';
 
   @override
-  String get viewStarIn3D => 'View Star in 3D';
+  String get viewStarIn3D => '3D View';
 
   @override
   String get catalogId => 'Catalog ID';
@@ -418,8 +421,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchPlaceholder => 'Search for a star or object...';
 
   @override
+  String get welcomeTitle => 'Discover the Cosmos';
+
+  @override
   String get onboardingExploreUniverse =>
-      'Explore the universe from your pocket';
+      'Explore the night sky, track celestial events, and find your named star among millions of others.';
 
   @override
   String get onboardingGetStarted => 'Get Started';
@@ -440,11 +446,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingRequesting => 'Requesting...';
 
   @override
-  String get locationAccessTitle => 'Location Access';
+  String get locationAccessTitle => 'Allow Location?';
 
   @override
   String get locationAccessSubtitle =>
-      'Allow location access to see the sky exactly as it appears from your location';
+      'See the night sky exactly as it appears from your location. We use your position for accurate star positions.';
+
+  @override
+  String get locationAllowAccess => 'Continue';
 
   @override
   String get locationAccuratePositions => 'Accurate Star Positions';
@@ -493,11 +502,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Failed to get location. Please allow location access in your browser.';
 
   @override
-  String get notificationTitle => 'Stay Updated';
+  String get notificationTitle => 'Enable Notifications?';
 
   @override
   String get notificationSubtitle =>
-      'Get notified about celestial events and optimal viewing conditions';
+      'Never miss meteor showers and the best nights for stargazing. We\'ll send you timely alerts before they happen.';
+
+  @override
+  String get notificationAllowNotifications => 'Continue';
 
   @override
   String get notificationMoonPhase => 'Moon Phase Alerts';
@@ -524,11 +536,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'You can change notification settings anytime in the app.';
 
   @override
-  String get attTitle => 'Privacy & Tracking';
+  String get attTitle => 'Allow Tracking?';
 
   @override
   String get attSubtitle =>
-      'Allow tracking to help us improve your experience and show you relevant content';
+      'Help us improve your cosmic journey. We use data to personalize insights and suggest relevant events.';
+
+  @override
+  String get attAllowTracking => 'Continue';
+
+  @override
+  String get attDontTrack => 'Ask App Not to Track';
 
   @override
   String get attImproveApp => 'Improve the App';
@@ -630,4 +648,118 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get couldNotCaptureImage =>
       'Could not capture image. Please try again.';
+
+  @override
+  String get showStarPath => 'Show 24h Path';
+
+  @override
+  String get hideStarPath => 'Hide 24h Path';
+
+  @override
+  String get loaderQuote1 => 'Your personal window to the cosmos';
+
+  @override
+  String get loaderQuote2 => 'Every star holds a name waiting to be given';
+
+  @override
+  String get loaderQuote3 => 'The sky above you, charted and waiting';
+
+  @override
+  String get loaderQuote4 => 'A name etched in light, forever yours';
+
+  @override
+  String get loaderQuote5 => 'Millions of stars — one belongs to you';
+
+  @override
+  String get loaderQuote6 => 'Where the ancient light meets your gaze';
+
+  @override
+  String get loaderQuote7 => 'The universe remembers every name';
+
+  @override
+  String get loaderQuote8 => 'Look up. Find your place among the stars.';
+
+  @override
+  String get loaderStatus1 => 'Locating your coordinates';
+
+  @override
+  String get loaderStatus2 => 'Mapping the celestial sphere';
+
+  @override
+  String get loaderStatus3 => 'Charting visible constellations';
+
+  @override
+  String get loaderStatus4 => 'Calculating star positions';
+
+  @override
+  String get loaderStatus5 => 'Preparing your night sky';
+
+  @override
+  String get visibilityCalculating => 'Calculating visibility...';
+
+  @override
+  String get visibilityVisibleNow => 'Visible Now';
+
+  @override
+  String get visibilityTonight => 'Tonight';
+
+  @override
+  String get visibilityVisible => 'visible';
+
+  @override
+  String get visibilitySince => 'SINCE';
+
+  @override
+  String get visibilityFrom => 'FROM';
+
+  @override
+  String get visibilityUntil => 'UNTIL';
+
+  @override
+  String get notificationAlertTitle => 'Visibility Alert';
+
+  @override
+  String get notificationAlertSubtitle => 'Get notified when star rises';
+
+  @override
+  String get visibilityStatusNeverVisible => 'Never visible';
+
+  @override
+  String get visibilityStatusVisibleNow => 'Visible now';
+
+  @override
+  String get visibilityStatusWaitForDark => 'Wait for dark';
+
+  @override
+  String get visibilityStatusBelowHorizon => 'Below horizon';
+
+  @override
+  String get visibilityNow => 'Now';
+
+  @override
+  String visibilityStatusTonight(String time) {
+    return 'Tonight $time';
+  }
+
+  @override
+  String visibilityStatusTomorrow(String time) {
+    return 'Tomorrow $time';
+  }
+
+  @override
+  String visibilityStatusInDays(int days, int hours) {
+    return '${days}d ${hours}h';
+  }
+
+  @override
+  String get legal => 'Legal';
+
+  @override
+  String get legalSubtitle => 'Terms of Use & Privacy Policy';
+
+  @override
+  String get termsOfUse => 'Terms of Use';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
 }

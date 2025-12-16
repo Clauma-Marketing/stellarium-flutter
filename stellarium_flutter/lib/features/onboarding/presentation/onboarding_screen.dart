@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../services/analytics_service.dart';
+import '../../../../services/firestore_sync_service.dart';
+import '../../../../services/klaviyo_service.dart';
+import '../../../../services/locale_service.dart';
 import '../onboarding_service.dart';
 import 'pages/att_permission_page.dart';
 import 'pages/location_permission_page.dart';
@@ -67,14 +72,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  void _skipToNextPage() {
-    _goToNextPage();
-  }
-
   Future<void> _completeOnboarding() async {
     await OnboardingService.completeOnboarding();
     // Track onboarding completion
     AnalyticsService.instance.logOnboardingComplete();
+
+    // Initialize services that were deferred from startup to avoid
+    // triggering notification permission dialogs for new users
+    if (!kIsWeb) {
+      // Set up Firebase Messaging foreground handler
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        KlaviyoService.instance.handlePush(message.data);
+      });
+
+      // Initialize Klaviyo if not already initialized
+      if (!KlaviyoService.instance.isInitialized) {
+        final locale = LocaleService.instance.locale;
+        final languageCode = locale?.languageCode ??
+            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+        await KlaviyoService.instance.initialize(languageCode);
+        KlaviyoService.instance.setupTokenRefreshListener();
+      }
+
+      // Firestore sync must not block the transition out of onboarding (it can hang when offline).
+      unawaited(() async {
+        try {
+          await FirestoreSyncService.instance
+              .initialize()
+              .timeout(const Duration(seconds: 8));
+          await FirestoreSyncService.instance
+              .syncSavedStars()
+              .timeout(const Duration(seconds: 8));
+        } catch (e) {
+          debugPrint('Deferred Firestore sync failed: $e');
+        }
+      }());
+    }
+
     widget.onComplete();
   }
 
@@ -99,7 +133,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Page 1: Location Permission
       LocationPermissionPage(
         onContinue: _goToNextPage,
-        onSkip: _skipToNextPage,
         onLocationObtained: _onLocationObtained,
         currentPage: 1,
         totalPages: _totalPages,
@@ -107,7 +140,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Page 2: Notification Permission
       NotificationPermissionPage(
         onContinue: _goToNextPage,
-        onSkip: _skipToNextPage,
         currentPage: 2,
         totalPages: _totalPages,
       ),
@@ -118,7 +150,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       pages.add(
         AttPermissionPage(
           onContinue: _completeOnboarding,
-          onSkip: _completeOnboarding,
           currentPage: 3,
           totalPages: _totalPages,
         ),

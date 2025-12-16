@@ -1,7 +1,7 @@
 {
   "@@locale": "zh",
 
-  "appTitle": "Night Sky Guide",
+  "appTitle": "Star Registration Planetarium",
 
   "menu": "菜单",
   "myStars": "我的星星",
@@ -193,7 +193,8 @@
   "movementButton": "移动",
   "searchPlaceholder": "搜索星星或天体...",
 
-  "onboardingExploreUniverse": "在口袋里探索宇宙",
+  "welcomeTitle": "探索宇宙",
+  "onboardingExploreUniverse": "探索夜空，追踪天文事件，在数百万颗星星中找到您命名的那颗星。",
   "onboardingGetStarted": "开始使用",
   "onboardingContinue": "继续",
   "onboardingSkip": "跳过",
@@ -201,8 +202,9 @@
   "onboardingMaybeLater": "以后再说",
   "onboardingRequesting": "请求中...",
 
-  "locationAccessTitle": "位置访问",
-  "locationAccessSubtitle": "允许访问位置，以便准确显示您所在位置的天空",
+  "locationAccessTitle": "允许位置访问？",
+  "locationAccessSubtitle": "看到夜空正如您所在位置看到的一样。我们使用您的位置来获取准确的星星位置。",
+  "locationAllowAccess": "允许位置访问",
   "locationAccuratePositions": "精确的星星位置",
   "locationAccuratePositionsDesc": "查看从您确切位置看到的星星",
   "locationCompassNav": "指南针导航",
@@ -217,8 +219,9 @@
   "locationServicesDisabled": "位置服务已禁用。请在设置中启用。",
   "locationFailedBrowser": "获取位置失败。请在浏览器中允许位置访问。",
 
-  "notificationTitle": "保持更新",
-  "notificationSubtitle": "获取天文事件和最佳观测条件的通知",
+  "notificationTitle": "启用通知？",
+  "notificationSubtitle": "不错过流星雨和最佳观星夜晚。我们会在事件发生前及时向您发送提醒。",
+  "notificationAllowNotifications": "允许通知",
   "notificationMoonPhase": "月相提醒",
   "notificationMoonPhaseDesc": "了解最佳观星夜晚",
   "notificationCelestialEvents": "天文事件",
@@ -227,8 +230,10 @@
   "notificationVisibilityDesc": "当行星最佳可见时获得通知",
   "notificationPrivacyNotice": "您可以随时在应用中更改通知设置。",
 
-  "attTitle": "隐私与追踪",
-  "attSubtitle": "允许追踪以帮助我们改善您的体验并向您展示相关内容",
+  "attTitle": "允许追踪？",
+  "attSubtitle": "帮助我们改善您的宇宙之旅。我们使用数据来个性化见解并建议相关事件。",
+  "attAllowTracking": "允许追踪",
+  "attDontTrack": "请求应用不追踪",
   "attImproveApp": "改进应用",
   "attImproveAppDesc": "帮助我们了解您如何使用应用以便改进",
   "attRelevantContent": "相关内容",
@@ -267,5 +272,74 @@
   "enterRegistrationNumber": "输入注册号码",
   "registrationNumberHint": "例如 1234-56789-1234567",
   "noRegistrationNumberFound": "未找到注册号码。请重试或手动输入。",
-  "couldNotCaptureImage": "无法拍摄图像。请重试。"
+  "couldNotCaptureImage": "无法拍摄图像。请重试。",
+
+  "showStarPath": "显示24小时轨迹",
+  "hideStarPath": "隐藏24小时轨迹",
+
+  "back": "返回",
+
+  "loaderQuote1": "您通往宇宙的私人窗口",
+  "loaderQuote2": "每颗星星都有一个等待被赋予的名字",
+  "loaderQuote3": "头顶的天空，已绘制完成，等待您的探索",
+  "loaderQuote4": "一个镌刻在光芒中的名字，永远属于您",
+  "loaderQuote5": "数百万颗星星——有一颗属于您",
+  "loaderQuote6": "古老的光芒与您的目光相遇",
+  "loaderQuote7": "宇宙铭记每一个名字",
+  "loaderQuote8": "仰望星空，在群星中找到属于您的位置",
+
+  "loaderStatus1": "正在定位您的坐标",
+  "loaderStatus2": "正在绘制天球",
+  "loaderStatus3": "正在标注可见星座",
+  "loaderStatus4": "正在计算星星位置",
+  "loaderStatus5": "正在准备您的夜空",
+
+  "visibilityCalculating": "正在计算可见性...",
+  "visibilityVisibleNow": "当前可见",
+  "visibilityTonight": "今晚",
+  "visibilityVisible": "可见",
+  "visibilitySince": "开始于",
+  "visibilityFrom": "从",
+  "visibilityUntil": "直到",
+
+  "notificationAlertTitle": "可见性提醒",
+  "notificationAlertSubtitle": "当星星升起时通知我",
+
+  "visibilityStatusNeverVisible": "永远不可见",
+  "visibilityStatusVisibleNow": "当前可见",
+  "visibilityStatusWaitForDark": "等待天黑",
+  "visibilityStatusBelowHorizon": "在地平线以下",
+  "visibilityNow": "现在",
+  "visibilityStatusTonight": "今晚 {time}",
+  "@visibilityStatusTonight": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusTomorrow": "明天 {time}",
+  "@visibilityStatusTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusInDays": "{days}天{hours}小时",
+  "@visibilityStatusInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+
+  "legal": "法律条款",
+  "legalSubtitle": "使用条款和隐私政策",
+  "termsOfUse": "使用条款",
+  "privacyPolicy": "隐私政策"
 }

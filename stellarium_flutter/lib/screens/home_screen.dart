@@ -39,8 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Default observer - will be updated with saved location
   Observer _observer = Observer.now(
-    latitude: Observer.deg2rad(40.7128), // New York (default)
-    longitude: Observer.deg2rad(-74.0060),
+    latitude: Observer.deg2rad(OnboardingService.defaultLatitude),
+    longitude: Observer.deg2rad(OnboardingService.defaultLongitude),
   );
 
   @override
@@ -56,24 +56,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadSavedLocation() async {
-    final location = await OnboardingService.getUserLocation();
-    if (location.latitude != null && location.longitude != null) {
-      setState(() {
-        _observer = Observer.now(
-          latitude: Observer.deg2rad(location.latitude!),
-          longitude: Observer.deg2rad(location.longitude!),
-        );
-      });
-      // Also update the engine/webview location
-      _skyViewKey.currentState?.webView?.setLocation(
-        location.latitude!,
-        location.longitude!,
+    final location = await OnboardingService.getUserLocationOrDefault();
+    setState(() {
+      _observer = Observer.now(
+        latitude: Observer.deg2rad(location.latitude),
+        longitude: Observer.deg2rad(location.longitude),
       );
-      _skyViewKey.currentState?.engine?.setLocation(
-        latitude: Observer.deg2rad(location.latitude!),
-        longitude: Observer.deg2rad(location.longitude!),
-      );
-    }
+    });
+    // Also update the engine/webview location
+    _skyViewKey.currentState?.webView?.setLocation(
+      location.latitude,
+      location.longitude,
+    );
+    _skyViewKey.currentState?.engine?.setLocation(
+      latitude: Observer.deg2rad(location.latitude),
+      longitude: Observer.deg2rad(location.longitude),
+    );
     // Reverse geocode to get location name
     _reverseGeocodeCurrentLocation();
   }
@@ -184,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   final StellariumSettings _settings = StellariumSettings();
-  bool _gyroscopeEnabled = true; // Enable gyroscope/movement by default
+  bool _gyroscopeEnabled = false; // Start disabled, enable when gyroscope is confirmed available
   bool _gyroscopeAvailable = false;
   bool _subMenuOpening = false; // Track if sub-menu is about to open
   StarInfo? _selectedStarInfo; // Currently selected star info (shown inline, not modal)
@@ -197,6 +195,8 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _sliderDate; // The date (year, month, day) shown on slider - only changes with day arrows
   Timer? _timeUpdateTimer; // Timer to refresh time display
   String _lastDisplayedTime = ''; // Track last displayed time to avoid unnecessary rebuilds
+  bool _starTrackEnabled = false; // Track if star 24h path is visible
+  bool _isEngineReady = false; // Track if Stellarium engine has loaded
 
 
   /// Get current time from engine, falling back to observer or system time
@@ -218,13 +218,14 @@ class _HomeScreenState extends State<HomeScreen> {
     // SkyView has its own Listener that forwards non-blocked touches to the WebView.
     return Scaffold(
       backgroundColor: Colors.transparent,
-      // GestureDetector to unfocus search field and hide suggestions when tapping elsewhere
+      // GestureDetector to unfocus search field, hide suggestions, and close time slider when tapping elsewhere
       body: GestureDetector(
         onTap: () {
           FocusScope.of(context).unfocus();
-          if (_searchSuggestions.isNotEmpty) {
+          if (_searchSuggestions.isNotEmpty || _showTimeSlider) {
             setState(() {
               _searchSuggestions = [];
+              _showTimeSlider = false;
             });
           }
         },
@@ -258,24 +259,37 @@ class _HomeScreenState extends State<HomeScreen> {
               onGyroscopeAvailabilityChanged: (available) {
                 setState(() {
                   _gyroscopeAvailable = available;
+                  // Auto-enable gyroscope when it becomes available
+                  if (available && !_gyroscopeEnabled) {
+                    _gyroscopeEnabled = true;
+                  }
                 });
               },
               onObjectSelected: _onObjectSelected,
               onEngineReady: _onEngineReady,
               onTimeChanged: _onEngineTimeChanged,
+              onTap: () {
+                // Close time slider when tapping on sky view
+                if (_showTimeSlider) {
+                  setState(() {
+                    _showTimeSlider = false;
+                  });
+                }
+              },
             ),
           ),
 
-          // Top bar with location and time
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: _buildTopBar(context),
-          ),
+          // Top bar with location and time (only when engine is ready)
+          if (_isEngineReady)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: _buildTopBar(context),
+            ),
 
           // Time slider (appears below top bar when time is tapped)
-          if (_showTimeSlider)
+          if (_isEngineReady && _showTimeSlider)
             Positioned(
               left: 0,
               right: 0,
@@ -283,8 +297,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _buildTimeSlider(context),
             ),
 
-          // Bottom bar with buttons and search (only when star info not shown)
-          if (!hasStarInfo)
+          // Bottom bar with buttons and search (only when star info not shown and engine is ready)
+          if (_isEngineReady && !hasStarInfo)
             Positioned(
               left: 0,
               right: 0,
@@ -295,25 +309,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 gyroscopeAvailable: _gyroscopeAvailable,
                 searchController: _searchController,
                 onAtmosphereTap: () {
-                  _onSettingChanged('atmosphere', !_settings.atmosphere);
+                  final newValue = !_settings.atmosphere;
+                  AnalyticsService.instance.logAtmosphereToggle(enabled: newValue);
+                  _onSettingChanged('atmosphere', newValue);
                 },
                 onGyroscopeTap: () {
                   setState(() {
                     _gyroscopeEnabled = !_gyroscopeEnabled;
+                    AnalyticsService.instance.logGyroscopeToggle(enabled: _gyroscopeEnabled);
                   });
                 },
-                onSearchTap: _showSearchHistory,
+                onSearchTap: () {
+                  AnalyticsService.instance.logSearchFocused();
+                  _showSearchHistory();
+                },
                 onSearchSubmitted: _searchAndPoint,
                 onSearchChanged: _onSearchChanged,
-                onHamburgerTap: _showSettingsBottomSheet,
+                onHamburgerTap: () {
+                  AnalyticsService.instance.logMenuOpened();
+                  _showSettingsBottomSheet();
+                },
                 onScanTap: _openScanner,
                 searchSuggestions: _searchSuggestions,
                 onSuggestionTap: _onSuggestionTap,
               ),
             ),
 
-          // Star info panel overlay
-          if (hasStarInfo)
+          // Star info panel overlay (only when engine is ready)
+          if (_isEngineReady && hasStarInfo)
             Positioned(
               left: 0,
               right: 0,
@@ -338,33 +361,81 @@ class _HomeScreenState extends State<HomeScreen> {
       registryFuture: _registryFuture,
       onClose: _closeStarInfo,
       onPointAt: () {
-        final modelData = _selectedStarInfo!.modelData;
-        if (modelData != null && modelData.identifier.isNotEmpty) {
-          final searchId = modelData.searchIdentifier;
-          _skyViewKey.currentState?.webView?.pointAt(searchId);
-          _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
-            if (obj != null) {
-              _skyViewKey.currentState?.engine?.pointAt(obj);
-            }
-          });
+        // Track point at action
+        AnalyticsService.instance.logStarPointAt(starName: _selectedStarInfo!.shortName);
+        // Use searchQuery which returns registration number for registered stars
+        final query = _selectedStarInfo!.searchQuery;
+        if (query.isNotEmpty) {
+          _pointAtOrSelect(query);
         }
       },
       onNameStar: () async {
-        _closeStarInfo();
-
+        // Track name star click
+        AnalyticsService.instance.logNameStarClicked();
         final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
-        final isGerman = locale.languageCode == 'de';
+        final languageCode = locale.languageCode;
 
-        final url = isGerman
-            ? 'https://sterntaufe-deutschland.de'
-            : 'https://star-registration.com';
+        // Get the HIP number from multiple sources
+        String? hipNumber;
+        final modelData = _selectedStarInfo?.modelData;
 
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        // Try from modelData.identifier first
+        if (modelData != null && modelData.identifier.isNotEmpty) {
+          debugPrint('onNameStar: modelData.identifier = ${modelData.identifier}');
+          final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(modelData.identifier);
+          if (hipMatch != null) {
+            hipNumber = hipMatch.group(1);
+            debugPrint('onNameStar: Found HIP from identifier: $hipNumber');
+          }
         }
+
+        // If not found, try from _selectedObjectInfo.names
+        if (hipNumber == null && _selectedObjectInfo != null) {
+          debugPrint('onNameStar: _selectedObjectInfo.names = ${_selectedObjectInfo!.names}');
+          for (final name in _selectedObjectInfo!.names) {
+            final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(name);
+            if (hipMatch != null) {
+              hipNumber = hipMatch.group(1);
+              debugPrint('onNameStar: Found HIP from names list: $hipNumber');
+              break;
+            }
+          }
+        }
+
+        // Also try _selectedObjectInfo.name as fallback
+        if (hipNumber == null && _selectedObjectInfo != null) {
+          debugPrint('onNameStar: _selectedObjectInfo.name = ${_selectedObjectInfo!.name}');
+          final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(_selectedObjectInfo!.name);
+          if (hipMatch != null) {
+            hipNumber = hipMatch.group(1);
+            debugPrint('onNameStar: Found HIP from name: $hipNumber');
+          }
+        }
+
+        // Build URL based on language
+        final baseUrl = languageCode == 'de'
+            ? 'https://www.sterntaufe-deutschland.de/products/sterntaufe'
+            : 'https://www.star-registration.com/products/standard';
+
+        // Add HIP number as query parameter if available
+        final uri = hipNumber != null
+            ? Uri.parse('$baseUrl?hip=$hipNumber')
+            : Uri.parse(baseUrl);
+
+        debugPrint('onNameStar: Opening URL: $uri');
+
+        // Launch URL first, then close the info panel
+        try {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (e) {
+          debugPrint('onNameStar: Failed to launch URL: $e');
+        }
+
+        _closeStarInfo();
       },
-      onViewIn3D: () {
+      onViewIn3D: (effectiveName) {
+        // Track 3D view action
+        AnalyticsService.instance.logStarView3D(starName: effectiveName);
         final starInfo = _selectedStarInfo!;
         final selectionInfo = _selectedObjectInfo;
         _closeStarInfo();
@@ -372,7 +443,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => StarViewerScreen(
-              starName: starInfo.registryInfo?.name ?? starInfo.modelData?.shortName ?? starInfo.shortName,
+              starName: effectiveName,
               spectralType: starInfo.modelData?.spectralType,
             ),
           ),
@@ -387,6 +458,18 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         });
       },
+      starTrackEnabled: _starTrackEnabled,
+      onToggleStarTrack: (enabled) {
+        // Track star path toggle
+        AnalyticsService.instance.logStarPathToggle(
+          starName: _selectedStarInfo!.shortName,
+          enabled: enabled,
+        );
+        setState(() {
+          _starTrackEnabled = enabled;
+        });
+        _skyViewKey.currentState?.webView?.setStarTrackVisible(enabled);
+      },
       ),
     );
   }
@@ -396,10 +479,29 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedStarInfo = null;
       _registryFuture = null;
       _selectedObjectInfo = null;
+      _starTrackEnabled = false;
     });
-    // Clear custom label and stop guidance
+    // Clear custom label, stop guidance, and disable star tracking
     _skyViewKey.currentState?.webView?.clearCustomLabel();
     _skyViewKey.currentState?.webView?.stopGuidance();
+    _skyViewKey.currentState?.webView?.setStarTrackVisible(false);
+  }
+
+  /// Helper to point at or select a star based on gyroscope mode.
+  void _pointAtOrSelect(String searchId) {
+    if (_gyroscopeEnabled) {
+      // Gyroscope mode: start guidance (finds object, notifies Flutter, shows arrow)
+      _skyViewKey.currentState?.webView?.setGyroscopeEnabled(true);
+      _skyViewKey.currentState?.webView?.startGuidance(searchId);
+    } else {
+      // Normal mode: animate camera to the star
+      _skyViewKey.currentState?.webView?.pointAt(searchId);
+      _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
+        if (obj != null) {
+          _skyViewKey.currentState?.engine?.pointAt(obj);
+        }
+      });
+    }
   }
 
   void _showTimeLocationSheet() {
@@ -549,9 +651,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dateStr = '${weekdays[displayDateTime.weekday - 1]}, ${displayDateTime.day} ${months[displayDateTime.month - 1]} ${displayDateTime.year}';
 
-    // No Listener wrapper needed - event blocking is handled at HomeScreen level
-    // via _isPositionOnUI() check before forwarding to SkyView.
-    return Container(
+    // Wrap in GestureDetector to absorb taps and prevent closing when interacting with the slider
+    return GestureDetector(
+      onTap: () {}, // Absorb taps to prevent the parent GestureDetector from closing the slider
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -642,12 +745,12 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             onChangeStart: (_) {
               // Pause time while dragging to prevent fighting
-              _skyViewKey.currentState?.engine?.setTimeSpeed(0.0);
+              _setTimeSpeed(0.0);
             },
             onChangeEnd: (_) {
               // Resume time if it wasn't paused before, or keep it paused
               if (!_isTimePaused) {
-                _skyViewKey.currentState?.engine?.setTimeSpeed(1.0);
+                _setTimeSpeed(1.0);
               }
             },
           ),
@@ -693,7 +796,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _sliderDate = DateTime(now.year, now.month, now.day);
                         _isTimePaused = false;
                       });
-                      _skyViewKey.currentState?.engine?.setTimeSpeed(1.0);
+                      _setTimeSpeed(1.0);
                     },
                     icon: const Icon(Icons.history, color: Colors.white70),
                     tooltip: 'Back to real time',
@@ -708,7 +811,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() {
                         _isTimePaused = newPausedState;
                       });
-                      _skyViewKey.currentState?.engine?.setTimeSpeed(newPausedState ? 0.0 : 1.0);
+                      _setTimeSpeed(newPausedState ? 0.0 : 1.0);
                     },
                     icon: Icon(
                       _isTimePaused ? Icons.play_arrow : Icons.pause,
@@ -746,6 +849,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -788,6 +892,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onEngineReady(bool ready) {
     if (!ready) return;
+
+    // Update engine ready state
+    setState(() {
+      _isEngineReady = true;
+    });
 
     // Start timer to keep time display in sync with engine
     _startTimeUpdateTimer();
@@ -833,11 +942,18 @@ class _HomeScreenState extends State<HomeScreen> {
       // Clear the saved star so we don't show it again next time
       await OnboardingService.clearFoundStar();
 
-      // Small delay to ensure the engine is fully ready
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Wait for gyroscope state to be determined (up to 2 seconds)
+      // This ensures _gyroscopeEnabled is correctly set before _pointAtOrSelect
+      int waitMs = 0;
+      while (!_gyroscopeAvailable && waitMs < 2000 && mounted) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waitMs += 100;
+      }
+
+      // Additional small delay to ensure everything is ready
+      await Future.delayed(const Duration(milliseconds: 300));
 
       if (mounted) {
-        // Search for the star by registration number
         _searchRegistrationNumber(foundStar.registrationNumber!);
       }
     }
@@ -849,8 +965,20 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final star in savedStars) {
       // Only add persistent label if displayName is different from scientificName
       if (star.displayName != star.scientificName && star.scientificName != null) {
+        // Try to use HIP identifier if available (engine looks up by HIP)
+        String labelId = star.scientificName!;
+        final hipMatch = RegExp(r'^HIP\s*(\d+)', caseSensitive: false).firstMatch(star.id);
+        if (hipMatch != null) {
+          labelId = 'HIP ${hipMatch.group(1)}';
+        } else {
+          final hipMatch2 = RegExp(r'^HIP\s*(\d+)', caseSensitive: false).firstMatch(star.scientificName!);
+          if (hipMatch2 != null) {
+            labelId = 'HIP ${hipMatch2.group(1)}';
+          }
+        }
+        debugPrint('_loadPersistentLabels: Adding label with ID: $labelId for ${star.displayName}');
         _skyViewKey.currentState?.webView?.addPersistentLabel(
-          star.scientificName!,
+          labelId,
           star.displayName,
         );
       }
@@ -875,6 +1003,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         observer: _observer,
         onLocationChanged: _onLocationChanged,
+        currentTime: _currentTime, // Pass engine time for visibility calculations
         onSubMenuOpening: () {
           // Sub-menu is about to open, keep touch disabled
           _subMenuOpening = true;
@@ -884,27 +1013,24 @@ class _HomeScreenState extends State<HomeScreen> {
           _skyViewKey.currentState?.webView?.setTouchEnabled(true);
         },
         onSelectStar: (star) {
-          // Point at the star from My Stars menu
-          _skyViewKey.currentState?.webView?.pointAt(star.searchQuery);
-          _skyViewKey.currentState?.engine?.search(star.searchQuery).then((obj) {
-            if (obj != null) {
-              _skyViewKey.currentState?.engine?.pointAt(obj);
-            }
-          });
-          // Show star info directly using the saved star data
-          // Construct names list from saved star identifiers
+          _pointAtOrSelect(star.searchQuery);
+          // Create SelectedObjectInfo to use the same flow as clicking on a star
+          // This ensures the registry API is called and coordinates are fetched
           final names = <String>[star.id];
           if (star.scientificName != null && star.scientificName != star.id) {
             names.add(star.scientificName!);
           }
-          final starInfo = StarInfo.fromBasicData(
-            name: star.displayName,
+          final selectionInfo = SelectedObjectInfo(
+            name: star.scientificName ?? star.id,
+            displayName: star.displayName,
+            names: names,
+            type: 'Star',
+            magnitude: star.magnitude,
             ra: star.ra,
             dec: star.dec,
-            magnitude: star.magnitude,
-            names: names,
           );
-          _showStarInfo(starInfo);
+          // Use the same flow as _onObjectSelected to get registry info
+          _onObjectSelected(selectionInfo);
         },
       ),
     ).whenComplete(() {
@@ -975,6 +1101,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Apply to engine (web)
     _skyViewKey.currentState?.engine?.setTime(dateTime);
+  }
+
+  void _setTimeSpeed(double speed) {
+    final skyView = _skyViewKey.currentState;
+    // Web engine (web builds)
+    skyView?.engine?.setTimeSpeed(speed);
+    // WebView JS engine (mobile builds)
+    skyView?.webView?.setTimeSpeed(speed);
   }
 
   void _onSettingChanged(String key, bool value) {
@@ -1079,6 +1213,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onSuggestionTap(SearchSuggestion suggestion) {
+    // Track suggestion selection
+    AnalyticsService.instance.logSearchSuggestionSelected(suggestion: suggestion.value);
     // Execute the search from history
     setState(() {
       _searchSuggestions = [];
@@ -1088,6 +1224,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Opens the certificate scanner and searches for the detected registration number
   Future<void> _openScanner() async {
+    // Track scanner opened
+    AnalyticsService.instance.logScannerOpened();
+
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (context) => const CertificateScannerScreen(),
@@ -1131,17 +1270,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Clear selection custom label - persistent labels handle saved star names
     _skyViewKey.currentState?.webView?.clearCustomLabel();
 
-    // Point at the object via WebView (mobile)
-    _skyViewKey.currentState?.webView?.pointAt(trimmedQuery);
-
-    // Point at the object via engine (web) - need to search first
-    final engine = _skyViewKey.currentState?.engine;
-    if (engine != null) {
-      final obj = await engine.search(trimmedQuery);
-      if (obj != null) {
-        engine.pointAt(obj);
-      }
-    }
+    _pointAtOrSelect(trimmedQuery);
   }
 
   Future<void> _searchRegistrationNumber(String registrationNumber) async {
@@ -1165,19 +1294,14 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       if (starInfo != null && starInfo.found && mounted) {
-        // Auto-point at the star using formatted identifier (e.g., "HIP 14778")
+        // Use searchQuery which returns registration number for registered stars
+        final query = starInfo.searchQuery;
         final modelData = starInfo.modelData;
-        if (modelData != null && modelData.identifier.isNotEmpty) {
-          final searchId = modelData.searchIdentifier;
-          _skyViewKey.currentState?.webView?.pointAt(searchId);
-          _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
-            if (obj != null) {
-              _skyViewKey.currentState?.engine?.pointAt(obj);
-            }
-          });
+        if (query.isNotEmpty) {
+          _pointAtOrSelect(query);
 
           // Show registered name as custom label if available and auto-save
-          if (starInfo.isRegistered && starInfo.registryInfo != null) {
+          if (starInfo.isRegistered && starInfo.registryInfo != null && modelData != null) {
             final registeredName = starInfo.registryInfo!.name;
             // Set temporary selection label (will be cleared when panel closes)
             _skyViewKey.currentState?.webView?.setCustomLabel(registeredName);
@@ -1195,8 +1319,11 @@ class _HomeScreenState extends State<HomeScreen> {
             SavedStarsService.instance.saveStar(savedStar);
 
             // Also add as persistent label so it shows without selection
+            // Use HIP identifier if available, as engine looks up by HIP
+            final labelId = starInfo.hipIdentifier ?? modelData.identifier;
+            debugPrint('Adding persistent label with ID: $labelId for $registeredName');
             _skyViewKey.currentState?.webView?.addPersistentLabel(
-              modelData.identifier,
+              labelId,
               registeredName,
             );
           }
@@ -1239,6 +1366,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onObjectSelected(SelectedObjectInfo info) {
     debugPrint('HomeScreen: _onObjectSelected called with name: ${info.name}, type: ${info.type}');
+    debugPrint('HomeScreen: HIP: ${info.hip}, GAIA: ${info.gaia}');
+    debugPrint('HomeScreen: hasFullRegistryInfo: ${info.hasFullRegistryInfo}');
 
     // Always clear the selection custom label - persistent labels handle saved star names
     _skyViewKey.currentState?.webView?.clearCustomLabel();
@@ -1252,13 +1381,23 @@ class _HomeScreenState extends State<HomeScreen> {
     // Track star selection
     AnalyticsService.instance.logStarSelect(starName: info.displayName);
 
+    // If we already have full registry info from skySource (from registration number lookup),
+    // use it directly instead of making another API call
+    if (info.hasFullRegistryInfo && info.skySource != null) {
+      debugPrint('HomeScreen: Using skySource data directly, skipping API lookup');
+      final starInfo = StarInfo.fromApiResponse(info.skySource!);
+      _showStarInfo(starInfo);
+      return;
+    }
+
     // Create basic star info immediately from selection data
     final basicStarInfo = StarInfo.fromBasicData(
       name: info.displayName,
       ra: info.ra,
       dec: info.dec,
       magnitude: info.magnitude,
-      names: info.names, // Pass names to extract HIP/HD for catalog ID
+      names: info.names,
+      hip: info.hip, // Direct HIP from engine (most reliable)
     );
 
     // Create a future for the registry lookup (runs in background)
@@ -1270,78 +1409,72 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Fetch registry info trying multiple identifiers
   Future<StarInfo?> _fetchRegistryInfo(SelectedObjectInfo info) async {
-    StarInfo? registryInfo;
-
-    // First, check if we have a saved star with a registration number
-    // This handles the case where user previously looked up by registration number
-    final savedStars = SavedStarsService.instance.savedStars;
-    String? savedRegistrationNumber;
-
-    // Helper to normalize identifiers for comparison (remove spaces, lowercase)
+    // Helper to normalize identifiers for comparison
     String normalize(String s) => s.toLowerCase().replaceAll(' ', '');
 
+    // Helper to extract HIP number from string like "HIP90156" or "HIP 90156"
+    int? extractHip(String s) {
+      final match = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(s);
+      return match != null ? int.tryParse(match.group(1)!) : null;
+    }
+
+    // 1. Check if we have a saved registration number for this star
+    final savedStars = SavedStarsService.instance.savedStars;
     for (final saved in savedStars) {
-      if (saved.registrationNumber != null && saved.registrationNumber!.isNotEmpty) {
-        final savedIdNorm = normalize(saved.id);
-        final savedScientificNorm = normalize(saved.scientificName ?? '');
-        final infoNameNorm = normalize(info.name);
+      if (saved.registrationNumber == null || saved.registrationNumber!.isEmpty) continue;
 
-        // Match by normalized ID, scientific name, or any name in the list
-        bool matches = savedIdNorm == infoNameNorm ||
-            savedScientificNorm == infoNameNorm ||
-            info.names.any((n) => normalize(n) == savedIdNorm) ||
-            info.names.any((n) => normalize(n) == savedScientificNorm);
+      final savedIdNorm = normalize(saved.id);
+      final savedScientificNorm = normalize(saved.scientificName ?? '');
+      final infoNameNorm = normalize(info.name);
 
-        if (matches) {
-          savedRegistrationNumber = saved.registrationNumber;
-          debugPrint('Found saved registration number: $savedRegistrationNumber for ${info.name} (matched ${saved.id})');
-          break;
+      // Check by HIP number if available (most reliable)
+      final savedHip = extractHip(saved.id) ?? extractHip(saved.scientificName ?? '');
+      final hipMatches = info.hip != null && savedHip != null && info.hip == savedHip;
+
+      final nameMatches = savedIdNorm == infoNameNorm ||
+          savedScientificNorm == infoNameNorm ||
+          info.names.any((n) => normalize(n) == savedIdNorm || normalize(n) == savedScientificNorm);
+
+      if (hipMatches || nameMatches) {
+        final result = await StarRegistryService.searchByRegistrationNumber(saved.registrationNumber!);
+        if (result != null && result.found) {
+          _handleRegisteredStar(result);
+          return result;
         }
       }
     }
 
-    // If we have a saved registration number, use it directly
-    if (savedRegistrationNumber != null) {
-      registryInfo = await StarRegistryService.searchByRegistrationNumber(savedRegistrationNumber);
-      if (registryInfo != null && registryInfo.found) {
-        debugPrint('Found star via saved registration number');
-        _handleRegisteredStar(registryInfo);
-        return registryInfo;
-      }
-    }
-
-    // Use the star's identifiers to validate API results (prevent fuzzy match errors)
+    // 2. Build ordered list of identifiers to try: HIP first, then HD, then others
     final validIdentifiers = info.names.isNotEmpty ? info.names : [info.name];
+    final identifiersToTry = <String>[];
 
-    // Try primary name
-    registryInfo = await StarRegistryService.searchByName(info.name, validIdentifiers: validIdentifiers);
+    // Direct HIP from engine has highest priority
+    if (info.hip != null) {
+      identifiersToTry.add('HIP ${info.hip}');
+    }
 
-    // If not found, try HIP numbers
-    if ((registryInfo == null || !registryInfo.found) && info.names.isNotEmpty) {
-      for (final name in info.names) {
-        if (name.startsWith('HIP ')) {
-          registryInfo = await StarRegistryService.searchByName(name, validIdentifiers: validIdentifiers);
-          if (registryInfo != null && registryInfo.found) break;
+    // Add HIP and HD from names first, then everything else
+    for (final name in validIdentifiers) {
+      if (name.startsWith('HIP ') || name.startsWith('HD ')) {
+        if (!identifiersToTry.contains(name)) identifiersToTry.add(name);
+      }
+    }
+    for (final name in validIdentifiers) {
+      if (!identifiersToTry.contains(name)) identifiersToTry.add(name);
+    }
+
+    // 3. Try each identifier until we find a match
+    for (final identifier in identifiersToTry) {
+      final result = await StarRegistryService.searchByName(identifier, validIdentifiers: validIdentifiers);
+      if (result != null && result.found) {
+        if (result.isRegistered) {
+          _handleRegisteredStar(result);
         }
+        return result;
       }
     }
 
-    // If still not found, try HD numbers
-    if ((registryInfo == null || !registryInfo.found) && info.names.isNotEmpty) {
-      for (final name in info.names) {
-        if (name.startsWith('HD ')) {
-          registryInfo = await StarRegistryService.searchByName(name, validIdentifiers: validIdentifiers);
-          if (registryInfo != null && registryInfo.found) break;
-        }
-      }
-    }
-
-    // If registered, handle custom label and auto-save
-    if (registryInfo != null && registryInfo.found && registryInfo.isRegistered) {
-      _handleRegisteredStar(registryInfo);
-    }
-
-    return registryInfo;
+    return null;
   }
 
   /// Handle a registered star - set label and save
@@ -1363,8 +1496,11 @@ class _HomeScreenState extends State<HomeScreen> {
         magnitude: modelData.vMagnitude,
       );
       SavedStarsService.instance.saveStar(savedStar);
+      // Use HIP identifier if available, as engine looks up by HIP
+      final labelId = registryInfo.hipIdentifier ?? modelData.identifier;
+      debugPrint('_handleRegisteredStar: Adding persistent label with ID: $labelId for $registeredName');
       _skyViewKey.currentState?.webView?.addPersistentLabel(
-        modelData.identifier,
+        labelId,
         registeredName,
       );
     }

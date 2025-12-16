@@ -5,19 +5,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../../services/analytics_service.dart';
 import '../widgets/permission_page_template.dart';
 
 /// ATT (App Tracking Transparency) permission page - iOS only
 class AttPermissionPage extends StatefulWidget {
   final VoidCallback onContinue;
-  final VoidCallback onSkip;
   final int? currentPage;
   final int? totalPages;
 
   const AttPermissionPage({
     super.key,
     required this.onContinue,
-    required this.onSkip,
     this.currentPage,
     this.totalPages,
   });
@@ -29,28 +28,9 @@ class AttPermissionPage extends StatefulWidget {
 class _AttPermissionPageState extends State<AttPermissionPage> {
   bool _isLoading = false;
 
-  List<FeatureItem> _getFeatures(AppLocalizations l10n) => [
-    FeatureItem(
-      icon: Icons.analytics_outlined,
-      title: l10n.attImproveApp,
-      description: l10n.attImproveAppDesc,
-    ),
-    FeatureItem(
-      icon: Icons.ads_click,
-      title: l10n.attRelevantContent,
-      description: l10n.attRelevantContentDesc,
-    ),
-    FeatureItem(
-      icon: Icons.privacy_tip_outlined,
-      title: l10n.attPrivacyMatters,
-      description: l10n.attPrivacyMattersDesc,
-    ),
-  ];
-
   Future<void> _requestAttPermission() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (!mounted) return;
+    setState(() => _isLoading = true);
 
     try {
       // Only request on iOS
@@ -59,18 +39,31 @@ class _AttPermissionPageState extends State<AttPermissionPage> {
         final status = await AppTrackingTransparency.trackingAuthorizationStatus;
 
         if (status == TrackingStatus.notDetermined) {
-          // Request permission
-          await AppTrackingTransparency.requestTrackingAuthorization();
+          final newStatus =
+              await AppTrackingTransparency.requestTrackingAuthorization();
+          if (newStatus == TrackingStatus.authorized) {
+            AnalyticsService.instance.logPermissionGranted(permission: 'att');
+          } else {
+            AnalyticsService.instance.logPermissionSkipped(permission: 'att');
+          }
+        } else {
+          // User already made a choice previously; iOS won't show the prompt again.
+          // Proceed with onboarding regardless.
+          if (status == TrackingStatus.authorized) {
+            AnalyticsService.instance.logPermissionGranted(permission: 'att');
+          } else {
+            AnalyticsService.instance.logPermissionSkipped(permission: 'att');
+          }
         }
       }
     } catch (e) {
       debugPrint('ATT permission error: $e');
     }
 
-    setState(() {
-      _isLoading = false;
-    });
-
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+    // Always continue onboarding, even if permission dialog can't be shown.
     widget.onContinue();
   }
 
@@ -78,15 +71,12 @@ class _AttPermissionPageState extends State<AttPermissionPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return PermissionPageTemplate(
-      icon: Icons.shield_outlined,
+      iconImagePath: 'assets/icons/privacy.png',
       title: l10n.attTitle,
       subtitle: l10n.attSubtitle,
-      features: _getFeatures(l10n),
+      features: const [],
       primaryButtonText: _isLoading ? l10n.onboardingRequesting : l10n.onboardingContinue,
-      secondaryButtonText: l10n.onboardingSkip,
       onPrimaryPressed: _requestAttPermission,
-      onSecondaryPressed: widget.onSkip,
-      privacyNotice: l10n.attPrivacyNotice,
       isLoading: _isLoading,
       currentPage: widget.currentPage,
       totalPages: widget.totalPages,

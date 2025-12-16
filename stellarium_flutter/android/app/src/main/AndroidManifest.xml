@@ -2,9 +2,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- FCM push notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:usesCleartextTraffic="true"
-        android:label="Night Sky Guide"
+        android:label="NStar Registration Planetarium"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

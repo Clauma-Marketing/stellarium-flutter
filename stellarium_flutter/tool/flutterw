@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Flutter wrapper that keeps the Stellarium data asset list in pubspec.yaml
+# in sync before running `flutter ...`.
+#
+# Usage:
+#   ./tool/flutterw run ...
+#   ./tool/flutterw build ...
+#
+# Tip: add an alias in your shell to make this automatic:
+#   alias flutter="$PWD/tool/flutterw"
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT_DIR}"
+
+# Keep the generated asset list up to date (including extensionless files).
+bash tool/dart run tool/generate_stellarium_data_assets.dart >/dev/null
+
+exec flutter "$@"
+

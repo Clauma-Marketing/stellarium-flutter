@@ -9,8 +9,13 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
+import '../services/analytics_service.dart';
 import '../services/locale_service.dart';
+import '../services/firestore_sync_service.dart';
+import '../services/notification_preferences.dart';
 import '../services/saved_stars_service.dart';
 import '../stellarium/stellarium.dart';
 
@@ -122,6 +127,7 @@ class SettingsBottomSheet extends StatelessWidget {
   final VoidCallback? onSubMenuOpening;
   final VoidCallback? onSubMenuClosed;
   final void Function(SavedStar star)? onSelectStar;
+  final DateTime? currentTime; // Engine/simulated time for visibility calculations
 
   const SettingsBottomSheet({
     super.key,
@@ -132,6 +138,7 @@ class SettingsBottomSheet extends StatelessWidget {
     this.onSubMenuOpening,
     this.onSubMenuClosed,
     this.onSelectStar,
+    this.currentTime,
   });
 
   @override
@@ -246,6 +253,17 @@ class SettingsBottomSheet extends StatelessWidget {
                         onTap: (ctx) => _showAppSettingsSheet(ctx),
                       ),
                     ),
+                    _buildMainMenuItem(
+                      context,
+                      MainMenuItem(
+                        title: AppLocalizations.of(context)!.legal,
+                        subtitle: AppLocalizations.of(context)!.legalSubtitle,
+                        icon: Icons.description_outlined,
+                        color: Colors.blueGrey,
+                        isSubmenu: true,
+                        onTap: (ctx) => _showLegalSheet(ctx),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -319,6 +337,7 @@ class SettingsBottomSheet extends StatelessWidget {
   }
 
   void _showMyStarsSheet(BuildContext context) {
+    AnalyticsService.instance.logMyStarsOpened();
     Navigator.of(context).pop(); // Close main menu
     onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
     showModalBottomSheet(
@@ -330,6 +349,7 @@ class SettingsBottomSheet extends StatelessWidget {
           Navigator.of(ctx).pop(); // Close the My Stars sheet
           onSelectStar?.call(star);
         },
+        currentTime: currentTime,
       ),
     ).whenComplete(() {
       onSubMenuClosed?.call(); // Notify parent that sub-menu is closed
@@ -337,6 +357,7 @@ class SettingsBottomSheet extends StatelessWidget {
   }
 
   void _showVisualEffectsSheet(BuildContext context) {
+    AnalyticsService.instance.logVisualEffectsOpened();
     Navigator.of(context).pop(); // Close main menu
     onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
     showModalBottomSheet(
@@ -353,6 +374,7 @@ class SettingsBottomSheet extends StatelessWidget {
   }
 
   void _showTimeLocationSheet(BuildContext context) {
+    AnalyticsService.instance.logTimeLocationOpened();
     Navigator.of(context).pop(); // Close main menu
     onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
     showModalBottomSheet(
@@ -369,6 +391,7 @@ class SettingsBottomSheet extends StatelessWidget {
   }
 
   void _showAppSettingsSheet(BuildContext context) {
+    AnalyticsService.instance.logAppSettingsOpened();
     Navigator.of(context).pop(); // Close main menu
     onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
     showModalBottomSheet(
@@ -376,6 +399,19 @@ class SettingsBottomSheet extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => const AppSettingsBottomSheet(),
+    ).whenComplete(() {
+      onSubMenuClosed?.call(); // Notify parent that sub-menu is closed
+    });
+  }
+
+  void _showLegalSheet(BuildContext context) {
+    Navigator.of(context).pop(); // Close main menu
+    onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const LegalBottomSheet(),
     ).whenComplete(() {
       onSubMenuClosed?.call(); // Notify parent that sub-menu is closed
     });
@@ -409,6 +445,8 @@ class _VisualEffectsBottomSheetState extends State<VisualEffectsBottomSheet> {
   }
 
   void _handleSettingChanged(String key, bool value) {
+    // Track setting change
+    AnalyticsService.instance.logSettingChanged(setting: key, enabled: value);
     // Update local state for immediate UI feedback
     setState(() {
       _localSettings = _updateSettingValue(_localSettings, key, value);
@@ -849,19 +887,22 @@ class TimeLocationBottomSheet extends StatefulWidget {
   State<TimeLocationBottomSheet> createState() => _TimeLocationBottomSheetState();
 }
 
-class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
+class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> with WidgetsBindingObserver {
   GoogleMapController? _mapController;
   late LatLng _selectedLocation;
   final TextEditingController _searchController = TextEditingController();
   String _locationName = '';
   bool _isSearching = false;
   bool _isLoadingLocation = false;
+  bool _locationServicesDisabled = false;
+  bool _locationPermissionDeniedForever = false;
   List<PlaceSuggestion> _searchResults = [];
   Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedLocation = LatLng(
       Observer.rad2deg(widget.observer.latitude),
       Observer.rad2deg(widget.observer.longitude),
@@ -871,10 +912,25 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _mapController?.dispose();
     _debounceTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When app resumes from settings, reset the location error states
+    // so the user can try detecting location again
+    if (state == AppLifecycleState.resumed) {
+      if (_locationServicesDisabled || _locationPermissionDeniedForever) {
+        setState(() {
+          _locationServicesDisabled = false;
+          _locationPermissionDeniedForever = false;
+        });
+      }
+    }
   }
 
   Future<void> _reverseGeocodeAndUpdateField(LatLng location) async {
@@ -986,9 +1042,23 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
   Future<void> _detectCurrentLocation() async {
     setState(() {
       _isLoadingLocation = true;
+      _locationServicesDisabled = false;
+      _locationPermissionDeniedForever = false;
     });
 
     try {
+      // Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() {
+            _isLoadingLocation = false;
+            _locationServicesDisabled = true;
+          });
+        }
+        return;
+      }
+
       // Check permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -1008,13 +1078,11 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
 
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.locationPermissionPermanentlyDenied)),
-          );
+          setState(() {
+            _isLoadingLocation = false;
+            _locationPermissionDeniedForever = true;
+          });
         }
-        setState(() {
-          _isLoadingLocation = false;
-        });
         return;
       }
 
@@ -1322,22 +1390,67 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
                     ),
                   ),
 
-                // Detect location button
+                // Location services disabled or permission denied warning
+                if (_locationServicesDisabled || _locationPermissionDeniedForever)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_off, color: Colors.orange, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _locationPermissionDeniedForever
+                                ? AppLocalizations.of(context)!.locationPermissionPermanentlyDenied
+                                : AppLocalizations.of(context)!.locationServicesDisabled,
+                            style: TextStyle(
+                              color: Colors.orange.shade100,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Detect location button / Open Settings button
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                   child: ElevatedButton.icon(
-                    onPressed: _isLoadingLocation ? null : _detectCurrentLocation,
+                    onPressed: _isLoadingLocation
+                        ? null
+                        : (_locationServicesDisabled || _locationPermissionDeniedForever)
+                            ? () => openAppSettings()
+                            : _detectCurrentLocation,
                     icon: _isLoadingLocation
                         ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.my_location),
-                    label: Text(_isLoadingLocation ? AppLocalizations.of(context)!.detecting : AppLocalizations.of(context)!.useMyLocation),
+                        : Icon((_locationServicesDisabled || _locationPermissionDeniedForever)
+                            ? Icons.settings
+                            : Icons.my_location),
+                    label: Text(
+                      _isLoadingLocation
+                          ? AppLocalizations.of(context)!.detecting
+                          : (_locationServicesDisabled || _locationPermissionDeniedForever)
+                              ? AppLocalizations.of(context)!.locationOpenSettings
+                              : AppLocalizations.of(context)!.useMyLocation,
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.withValues(alpha: 0.2),
-                      foregroundColor: Colors.green,
+                      backgroundColor: (_locationServicesDisabled || _locationPermissionDeniedForever)
+                          ? Colors.orange.withValues(alpha: 0.2)
+                          : Colors.green.withValues(alpha: 0.2),
+                      foregroundColor: (_locationServicesDisabled || _locationPermissionDeniedForever)
+                          ? Colors.orange
+                          : Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1456,10 +1569,12 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> {
 /// My Stars bottom sheet showing saved stars
 class MyStarsBottomSheet extends StatefulWidget {
   final void Function(SavedStar star)? onSelectStar;
+  final DateTime? currentTime; // Engine/simulated time, null = use DateTime.now()
 
   const MyStarsBottomSheet({
     super.key,
     this.onSelectStar,
+    this.currentTime,
   });
 
   @override
@@ -1701,6 +1816,7 @@ class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
       ),
     );
   }
+
 }
 
 /// A sliding panel that displays all Stellarium settings organized by category.
@@ -2070,11 +2186,36 @@ class AppSettingsBottomSheet extends StatefulWidget {
 class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
   bool _isRestoringPurchases = false;
   AdaptyProfile? _profile;
+  bool _starNotificationsEnabled = true;
 
   @override
   void initState() {
     super.initState();
     _loadSubscriptionInfo();
+    _loadNotificationPreference();
+  }
+
+  Future<void> _loadNotificationPreference() async {
+    final enabled = await NotificationPreferences.getStarNotificationsEnabled();
+    if (mounted) {
+      setState(() {
+        _starNotificationsEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _toggleStarNotifications(bool enabled) async {
+    // Track global notification toggle
+    AnalyticsService.instance.logGlobalNotificationToggle(enabled: enabled);
+
+    setState(() {
+      _starNotificationsEnabled = enabled;
+    });
+
+    await NotificationPreferences.setStarNotificationsEnabled(enabled);
+
+    // Sync to Firestore - Firebase Cloud Functions handles notification scheduling
+    await FirestoreSyncService.instance.updateNotificationPreference(enabled);
   }
 
   Future<void> _loadSubscriptionInfo() async {
@@ -2110,6 +2251,9 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
         final hasActiveSubscription = profile.accessLevels.values
             .any((level) => level.isActive);
 
+        // Track restore result
+        AnalyticsService.instance.logRestorePurchases(success: hasActiveSubscription);
+
         if (hasActiveSubscription) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -2127,6 +2271,8 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
         }
       }
     } catch (e) {
+      // Track restore failure
+      AnalyticsService.instance.logRestorePurchases(success: false);
       if (mounted) {
         setState(() {
           _isRestoringPurchases = false;
@@ -2280,6 +2426,13 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
 
                     const SizedBox(height: 16),
 
+                    // Notifications Section (only on mobile)
+                    if (!kIsWeb) ...[
+                      _buildSectionHeader('Notifications'),
+                      _buildNotificationsSection(context),
+                      const SizedBox(height: 16),
+                    ],
+
                     // Subscription Section (only on mobile)
                     if (!kIsWeb) ...[
                       _buildSectionHeader(l10n.subscription),
@@ -2369,6 +2522,10 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
+          // Track language change
+          AnalyticsService.instance.logLanguageChanged(
+            language: locale?.languageCode ?? 'system',
+          );
           LocaleService.instance.setLocale(locale);
           setState(() {});
         },
@@ -2533,6 +2690,81 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationsSection(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _toggleStarNotifications(!_starNotificationsEnabled),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: _starNotificationsEnabled
+                        ? Colors.blue.withValues(alpha: 0.15)
+                        : Colors.grey.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _starNotificationsEnabled
+                        ? Icons.notifications_active
+                        : Icons.notifications_off,
+                    color: _starNotificationsEnabled ? Colors.blue : Colors.grey,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Star Visibility Alerts',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _starNotificationsEnabled
+                            ? 'Get notified when your saved stars become visible'
+                            : 'Notifications are disabled',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _starNotificationsEnabled,
+                  onChanged: _toggleStarNotifications,
+                  activeThumbColor: Colors.blue[400],
+                  activeTrackColor: Colors.blue.withValues(alpha: 0.3),
+                  inactiveThumbColor: Colors.grey[600],
+                  inactiveTrackColor: Colors.grey[800],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -2751,5 +2983,146 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
     AdaptyError? error,
   ) {
     debugPrint('Web payment navigation finished');
+  }
+}
+
+/// Legal information bottom sheet
+class LegalBottomSheet extends StatelessWidget {
+  const LegalBottomSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.4,
+      minChildSize: 0.3,
+      maxChildSize: 0.6,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0a1628),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    const Icon(Icons.description_outlined, color: Colors.white70, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        l10n.legal,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white70),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 1),
+              // Legal links
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildLegalLink(
+                      context: context,
+                      title: l10n.termsOfUse,
+                      icon: Icons.article_outlined,
+                      url: 'https://www.star-registration.com/pages/terms-of-service',
+                    ),
+                    const SizedBox(height: 8),
+                    _buildLegalLink(
+                      context: context,
+                      title: l10n.privacyPolicy,
+                      icon: Icons.privacy_tip_outlined,
+                      url: 'https://www.star-registration.com/policies/privacy-policy',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLegalLink({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required String url,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            final uri = Uri.parse(url);
+            try {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } catch (e) {
+              debugPrint('Error launching URL: $e');
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.white54,
+                  size: 24,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.open_in_new,
+                  color: Colors.white24,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

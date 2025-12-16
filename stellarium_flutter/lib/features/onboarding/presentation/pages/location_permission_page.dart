@@ -7,13 +7,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../../services/locale_service.dart';
 import '../widgets/permission_page_template.dart';
 
 /// Location permission page - requests location access during onboarding
 class LocationPermissionPage extends StatefulWidget {
   final VoidCallback onContinue;
-  final VoidCallback onSkip;
   final void Function(double latitude, double longitude)? onLocationObtained;
   final int? currentPage;
   final int? totalPages;
@@ -21,7 +21,6 @@ class LocationPermissionPage extends StatefulWidget {
   const LocationPermissionPage({
     super.key,
     required this.onContinue,
-    required this.onSkip,
     this.onLocationObtained,
     this.currentPage,
     this.totalPages,
@@ -34,33 +33,14 @@ class LocationPermissionPage extends StatefulWidget {
 class _LocationPermissionPageState extends State<LocationPermissionPage> {
   bool _isLoading = false;
   bool _locationConfirmed = false;
-  String? _errorMessage;
   Position? _position;
   String? _locationName;
 
-  List<FeatureItem> _getFeatures(AppLocalizations l10n) => [
-    FeatureItem(
-      icon: Icons.my_location,
-      title: l10n.locationAccuratePositions,
-      description: l10n.locationAccuratePositionsDesc,
-    ),
-    FeatureItem(
-      icon: Icons.explore,
-      title: l10n.locationCompassNav,
-      description: l10n.locationCompassNavDesc,
-    ),
-    FeatureItem(
-      icon: Icons.schedule,
-      title: l10n.locationRiseSetTimes,
-      description: l10n.locationRiseSetTimesDesc,
-    ),
-  ];
 
   Future<void> _requestLocationPermission() async {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -73,11 +53,9 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       // Check if location services are enabled
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (!mounted) return;
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'LOCATION_SERVICES_DISABLED';
-        });
+        // Location services disabled, continue without location
+        AnalyticsService.instance.logPermissionSkipped(permission: 'location');
+        widget.onContinue();
         return;
       }
 
@@ -86,21 +64,17 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          if (!mounted) return;
-          setState(() {
-            _isLoading = false;
-            _errorMessage = 'LOCATION_PERMISSION_DENIED';
-          });
+          // Permission denied, continue without location
+          AnalyticsService.instance.logPermissionSkipped(permission: 'location');
+          widget.onContinue();
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        if (!mounted) return;
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'LOCATION_PERMISSION_PERMANENTLY_DENIED';
-        });
+        // Permission permanently denied, continue without location
+        AnalyticsService.instance.logPermissionSkipped(permission: 'location');
+        widget.onContinue();
         return;
       }
 
@@ -115,6 +89,9 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       // Always save location even if widget unmounted (user skipped while loading)
       widget.onLocationObtained?.call(position.latitude, position.longitude);
 
+      // Track permission granted
+      AnalyticsService.instance.logPermissionGranted(permission: 'location');
+
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -125,11 +102,9 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       // Reverse geocode to get location name
       _reverseGeocode(position.latitude, position.longitude);
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'LOCATION_FAILED';
-      });
+      // Location failed, continue without location
+      AnalyticsService.instance.logPermissionSkipped(permission: 'location');
+      widget.onContinue();
     }
   }
 
@@ -146,6 +121,9 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       // Always save location even if widget unmounted (user skipped while loading)
       widget.onLocationObtained?.call(position.latitude, position.longitude);
 
+      // Track permission granted
+      AnalyticsService.instance.logPermissionGranted(permission: 'location');
+
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -156,16 +134,10 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       // Reverse geocode to get location name
       _reverseGeocode(position.latitude, position.longitude);
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'LOCATION_FAILED_BROWSER';
-      });
+      // Location failed on web, continue without location
+      AnalyticsService.instance.logPermissionSkipped(permission: 'location');
+      widget.onContinue();
     }
-  }
-
-  void _openSettings() {
-    Geolocator.openAppSettings();
   }
 
   static const String _googleApiKey = 'AIzaSyCc4LPIozIoEHVAMFz5uyQ_LrT1nAlbmfc';
@@ -225,22 +197,6 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
     return '${value.abs().toStringAsFixed(4)}° $direction';
   }
 
-  String _getLocalizedError(AppLocalizations l10n) {
-    switch (_errorMessage) {
-      case 'LOCATION_SERVICES_DISABLED':
-        return l10n.locationServicesDisabled;
-      case 'LOCATION_PERMISSION_DENIED':
-        return l10n.locationPermissionDenied;
-      case 'LOCATION_PERMISSION_PERMANENTLY_DENIED':
-        return l10n.locationPermissionPermanentlyDenied;
-      case 'LOCATION_FAILED_BROWSER':
-        return l10n.locationFailedBrowser;
-      case 'LOCATION_FAILED':
-      default:
-        return l10n.errorGettingLocation(_errorMessage ?? '');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -250,52 +206,21 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
     }
 
     return PermissionPageTemplate(
-      icon: Icons.location_on,
+      iconImagePath: 'assets/icons/location.png',
       title: l10n.locationAccessTitle,
       subtitle: l10n.locationAccessSubtitle,
-      features: _getFeatures(l10n),
-      primaryButtonText: _errorMessage == 'LOCATION_PERMISSION_PERMANENTLY_DENIED'
-          ? l10n.locationOpenSettings
-          : (_isLoading ? l10n.locationGettingLocation : l10n.onboardingContinue),
-      secondaryButtonText: l10n.onboardingSkipForNow,
-      onPrimaryPressed: _errorMessage == 'LOCATION_PERMISSION_PERMANENTLY_DENIED'
-          ? _openSettings
-          : _requestLocationPermission,
-      onSecondaryPressed: _isLoading ? null : widget.onSkip,
-      privacyNotice: l10n.locationPrivacyNotice,
+      features: const [],
+      primaryButtonText: _isLoading ? l10n.locationGettingLocation : l10n.locationAllowAccess,
+      onPrimaryPressed: _requestLocationPermission,
       isLoading: _isLoading,
-      customContent: _errorMessage != null ? _buildErrorWidget(l10n) : null,
       currentPage: widget.currentPage,
       totalPages: widget.totalPages,
     );
   }
 
-  Widget _buildErrorWidget(AppLocalizations l10n) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber, color: Colors.red, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _getLocalizedError(l10n),
-              style: const TextStyle(color: Colors.red, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildConfirmationView(AppLocalizations l10n) {
     return PermissionPageTemplate(
-      icon: Icons.check_circle,
+      iconImagePath: 'assets/icons/location.png',
       title: l10n.locationConfirmedTitle,
       subtitle: l10n.locationConfirmedSubtitle,
       features: const [],

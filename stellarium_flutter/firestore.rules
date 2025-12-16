@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only read/write their own data
+    match /users/{userId} {
+      // Allow read/write if the request comes from the same user ID
+      // For anonymous users (device-based IDs), we allow based on document ID
+      allow read, write: if true; // TODO: Add proper authentication
+
+      // Saved stars subcollection
+      match /savedStars/{starId} {
+        allow read, write: if true; // TODO: Add proper authentication
+      }
+    }
+
+    // Notifications sent collection (only readable by Cloud Functions)
+    match /notificationsSent/{notificationId} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}

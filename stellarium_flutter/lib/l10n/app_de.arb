@@ -1,7 +1,7 @@
 {
   "@@locale": "de",
 
-  "appTitle": "Night Sky Guide",
+  "appTitle": "Star Registration Planetarium",
 
   "menu": "Menü",
   "myStars": "Meine Sterne",
@@ -25,12 +25,13 @@
   "now": "Jetzt",
   "cancel": "Abbrechen",
   "apply": "Anwenden",
+  "back": "Zurück",
 
   "save": "Speichern",
   "saved": "Gespeichert",
   "savedToMyStars": "Zu Meine Sterne hinzugefügt",
   "removedFromMyStars": "Aus Meine Sterne entfernt",
-  "pointAtStar": "Stern anzeigen",
+  "pointAtStar": "Lokalisieren",
   "removeFromMyStars": "Aus Meine Sterne entfernen",
   "saveToMyStars": "Zu Meine Sterne hinzufügen",
 
@@ -186,14 +187,15 @@
   "starNotYetNamed": "Dieser Stern hat noch keinen Namen",
   "giveUniqueNameHint": "Gib ihm einen einzigartigen Namen, der am Himmel sichtbar sein wird",
   "nameThisStar": "Stern benennen",
-  "viewStarIn3D": "Stern in 3D ansehen",
+  "viewStarIn3D": "3D Ansicht",
   "catalogId": "Katalog-ID",
 
   "atmosphereButton": "Atmosphäre",
   "movementButton": "Bewegung",
   "searchPlaceholder": "Stern oder Objekt suchen...",
 
-  "onboardingExploreUniverse": "Entdecke das Universum aus deiner Tasche",
+  "welcomeTitle": "Entdecke den Kosmos",
+  "onboardingExploreUniverse": "Erkunde den Nachthimmel, verfolge Himmelsereignisse und finde deinen benannten Stern unter Millionen anderen.",
   "onboardingGetStarted": "Los geht's",
   "onboardingContinue": "Weiter",
   "onboardingSkip": "Überspringen",
@@ -201,8 +203,9 @@
   "onboardingMaybeLater": "Vielleicht später",
   "onboardingRequesting": "Anfrage läuft...",
 
-  "locationAccessTitle": "Standortzugriff",
-  "locationAccessSubtitle": "Erlaube Standortzugriff, um den Himmel genau so zu sehen, wie er von deinem Standort aus erscheint",
+  "locationAccessTitle": "Standort erlauben?",
+  "locationAccessSubtitle": "Sieh den Nachthimmel genau so, wie er von deinem Standort aus erscheint. Wir nutzen deine Position für genaue Sternpositionen.",
+  "locationAllowAccess": "Standortzugriff erlauben",
   "locationAccuratePositions": "Genaue Sternpositionen",
   "locationAccuratePositionsDesc": "Sieh Sterne so, wie sie von deinem genauen Standort aus erscheinen",
   "locationCompassNav": "Kompass-Navigation",
@@ -217,8 +220,9 @@
   "locationServicesDisabled": "Standortdienste sind deaktiviert. Bitte aktiviere sie in den Einstellungen.",
   "locationFailedBrowser": "Standortermittlung fehlgeschlagen. Bitte erlaube den Standortzugriff in deinem Browser.",
 
-  "notificationTitle": "Bleib informiert",
-  "notificationSubtitle": "Erhalte Benachrichtigungen über Himmelsereignisse und optimale Beobachtungsbedingungen",
+  "notificationTitle": "Benachrichtigungen aktivieren?",
+  "notificationSubtitle": "Verpasse nie Sternschnuppen und die besten Nächte für die Sternenbeobachtung. Wir senden dir rechtzeitig Hinweise, bevor sie stattfinden.",
+  "notificationAllowNotifications": "Benachrichtigungen erlauben",
   "notificationMoonPhase": "Mondphasen-Hinweise",
   "notificationMoonPhaseDesc": "Erfahre die besten Nächte für Sternenbeobachtung",
   "notificationCelestialEvents": "Himmelsereignisse",
@@ -227,8 +231,10 @@
   "notificationVisibilityDesc": "Werde benachrichtigt, wenn Planeten am besten sichtbar sind",
   "notificationPrivacyNotice": "Du kannst die Benachrichtigungseinstellungen jederzeit in der App ändern.",
 
-  "attTitle": "Datenschutz & Tracking",
-  "attSubtitle": "Erlaube Tracking, um uns zu helfen, dein Erlebnis zu verbessern und dir relevante Inhalte zu zeigen",
+  "attTitle": "Tracking erlauben?",
+  "attSubtitle": "Hilf uns, deine kosmische Reise zu verbessern. Wir nutzen Daten, um Einblicke zu personalisieren und relevante Ereignisse vorzuschlagen.",
+  "attAllowTracking": "Tracking erlauben",
+  "attDontTrack": "App auffordern, nicht zu tracken",
   "attImproveApp": "App verbessern",
   "attImproveAppDesc": "Hilf uns zu verstehen, wie du die App nutzt, um sie zu verbessern",
   "attRelevantContent": "Relevante Inhalte",
@@ -267,5 +273,72 @@
   "enterRegistrationNumber": "Registrierungsnummer eingeben",
   "registrationNumberHint": "z.B. 1234-56789-1234567",
   "noRegistrationNumberFound": "Keine Registrierungsnummer gefunden. Versuche es erneut oder gib sie manuell ein.",
-  "couldNotCaptureImage": "Bild konnte nicht aufgenommen werden. Bitte versuche es erneut."
+  "couldNotCaptureImage": "Bild konnte nicht aufgenommen werden. Bitte versuche es erneut.",
+
+  "showStarPath": "24h-Pfad anzeigen",
+  "hideStarPath": "24h-Pfad ausblenden",
+
+  "loaderQuote1": "Dein persönliches Fenster zum Kosmos",
+  "loaderQuote2": "Jeder Stern trägt einen Namen, der darauf wartet, vergeben zu werden",
+  "loaderQuote3": "Der Himmel über dir, kartiert und bereit",
+  "loaderQuote4": "Ein Name, in Licht gemeißelt, für immer deiner",
+  "loaderQuote5": "Millionen von Sternen — einer gehört dir",
+  "loaderQuote6": "Wo das uralte Licht auf deinen Blick trifft",
+  "loaderQuote7": "Das Universum erinnert sich an jeden Namen",
+  "loaderQuote8": "Schau nach oben. Finde deinen Platz unter den Sternen.",
+
+  "loaderStatus1": "Ermittle deine Koordinaten",
+  "loaderStatus2": "Kartiere die Himmelskugel",
+  "loaderStatus3": "Erfasse sichtbare Sternbilder",
+  "loaderStatus4": "Berechne Sternpositionen",
+  "loaderStatus5": "Bereite deinen Nachthimmel vor",
+
+  "visibilityCalculating": "Sichtbarkeit wird berechnet...",
+  "visibilityVisibleNow": "Jetzt sichtbar",
+  "visibilityTonight": "Heute Nacht",
+  "visibilityVisible": "sichtbar",
+  "visibilitySince": "SEIT",
+  "visibilityFrom": "VON",
+  "visibilityUntil": "BIS",
+
+  "notificationAlertTitle": "Sichtbarkeits-Alarm",
+  "notificationAlertSubtitle": "Benachrichtigung wenn der Stern aufgeht",
+
+  "visibilityStatusNeverVisible": "Nie sichtbar",
+  "visibilityStatusVisibleNow": "Jetzt sichtbar",
+  "visibilityStatusWaitForDark": "Warte auf Dunkelheit",
+  "visibilityStatusBelowHorizon": "Unter dem Horizont",
+  "visibilityNow": "Jetzt",
+  "visibilityStatusTonight": "Heute {time}",
+  "@visibilityStatusTonight": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusTomorrow": "Morgen {time}",
+  "@visibilityStatusTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusInDays": "{days}T {hours}Std",
+  "@visibilityStatusInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+
+  "legal": "Rechtliches",
+  "legalSubtitle": "Nutzungsbedingungen & Datenschutz",
+  "termsOfUse": "Nutzungsbedingungen",
+  "privacyPolicy": "Datenschutzerklärung"
 }

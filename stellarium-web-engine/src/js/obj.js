@@ -28,6 +28,8 @@ Module.afterInit(function() {
     ['number', 'number', 'string']);
   var obj_get_json_data_str = Module.cwrap('obj_get_json_data_str', 'number',
     ['number']);
+  var obj_get_by_hip = Module.cwrap('obj_get_by_hip', 'number',
+    ['number', 'number']);
 
   // List of {obj, attr, callback}
   var g_listeners = [];
@@ -342,6 +344,22 @@ Module.afterInit(function() {
     assert(typeof(name) == 'string')
     var obj = core_search(name);
     return obj ? new SweObj(obj) : null;
+  };
+
+  // Return a star object by Hipparcos number.
+  //
+  // Inputs:
+  //  hip       Number - Hipparcos catalog number
+  Module['getObjByHip'] = function(hip) {
+    assert(typeof(hip) == 'number')
+    // Allocate memory for the code output parameter
+    var codePtr = Module._malloc(4);
+    try {
+      var obj = obj_get_by_hip(hip, codePtr);
+      return obj ? new SweObj(obj) : null;
+    } finally {
+      Module._free(codePtr);
+    }
   };
 
   Module['change'] = function(callback, context) {

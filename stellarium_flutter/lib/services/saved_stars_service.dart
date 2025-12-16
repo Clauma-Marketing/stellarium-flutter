@@ -13,6 +13,7 @@ class SavedStar {
   final double? dec; // Declination in degrees
   final double? magnitude;
   final DateTime savedAt;
+  final bool notificationsEnabled; // Whether visibility notifications are enabled
 
   SavedStar({
     required this.id,
@@ -23,6 +24,7 @@ class SavedStar {
     this.dec,
     this.magnitude,
     DateTime? savedAt,
+    this.notificationsEnabled = true, // Default: notifications enabled
   }) : savedAt = savedAt ?? DateTime.now();
 
   /// Create a search query to find this star
@@ -48,6 +50,7 @@ class SavedStar {
       'dec': dec,
       'magnitude': magnitude,
       'savedAt': savedAt.toIso8601String(),
+      'notificationsEnabled': notificationsEnabled,
     };
   }
 
@@ -63,6 +66,32 @@ class SavedStar {
       savedAt: json['savedAt'] != null
           ? DateTime.parse(json['savedAt'] as String)
           : DateTime.now(),
+      notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+    );
+  }
+
+  /// Create a copy with updated fields
+  SavedStar copyWith({
+    String? id,
+    String? displayName,
+    String? scientificName,
+    String? registrationNumber,
+    double? ra,
+    double? dec,
+    double? magnitude,
+    DateTime? savedAt,
+    bool? notificationsEnabled,
+  }) {
+    return SavedStar(
+      id: id ?? this.id,
+      displayName: displayName ?? this.displayName,
+      scientificName: scientificName ?? this.scientificName,
+      registrationNumber: registrationNumber ?? this.registrationNumber,
+      ra: ra ?? this.ra,
+      dec: dec ?? this.dec,
+      magnitude: magnitude ?? this.magnitude,
+      savedAt: savedAt ?? this.savedAt,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
     );
   }
 }
@@ -192,6 +221,28 @@ class SavedStarsService extends ChangeNotifier {
   /// Clear all saved stars
   Future<void> clearAll() async {
     _savedStars.clear();
+    notifyListeners();
+    await _save();
+  }
+
+  /// Toggle notifications for a specific star
+  Future<void> toggleStarNotifications(String starId, bool enabled) async {
+    final index = _savedStars.indexWhere((s) => s.id == starId);
+    if (index == -1) return;
+
+    _savedStars[index] = _savedStars[index].copyWith(
+      notificationsEnabled: enabled,
+    );
+    notifyListeners();
+    await _save();
+  }
+
+  /// Update a star's data
+  Future<void> updateStar(SavedStar star) async {
+    final index = _savedStars.indexWhere((s) => s.id == star.id);
+    if (index == -1) return;
+
+    _savedStars[index] = star;
     notifyListeners();
     await _save();
   }

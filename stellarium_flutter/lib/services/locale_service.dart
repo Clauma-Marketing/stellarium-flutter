@@ -33,7 +33,17 @@ class LocaleService extends ChangeNotifier {
     if (localeCode != null && localeCode.isNotEmpty) {
       _locale = Locale(localeCode);
     } else {
-      _locale = null; // System default
+      // Default behavior: follow system locale.
+      //
+      // Exception: for Chinese device locales, default the app language to English
+      // (unless the user explicitly chose a language in app settings).
+      final systemLanguageCode =
+          WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+      if (systemLanguageCode.toLowerCase().startsWith('zh')) {
+        _locale = const Locale('en');
+      } else {
+        _locale = null; // System default
+      }
     }
 
     _isLoaded = true;
@@ -66,6 +76,8 @@ class LocaleService extends ChangeNotifier {
         return 'English';
       case 'de':
         return 'Deutsch';
+      case 'zh':
+        return '中文';
       default:
         return locale.languageCode;
     }
@@ -75,5 +87,6 @@ class LocaleService extends ChangeNotifier {
   static const List<Locale> supportedLocales = [
     Locale('en'),
     Locale('de'),
+    Locale('zh'),
   ];
 }

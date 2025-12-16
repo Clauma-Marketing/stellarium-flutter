@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/analytics_service.dart';
 
 /// Screen for scanning star certificates to extract registration numbers
 class CertificateScannerScreen extends StatefulWidget {
@@ -92,7 +93,12 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
 
   @override
   void dispose() {
-    _cameraController?.stopImageStream();
+    // Only stop image stream if camera is initialized and streaming
+    if (_cameraController != null &&
+        _cameraController!.value.isInitialized &&
+        _cameraController!.value.isStreamingImages) {
+      _cameraController!.stopImageStream();
+    }
     _cameraController?.dispose();
     _textRecognizer.close();
     super.dispose();
@@ -175,13 +181,18 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
         // Check if we have enough confirmations
         if (_detectionCounts[normalizedNumber]! >= _requiredConfirmations) {
           // Confirmed detection!
+          AnalyticsService.instance.logScannerDetected(registrationNumber: normalizedNumber);
           setState(() {
             _hasDetected = true;
             _detectedNumber = normalizedNumber;
           });
 
-          // Stop the camera stream
-          await _cameraController?.stopImageStream();
+          // Stop the camera stream (check if streaming first)
+          if (_cameraController != null &&
+              _cameraController!.value.isInitialized &&
+              _cameraController!.value.isStreamingImages) {
+            await _cameraController!.stopImageStream();
+          }
 
           // Vibrate feedback
           HapticFeedback.mediumImpact();
@@ -381,7 +392,10 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            AnalyticsService.instance.logScannerCancelled();
+            Navigator.of(context).pop();
+          },
         ),
         title: Text(l10n.scanCertificate, style: const TextStyle(color: Colors.white)),
         actions: [

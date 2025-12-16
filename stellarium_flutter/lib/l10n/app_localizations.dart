@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Night Sky Guide'**
+  /// **'Star Registration Planetarium'**
   String get appTitle;
 
   /// No description provided for @menu.
@@ -231,6 +231,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Apply'**
   String get apply;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
 
   /// No description provided for @save.
   ///
@@ -853,7 +859,7 @@ abstract class AppLocalizations {
   /// No description provided for @viewStarIn3D.
   ///
   /// In en, this message translates to:
-  /// **'View Star in 3D'**
+  /// **'3D View'**
   String get viewStarIn3D;
 
   /// No description provided for @catalogId.
@@ -880,10 +886,16 @@ abstract class AppLocalizations {
   /// **'Search for a star or object...'**
   String get searchPlaceholder;
 
+  /// No description provided for @welcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover the Cosmos'**
+  String get welcomeTitle;
+
   /// No description provided for @onboardingExploreUniverse.
   ///
   /// In en, this message translates to:
-  /// **'Explore the universe from your pocket'**
+  /// **'Explore the night sky, track celestial events, and find your named star among millions of others.'**
   String get onboardingExploreUniverse;
 
   /// No description provided for @onboardingGetStarted.
@@ -925,14 +937,20 @@ abstract class AppLocalizations {
   /// No description provided for @locationAccessTitle.
   ///
   /// In en, this message translates to:
-  /// **'Location Access'**
+  /// **'Allow Location?'**
   String get locationAccessTitle;
 
   /// No description provided for @locationAccessSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Allow location access to see the sky exactly as it appears from your location'**
+  /// **'See the night sky exactly as it appears from your location. We use your position for accurate star positions.'**
   String get locationAccessSubtitle;
+
+  /// No description provided for @locationAllowAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get locationAllowAccess;
 
   /// No description provided for @locationAccuratePositions.
   ///
@@ -1015,14 +1033,20 @@ abstract class AppLocalizations {
   /// No description provided for @notificationTitle.
   ///
   /// In en, this message translates to:
-  /// **'Stay Updated'**
+  /// **'Enable Notifications?'**
   String get notificationTitle;
 
   /// No description provided for @notificationSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Get notified about celestial events and optimal viewing conditions'**
+  /// **'Never miss meteor showers and the best nights for stargazing. We\'ll send you timely alerts before they happen.'**
   String get notificationSubtitle;
+
+  /// No description provided for @notificationAllowNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get notificationAllowNotifications;
 
   /// No description provided for @notificationMoonPhase.
   ///
@@ -1069,14 +1093,26 @@ abstract class AppLocalizations {
   /// No description provided for @attTitle.
   ///
   /// In en, this message translates to:
-  /// **'Privacy & Tracking'**
+  /// **'Allow Tracking?'**
   String get attTitle;
 
   /// No description provided for @attSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Allow tracking to help us improve your experience and show you relevant content'**
+  /// **'Help us improve your cosmic journey. We use data to personalize insights and suggest relevant events.'**
   String get attSubtitle;
+
+  /// No description provided for @attAllowTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get attAllowTracking;
+
+  /// No description provided for @attDontTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask App Not to Track'**
+  String get attDontTrack;
 
   /// No description provided for @attImproveApp.
   ///
@@ -1257,6 +1293,222 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not capture image. Please try again.'**
   String get couldNotCaptureImage;
+
+  /// No description provided for @showStarPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Show 24h Path'**
+  String get showStarPath;
+
+  /// No description provided for @hideStarPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide 24h Path'**
+  String get hideStarPath;
+
+  /// No description provided for @loaderQuote1.
+  ///
+  /// In en, this message translates to:
+  /// **'Your personal window to the cosmos'**
+  String get loaderQuote1;
+
+  /// No description provided for @loaderQuote2.
+  ///
+  /// In en, this message translates to:
+  /// **'Every star holds a name waiting to be given'**
+  String get loaderQuote2;
+
+  /// No description provided for @loaderQuote3.
+  ///
+  /// In en, this message translates to:
+  /// **'The sky above you, charted and waiting'**
+  String get loaderQuote3;
+
+  /// No description provided for @loaderQuote4.
+  ///
+  /// In en, this message translates to:
+  /// **'A name etched in light, forever yours'**
+  String get loaderQuote4;
+
+  /// No description provided for @loaderQuote5.
+  ///
+  /// In en, this message translates to:
+  /// **'Millions of stars — one belongs to you'**
+  String get loaderQuote5;
+
+  /// No description provided for @loaderQuote6.
+  ///
+  /// In en, this message translates to:
+  /// **'Where the ancient light meets your gaze'**
+  String get loaderQuote6;
+
+  /// No description provided for @loaderQuote7.
+  ///
+  /// In en, this message translates to:
+  /// **'The universe remembers every name'**
+  String get loaderQuote7;
+
+  /// No description provided for @loaderQuote8.
+  ///
+  /// In en, this message translates to:
+  /// **'Look up. Find your place among the stars.'**
+  String get loaderQuote8;
+
+  /// No description provided for @loaderStatus1.
+  ///
+  /// In en, this message translates to:
+  /// **'Locating your coordinates'**
+  String get loaderStatus1;
+
+  /// No description provided for @loaderStatus2.
+  ///
+  /// In en, this message translates to:
+  /// **'Mapping the celestial sphere'**
+  String get loaderStatus2;
+
+  /// No description provided for @loaderStatus3.
+  ///
+  /// In en, this message translates to:
+  /// **'Charting visible constellations'**
+  String get loaderStatus3;
+
+  /// No description provided for @loaderStatus4.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating star positions'**
+  String get loaderStatus4;
+
+  /// No description provided for @loaderStatus5.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your night sky'**
+  String get loaderStatus5;
+
+  /// No description provided for @visibilityCalculating.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating visibility...'**
+  String get visibilityCalculating;
+
+  /// No description provided for @visibilityVisibleNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible Now'**
+  String get visibilityVisibleNow;
+
+  /// No description provided for @visibilityTonight.
+  ///
+  /// In en, this message translates to:
+  /// **'Tonight'**
+  String get visibilityTonight;
+
+  /// No description provided for @visibilityVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'visible'**
+  String get visibilityVisible;
+
+  /// No description provided for @visibilitySince.
+  ///
+  /// In en, this message translates to:
+  /// **'SINCE'**
+  String get visibilitySince;
+
+  /// No description provided for @visibilityFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'FROM'**
+  String get visibilityFrom;
+
+  /// No description provided for @visibilityUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'UNTIL'**
+  String get visibilityUntil;
+
+  /// No description provided for @notificationAlertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Visibility Alert'**
+  String get notificationAlertTitle;
+
+  /// No description provided for @notificationAlertSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notified when star rises'**
+  String get notificationAlertSubtitle;
+
+  /// No description provided for @visibilityStatusNeverVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Never visible'**
+  String get visibilityStatusNeverVisible;
+
+  /// No description provided for @visibilityStatusVisibleNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible now'**
+  String get visibilityStatusVisibleNow;
+
+  /// No description provided for @visibilityStatusWaitForDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for dark'**
+  String get visibilityStatusWaitForDark;
+
+  /// No description provided for @visibilityStatusBelowHorizon.
+  ///
+  /// In en, this message translates to:
+  /// **'Below horizon'**
+  String get visibilityStatusBelowHorizon;
+
+  /// No description provided for @visibilityNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get visibilityNow;
+
+  /// No description provided for @visibilityStatusTonight.
+  ///
+  /// In en, this message translates to:
+  /// **'Tonight {time}'**
+  String visibilityStatusTonight(String time);
+
+  /// No description provided for @visibilityStatusTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow {time}'**
+  String visibilityStatusTomorrow(String time);
+
+  /// No description provided for @visibilityStatusInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}d {hours}h'**
+  String visibilityStatusInDays(int days, int hours);
+
+  /// No description provided for @legal.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal'**
+  String get legal;
+
+  /// No description provided for @legalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Use & Privacy Policy'**
+  String get legalSubtitle;
+
+  /// No description provided for @termsOfUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Use'**
+  String get termsOfUse;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyPolicy;
 }
 
 class _AppLocalizationsDelegate

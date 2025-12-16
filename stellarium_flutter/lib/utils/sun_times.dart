@@ -123,11 +123,17 @@ class SunTimes {
 
   /// Calculate the time of a solar event for a given sun angle.
   /// Returns minutes from midnight (local solar time), or null if the event doesn't occur.
+  /// sunAngleDegs is the sun's altitude (negative for below horizon)
   double? _getSunEventTime(double sunAngleDegs, bool isSunrise) {
     final latRad = _toRadians(latitude);
 
-    // Hour Angle (degrees)
-    final cosHourAngle = (math.cos(_toRadians(90.833 + sunAngleDegs + 0.833)) -
+    // Zenith angle = 90 - sun altitude
+    // For sunrise/sunset (sunAngle = -0.833), zenith = 90.833
+    // For astronomical twilight (sunAngle = -18), zenith = 108
+    final zenithAngle = 90.0 - sunAngleDegs;
+
+    // Hour Angle calculation
+    final cosHourAngle = (math.cos(_toRadians(zenithAngle)) -
             math.sin(latRad) * math.sin(_sunDeclinationRad)) /
         (math.cos(latRad) * math.cos(_sunDeclinationRad));
 

@@ -90,11 +90,14 @@ class MainButtonsRow extends StatelessWidget {
           isActive: atmosphereEnabled,
           onTap: onAtmosphereTap,
         ),
-        MainButton(
-          icon: Icons.screen_rotation,
-          label: l10n.movementButton,
-          isActive: gyroscopeEnabled,
-          onTap: gyroscopeAvailable ? onGyroscopeTap : () {},
+        Opacity(
+          opacity: gyroscopeAvailable ? 1.0 : 0.3,
+          child: MainButton(
+            icon: Icons.screen_rotation,
+            label: l10n.movementButton,
+            isActive: gyroscopeEnabled && gyroscopeAvailable,
+            onTap: gyroscopeAvailable ? onGyroscopeTap : () {},
+          ),
         ),
       ],
     );

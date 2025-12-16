@@ -16,8 +16,11 @@ import 'widgets/star_info_sheet.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
 import 'services/analytics_service.dart';
+import 'services/firestore_sync_service.dart';
 import 'services/klaviyo_service.dart';
 import 'services/locale_service.dart';
+import 'services/saved_stars_service.dart';
+import 'services/star_notification_service.dart';
 import 'web_utils.dart';
 
 /// Background message handler for Firebase Messaging.
@@ -27,6 +30,45 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   // Handle push notification for Klaviyo tracking
   await KlaviyoService.instance.handlePush(message.data);
+}
+
+/// Initialize star visibility notification services
+/// Note: Firestore sync is deferred until after onboarding to avoid triggering
+/// notification permission dialogs prematurely
+Future<void> _initializeStarNotificationServices() async {
+  try {
+    // Initialize notification service (but don't request permissions - onboarding handles that)
+    await StarNotificationService.instance.initialize();
+
+    // Load saved stars
+    await SavedStarsService.instance.load();
+
+    // Check if user has completed onboarding before initializing Firestore sync
+    // This prevents triggering notification permission dialogs for new users
+    final onboardingComplete = await OnboardingService.isOnboardingComplete();
+    if (onboardingComplete) {
+      // Firestore sync must not block app startup (it can hang when offline).
+      unawaited(() async {
+        try {
+          // Initialize Firestore sync for cloud-based notifications
+          await FirestoreSyncService.instance
+              .initialize()
+              .timeout(const Duration(seconds: 8));
+
+          // Sync all saved stars to Firestore (Firebase Functions handles notifications)
+          await FirestoreSyncService.instance
+              .syncSavedStars()
+              .timeout(const Duration(seconds: 8));
+        } catch (e) {
+          debugPrint('Deferred Firestore sync failed: $e');
+        }
+      }());
+    }
+
+    debugPrint('Star notification services initialized successfully');
+  } catch (e) {
+    debugPrint('Error initializing star notification services: $e');
+  }
 }
 
 void main() async {
@@ -47,10 +89,12 @@ void main() async {
         AnalyticsService.instance.initialize();
 
         // Initialize Crashlytics
-        FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+        FlutterError.onError =
+            FirebaseCrashlytics.instance.recordFlutterFatalError;
 
         // Disable Crashlytics in debug mode (optional - remove if you want debug crashes)
-        await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
+        await FirebaseCrashlytics.instance
+            .setCrashlyticsCollectionEnabled(!kDebugMode);
       } catch (e) {
         debugPrint('Firebase initialization error: $e');
       }
@@ -62,31 +106,44 @@ void main() async {
         await Adapty().activate(
           configuration: AdaptyConfiguration(
             apiKey: 'public_live_IOi0yFDb.WFTHrIKk8DzeTfEPmBwQ',
-          )..withLogLevel(AdaptyLogLevel.verbose)
-           ..withActivateUI(true),
+          )
+            ..withLogLevel(AdaptyLogLevel.verbose)
+            ..withActivateUI(true),
         );
       } catch (e) {
         debugPrint('Adapty initialization error: $e');
       }
     }
 
-    // Initialize Klaviyo with locale-based API key (only on mobile platforms)
+    // Set up Firebase Messaging and notification services (only on mobile platforms)
+    // Only initialize these for returning users who completed onboarding
+    // to avoid triggering notification permission dialogs for new users
     if (!kIsWeb) {
-      final locale = LocaleService.instance.locale;
-      final languageCode = locale?.languageCode ??
-          WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-      await KlaviyoService.instance.initialize(languageCode);
+      final onboardingComplete = await OnboardingService.isOnboardingComplete();
 
-      // Set up Firebase Messaging for push notifications
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      if (onboardingComplete) {
+        // Set up Firebase Messaging background handler
+        FirebaseMessaging.onBackgroundMessage(
+            _firebaseMessagingBackgroundHandler);
 
-      // Listen for token refresh to keep Klaviyo updated
-      KlaviyoService.instance.setupTokenRefreshListener();
+        // Handle foreground messages for Klaviyo tracking (if initialized)
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          KlaviyoService.instance.handlePush(message.data);
+        });
 
-      // Handle foreground messages for Klaviyo tracking
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        KlaviyoService.instance.handlePush(message.data);
-      });
+        // Initialize Klaviyo for returning users
+        final locale = LocaleService.instance.locale;
+        final languageCode = locale?.languageCode ??
+            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+        await KlaviyoService.instance.initialize(languageCode);
+        KlaviyoService.instance.setupTokenRefreshListener();
+
+        // Initialize star visibility notification services
+        await _initializeStarNotificationServices();
+      } else {
+        // For new users, just load saved stars (no Firebase Messaging setup)
+        await SavedStarsService.instance.load();
+      }
     }
 
     runApp(const StellariumApp());
@@ -137,6 +194,7 @@ class _StellariumAppState extends State<StellariumApp> {
       supportedLocales: const [
         Locale('en'),
         Locale('de'),
+        Locale('zh'),
       ],
       // Use custom locale if set, otherwise use system locale
       locale: LocaleService.instance.locale,
@@ -160,7 +218,7 @@ class AppEntryPoint extends StatefulWidget {
   State<AppEntryPoint> createState() => _AppEntryPointState();
 }
 
-enum AppScreen { loading, onboarding, subscription, starRegistration, home }
+enum AppScreen { loading, onboarding, starRegistration, subscription, home }
 
 class _AppEntryPointState extends State<AppEntryPoint> {
   AppScreen _currentScreen = AppScreen.loading;
@@ -173,40 +231,49 @@ class _AppEntryPointState extends State<AppEntryPoint> {
 
   Future<void> _checkOnboardingStatus() async {
     final onboardingComplete = await OnboardingService.isOnboardingComplete();
-    final subscriptionShown = await OnboardingService.isSubscriptionShown();
 
     setState(() {
       if (!onboardingComplete) {
         _currentScreen = AppScreen.onboarding;
-      } else if (!subscriptionShown && !kIsWeb) {
-        _currentScreen = AppScreen.subscription;
       } else {
-        // Always show star registration after onboarding/subscription
+        // Always show star registration for returning users
         _currentScreen = AppScreen.starRegistration;
       }
     });
   }
 
   void _onOnboardingComplete() {
-    // After onboarding, show subscription screen (on mobile only)
-    setState(() {
-      if (!kIsWeb) {
-        _currentScreen = AppScreen.subscription;
-      } else {
-        // On web, go directly to star registration
-        _currentScreen = AppScreen.starRegistration;
-      }
-    });
-  }
-
-  void _onSubscriptionComplete() {
-    // After subscription, show star registration
+    // After onboarding, show star registration
     setState(() {
       _currentScreen = AppScreen.starRegistration;
     });
   }
 
-  void _onStarRegistrationComplete() {
+  Future<void> _onStarRegistrationComplete({bool starFound = false}) async {
+    // If a star was found, skip subscription and go directly to home
+    if (starFound) {
+      setState(() {
+        _currentScreen = AppScreen.home;
+      });
+      return;
+    }
+
+    // Check if user has already subscribed
+    final subscriptionShown = await OnboardingService.isSubscriptionShown();
+
+    // After star registration, show subscription screen (on mobile only) if not yet subscribed
+    setState(() {
+      if (!kIsWeb && !subscriptionShown) {
+        _currentScreen = AppScreen.subscription;
+      } else {
+        // On web or if already subscribed, go directly to home
+        _currentScreen = AppScreen.home;
+      }
+    });
+  }
+
+  void _onSubscriptionComplete() {
+    // After subscription, go to home
     setState(() {
       _currentScreen = AppScreen.home;
     });
@@ -245,7 +312,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
           backgroundColor: Colors.black,
           body: StarRegistrationPage(
             onContinue: _onStarRegistrationComplete,
-            onSkip: _onStarRegistrationComplete,
+            onSkip: () => _onStarRegistrationComplete(),
             onStarFound: _onStarFound,
           ),
         );
