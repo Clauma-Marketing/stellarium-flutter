@@ -84,6 +84,7 @@ static bool is_on_screen(double x, double y, double w, double h, double margin)
            y >= margin && y <= h - margin;
 }
 
+
 static int pointer_render(obj_t *obj, const painter_t *painter_)
 {
     int i;
@@ -113,12 +114,29 @@ static int pointer_render(obj_t *obj, const painter_t *painter_)
 
         // Check if selection is off-screen
         if (!is_on_screen(win_pos[0], win_pos[1], screen_w, screen_h, margin)) {
-            // Calculate direction angle from screen center to selection
-            double dx = win_pos[0] - center_x;
-            double dy = win_pos[1] - center_y;
-            // atan2 gives angle from positive X axis, we want from negative Y
-            // (pointing up), so we swap and negate appropriately
-            double dir_angle = atan2(dx, -dy);
+            // Get object position in mount frame (matches yaw/pitch reference)
+            double obj_pos[4], obj_az, obj_alt;
+            obj_get_pos(selection, painter.obs, FRAME_MOUNT, obj_pos);
+            vec3_to_sphe(obj_pos, &obj_az, &obj_alt);
+
+            // Get current view direction
+            double view_az = core->observer->yaw;
+            double view_alt = core->observer->pitch;
+
+            // Calculate azimuth difference (shortest path around the circle)
+            double daz = obj_az - view_az;
+            // Normalize to [-PI, PI] for shortest path
+            while (daz > M_PI) daz -= 2 * M_PI;
+            while (daz < -M_PI) daz += 2 * M_PI;
+
+            // Calculate altitude difference
+            double dalt = obj_alt - view_alt;
+
+            // Convert to screen direction:
+            // Positive daz = object is to the right → arrow points right
+            // Positive dalt = object is higher → arrow points up
+            // atan2(x, y) with x=horizontal, y=vertical gives angle from up
+            double dir_angle = atan2(daz, dalt);
 
             render_direction_arrow(painter_, center_x, center_y, dir_angle);
 
