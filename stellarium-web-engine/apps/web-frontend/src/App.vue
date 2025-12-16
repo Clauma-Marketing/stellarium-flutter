@@ -249,7 +249,7 @@ export default {
           if (!that.dataSourceInitDone) {
             // Set all default data sources
             const core = that.$stel.core
-            core.stars.addDataSource({ url: process.env.BASE_URL + 'skydata/stars' })
+            core.stars.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/stars/v1' })
 
             // Allow to specify a custom path for sky culture data
             if (that.$route.query.sc) {
@@ -257,18 +257,18 @@ export default {
               core.skycultures.addDataSource({ url: that.$route.query.sc, key: key })
               core.skycultures.current_id = key
             } else {
-              core.skycultures.addDataSource({ url: process.env.BASE_URL + 'skydata/skycultures/western', key: 'western' })
+              core.skycultures.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/skycultures/western', key: 'western' })
             }
 
-            core.dsos.addDataSource({ url: process.env.BASE_URL + 'skydata/dso' })
-            core.landscapes.addDataSource({ url: process.env.BASE_URL + 'skydata/landscapes/guereins', key: 'guereins' })
-            core.milkyway.addDataSource({ url: process.env.BASE_URL + 'skydata/surveys/milkyway' })
-            core.minor_planets.addDataSource({ url: process.env.BASE_URL + 'skydata/mpcorb.dat', key: 'mpc_asteroids' })
-            core.planets.addDataSource({ url: process.env.BASE_URL + 'skydata/surveys/sso/moon', key: 'moon' })
-            core.planets.addDataSource({ url: process.env.BASE_URL + 'skydata/surveys/sso/sun', key: 'sun' })
-            core.planets.addDataSource({ url: process.env.BASE_URL + 'skydata/surveys/sso/moon', key: 'default' })
-            core.comets.addDataSource({ url: process.env.BASE_URL + 'skydata/CometEls.txt', key: 'mpc_comets' })
-            core.satellites.addDataSource({ url: process.env.BASE_URL + 'skydata/tle_satellite.jsonl.gz', key: 'jsonl/sat' })
+            core.dsos.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/dso' })
+            core.landscapes.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/landscapes/guereins', key: 'guereins' })
+            core.milkyway.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/surveys/milkyway' })
+            core.minor_planets.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/mpcorb.dat', key: 'mpc_asteroids' })
+            core.planets.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/surveys/sso/moon', key: 'moon' })
+            core.planets.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/surveys/sso/sun', key: 'sun' })
+            core.planets.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/surveys/sso/moon', key: 'default' })
+            core.comets.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/CometEls.txt', key: 'mpc_comets' })
+            core.satellites.addDataSource({ url: process.env.VUE_APP_NOCTUASKY_API_SERVER + '/surveys/tle_satellite.jsonl.gz', key: 'jsonl/sat' })
           }
         })
       } catch (e) {

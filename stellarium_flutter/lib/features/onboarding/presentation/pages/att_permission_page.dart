@@ -11,14 +11,12 @@ import '../widgets/permission_page_template.dart';
 /// ATT (App Tracking Transparency) permission page - iOS only
 class AttPermissionPage extends StatefulWidget {
   final VoidCallback onContinue;
-  final VoidCallback onSkip;
   final int? currentPage;
   final int? totalPages;
 
   const AttPermissionPage({
     super.key,
     required this.onContinue,
-    required this.onSkip,
     this.currentPage,
     this.totalPages,
   });
@@ -69,11 +67,6 @@ class _AttPermissionPageState extends State<AttPermissionPage> {
     widget.onContinue();
   }
 
-  void _skipPermission() {
-    AnalyticsService.instance.logPermissionSkipped(permission: 'att');
-    widget.onSkip();
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -82,10 +75,8 @@ class _AttPermissionPageState extends State<AttPermissionPage> {
       title: l10n.attTitle,
       subtitle: l10n.attSubtitle,
       features: const [],
-      primaryButtonText: _isLoading ? l10n.onboardingRequesting : l10n.attAllowTracking,
-      secondaryButtonText: l10n.attDontTrack,
+      primaryButtonText: _isLoading ? l10n.onboardingRequesting : l10n.onboardingContinue,
       onPrimaryPressed: _requestAttPermission,
-      onSecondaryPressed: _skipPermission,
       isLoading: _isLoading,
       currentPage: widget.currentPage,
       totalPages: widget.totalPages,

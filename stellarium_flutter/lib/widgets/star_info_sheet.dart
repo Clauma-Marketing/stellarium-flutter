@@ -65,21 +65,25 @@ class StarModelData {
     required this.isDoubleOrMultiple,
   });
 
-  factory StarModelData.fromJson(Map<String, dynamic> json, {
+  factory StarModelData.fromJson(
+    Map<String, dynamic> json, {
     String? identifier,
     String? shortName,
     String? objectType,
   }) {
     // Handle case-insensitive field names (API may send Vmag or vmag)
     double? getNum(String key) {
-      final value = json[key] ?? json[key.toLowerCase()] ?? json[key[0].toUpperCase() + key.substring(1)];
+      final value = json[key] ??
+          json[key.toLowerCase()] ??
+          json[key[0].toUpperCase() + key.substring(1)];
       return (value as num?)?.toDouble();
     }
 
     return StarModelData(
       identifier: identifier ?? json['identifier'] as String? ?? '',
       shortName: shortName ?? json['short_name'] as String? ?? '',
-      spectralType: json['spect_t'] as String? ?? json['Spect_t'] as String? ?? '',
+      spectralType:
+          json['spect_t'] as String? ?? json['Spect_t'] as String? ?? '',
       declination: getNum('de') ?? 0.0,
       rightAscension: getNum('ra') ?? 0.0,
       j2000Dec: json['j2000dec'] as String? ?? '',
@@ -108,6 +112,17 @@ class StarModelData {
     }
     return identifier;
   }
+
+  /// Get HIP identifier formatted as "HIP {number}" for persistent labels
+  /// Returns null if no HIP number is found
+  String? get hipIdentifier {
+    // Check if identifier itself is a HIP number
+    final hipMatch = RegExp(r'^HIP\s*(\d+)', caseSensitive: false).firstMatch(identifier);
+    if (hipMatch != null) {
+      return 'HIP ${hipMatch.group(1)}';
+    }
+    return null;
+  }
 }
 
 /// Complete star info combining registry and model data
@@ -118,7 +133,9 @@ class StarInfo {
   final StarModelData? modelData;
   final StarRegistryInfo? registryInfo;
   final bool isRegistered;
-  final String? removalReason; // If star was removed from registry, this contains the reason
+  final String?
+      removalReason; // If star was removed from registry, this contains the reason
+  final List<String> names; // All names/identifiers from API
 
   StarInfo({
     required this.found,
@@ -128,7 +145,26 @@ class StarInfo {
     this.registryInfo,
     this.isRegistered = false,
     this.removalReason,
+    this.names = const [],
   });
+
+  /// Get HIP identifier formatted as "HIP {number}" for persistent labels
+  /// Searches modelData.identifier first, then names array
+  /// Returns null if no HIP number is found
+  String? get hipIdentifier {
+    // First check modelData.hipIdentifier
+    final mdHip = modelData?.hipIdentifier;
+    if (mdHip != null) return mdHip;
+
+    // Then search names array
+    for (final name in names) {
+      final hipMatch = RegExp(r'^HIP\s*(\d+)', caseSensitive: false).firstMatch(name);
+      if (hipMatch != null) {
+        return 'HIP ${hipMatch.group(1)}';
+      }
+    }
+    return null;
+  }
 
   factory StarInfo.fromApiResponse(Map<String, dynamic> json) {
     final info = json['info'] as Map<String, dynamic>?;
@@ -141,7 +177,8 @@ class StarInfo {
 
     // If found is explicitly false and there's a message, star was removed
     if (wasFoundExplicit == false && message != null) {
-      debugPrint('StarInfo.fromApiResponse: Star removed from registry. Reason: $message');
+      debugPrint(
+          'StarInfo.fromApiResponse: Star removed from registry. Reason: $message');
       return StarInfo(
         found: false,
         model: 'star',
@@ -152,16 +189,20 @@ class StarInfo {
 
     // Determine if star was found - either explicit 'found' field or presence of model_data/match
     final wasFound = wasFoundExplicit ??
-        (modelData != null || json['match'] != null || json['short_name'] != null);
+        (modelData != null ||
+            json['match'] != null ||
+            json['short_name'] != null);
 
     // Extract identifier - try root 'match', then model_data 'identifier'
     String identifier = json['match'] as String? ?? '';
     if (identifier.isEmpty && modelData != null) {
       identifier = modelData['identifier'] as String? ?? '';
     }
+    // Parse names array
+    final names = (json['names'] as List<dynamic>?)?.cast<String>() ?? [];
+
     // Also try to find HIP from names array if identifier is still empty
     if (identifier.isEmpty) {
-      final names = (json['names'] as List<dynamic>?)?.cast<String>() ?? [];
       for (final name in names) {
         if (name.startsWith('HIP')) {
           identifier = name;
@@ -174,12 +215,14 @@ class StarInfo {
     final types = (json['types'] as List<dynamic>?)?.cast<String>() ?? [];
     final objectType = types.isNotEmpty ? types.first : '';
 
-    debugPrint('StarInfo.fromApiResponse: identifier=$identifier, shortName=$shortName, hasRegistry=$hasRegistry');
+    debugPrint(
+        'StarInfo.fromApiResponse: identifier=$identifier, shortName=$shortName, hasRegistry=$hasRegistry, names=$names');
 
     return StarInfo(
       found: wasFound,
       model: json['model'] as String? ?? 'star',
       shortName: shortName,
+      names: names,
       modelData: modelData != null
           ? StarModelData.fromJson(
               modelData,
@@ -195,6 +238,7 @@ class StarInfo {
 
   /// Create from basic star data (when selecting from sky view)
   /// [names] is a list of identifiers like ["NAME Vega", "* alf Lyr", "HIP 91262", "HD 172167"]
+  /// [hip] is the direct HIP number from the engine (most reliable)
   factory StarInfo.fromBasicData({
     required String name,
     double? ra,
@@ -202,10 +246,13 @@ class StarInfo {
     double? magnitude,
     String? spectralType,
     List<String>? names,
+    int? hip,
   }) {
-    // Extract catalog ID (HIP/HD) from names list if available
+    // Extract catalog ID - prefer direct HIP if available
     String catalogId = '';
-    if (names != null) {
+    if (hip != null) {
+      catalogId = 'HIP$hip';
+    } else if (names != null) {
       for (final n in names) {
         if (n.startsWith('HIP ') || n.startsWith('HIP')) {
           catalogId = n.replaceAll(' ', ''); // Normalize to HIP91262
@@ -226,6 +273,7 @@ class StarInfo {
       found: true,
       model: 'star',
       shortName: name,
+      names: names ?? [],
       modelData: StarModelData(
         identifier: catalogId, // Use HIP/HD as identifier, not the display name
         shortName: name,
@@ -260,11 +308,39 @@ class StarInfo {
     final s = ((absDec - d) * 60 - m) * 60;
     return '$sign${d.toString().padLeft(2, '0')}° ${m.toString().padLeft(2, '0')}\' ${s.toStringAsFixed(1)}"';
   }
+
+  /// Get the best search query for this star.
+  /// For registered stars, returns the registration number (e.g., "9736-58577-3012084")
+  /// which allows the API to return full coordinate data for createObj().
+  /// For unregistered stars, returns the catalog identifier (e.g., "HIP 90156").
+  String get searchQuery {
+    // For registered stars, prefer registration number - this allows the
+    // ?RN= endpoint to return coordinates for stars not in local catalog
+    if (isRegistered &&
+        registryInfo != null &&
+        registryInfo!.registrationNumber.isNotEmpty) {
+      return registryInfo!.registrationNumber;
+    }
+    // Fallback to catalog identifier
+    return modelData?.searchIdentifier ?? shortName;
+  }
 }
 
 /// Service for fetching star information
 class StarRegistryService {
-  static const String _baseUrl = 'https://registry-api.celestial-register.com/';
+  static const String _baseUrlDefault =
+      'https://registry-api.celestial-register.com/';
+  static const String _baseUrlCn =
+      'https://registry-api.star-registration.com.cn/';
+
+  static String get _baseUrl {
+    final languageCode =
+        WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    if (languageCode.toLowerCase().startsWith('zh')) {
+      return _baseUrlCn;
+    }
+    return _baseUrlDefault;
+  }
 
   /// Check if query looks like a registration number
   static bool isRegistrationNumber(String query) {
@@ -274,9 +350,11 @@ class StarRegistryService {
   }
 
   /// Search for a star by registration number
-  static Future<StarInfo?> searchByRegistrationNumber(String registrationNumber) async {
+  static Future<StarInfo?> searchByRegistrationNumber(
+      String registrationNumber) async {
     try {
-      final url = Uri.parse('$_baseUrl?RN=${Uri.encodeComponent(registrationNumber.trim())}');
+      final url = Uri.parse(
+          '$_baseUrl?RN=${Uri.encodeComponent(registrationNumber.trim())}');
       final response = await http.get(url, headers: {
         'User-Agent': 'StellariumFlutter/1.0',
       });
@@ -294,7 +372,8 @@ class StarRegistryService {
 
   /// Search for a star by name (e.g., "HIP 14778", "Polaris")
   /// Pass [validIdentifiers] to validate the result matches the expected star
-  static Future<StarInfo?> searchByName(String name, {List<String>? validIdentifiers}) async {
+  static Future<StarInfo?> searchByName(String name,
+      {List<String>? validIdentifiers}) async {
     try {
       // Clean up the name - remove Stellarium prefixes like "NAME ", "* ", etc.
       String cleanName = name.trim();
@@ -305,14 +384,19 @@ class StarRegistryService {
       }
 
       // Remove spaces from catalog identifiers (API expects HIP746 not HIP 746)
-      if (cleanName.startsWith('HIP ') || cleanName.startsWith('HD ') ||
-          cleanName.startsWith('HR ') || cleanName.startsWith('SAO ') ||
-          cleanName.startsWith('TYC ') || cleanName.startsWith('BD ') ||
-          cleanName.startsWith('FK ') || cleanName.startsWith('GJ ')) {
+      if (cleanName.startsWith('HIP ') ||
+          cleanName.startsWith('HD ') ||
+          cleanName.startsWith('HR ') ||
+          cleanName.startsWith('SAO ') ||
+          cleanName.startsWith('TYC ') ||
+          cleanName.startsWith('BD ') ||
+          cleanName.startsWith('FK ') ||
+          cleanName.startsWith('GJ ')) {
         cleanName = cleanName.replaceAll(' ', '');
       }
 
-      final url = Uri.parse('${_baseUrl}search?name=${Uri.encodeComponent(cleanName)}');
+      final url =
+          Uri.parse('${_baseUrl}search?name=${Uri.encodeComponent(cleanName)}');
       debugPrint('Star registry API call: $url');
       final response = await http.get(url, headers: {
         'User-Agent': 'StellariumFlutter/1.0',
@@ -334,7 +418,8 @@ class StarRegistryService {
         if (json != null) {
           // Validate the result matches the expected star if identifiers provided
           if (validIdentifiers != null && validIdentifiers.isNotEmpty) {
-            final resultNames = (json['names'] as List<dynamic>?)?.cast<String>() ?? [];
+            final resultNames =
+                (json['names'] as List<dynamic>?)?.cast<String>() ?? [];
             final resultMatch = json['match'] as String?;
             final resultShortName = json['short_name'] as String?;
 
@@ -354,11 +439,13 @@ class StarRegistryService {
               isValidMatch = normalizedValid.contains(normalize(resultMatch));
             }
             if (!isValidMatch && resultShortName != null) {
-              isValidMatch = normalizedValid.contains(normalize(resultShortName));
+              isValidMatch =
+                  normalizedValid.contains(normalize(resultShortName));
             }
 
             if (!isValidMatch) {
-              debugPrint('Star registry result rejected - no matching identifier. Result names: $resultNames, Expected: $validIdentifiers');
+              debugPrint(
+                  'Star registry result rejected - no matching identifier. Result names: $resultNames, Expected: $validIdentifiers');
               return null;
             }
           }
@@ -399,7 +486,8 @@ class _SkeletonBox extends StatefulWidget {
   State<_SkeletonBox> createState() => _SkeletonBoxState();
 }
 
-class _SkeletonBoxState extends State<_SkeletonBox> with SingleTickerProviderStateMixin {
+class _SkeletonBoxState extends State<_SkeletonBox>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -489,7 +577,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
   _TooltipData? _activeTooltip;
 
   /// Translates the visibility status text based on the status enum
-  String _getTranslatedStatusText(BuildContext context, VisibilityInfo visibility) {
+  String _getTranslatedStatusText(
+      BuildContext context, VisibilityInfo visibility) {
     final l10n = AppLocalizations.of(context)!;
     switch (visibility.status) {
       case VisibilityStatus.neverVisible:
@@ -535,7 +624,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
     final starId = _getStarId();
     // Only load saved preference if star is saved, otherwise default to false
     if (_isSaved) {
-      final enabled = await NotificationPreferences.getStarNotificationEnabled(starId);
+      final enabled =
+          await NotificationPreferences.getStarNotificationEnabled(starId);
       if (mounted) {
         setState(() {
           _notificationsEnabled = enabled;
@@ -553,7 +643,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
   Future<void> _loadVisibilityInfo() async {
     // Use effective star info (registry data if available, otherwise basic)
     final modelData = _effectiveStarInfo.modelData;
-    if (modelData == null || (modelData.rightAscension == 0 && modelData.declination == 0)) {
+    if (modelData == null ||
+        (modelData.rightAscension == 0 && modelData.declination == 0)) {
       return;
     }
 
@@ -610,9 +701,10 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
 
       final star = SavedStar(
         id: starId,
-        displayName: _cleanStarName(widget.starInfo.isRegistered && registryInfo != null
-            ? registryInfo.name
-            : (modelData?.shortName ?? widget.starInfo.shortName)),
+        displayName: _cleanStarName(
+            widget.starInfo.isRegistered && registryInfo != null
+                ? registryInfo.name
+                : (modelData?.shortName ?? widget.starInfo.shortName)),
         scientificName: modelData?.identifier,
         registrationNumber: registryInfo?.registrationNumber,
         ra: modelData?.rightAscension,
@@ -642,7 +734,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
     await NotificationPreferences.setStarNotificationEnabled(starId, newValue);
 
     // Sync to Firestore - Firebase Cloud Functions handles notification scheduling
-    await FirestoreSyncService.instance.updateStarNotificationPreference(starId, newValue);
+    await FirestoreSyncService.instance
+        .updateStarNotificationPreference(starId, newValue);
   }
 
   Future<void> _loadRegistryData() async {
@@ -660,7 +753,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
           // Recalculate visibility with registry coordinates if initial coords were 0,0
           final initialModelData = widget.starInfo.modelData;
           if (initialModelData == null ||
-              (initialModelData.rightAscension == 0 && initialModelData.declination == 0)) {
+              (initialModelData.rightAscension == 0 &&
+                  initialModelData.declination == 0)) {
             _loadVisibilityInfo();
           }
         } else if (mounted) {
@@ -702,9 +796,10 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
     final service = SavedStarsService.instance;
     if (!service.isLoaded) return false;
 
+    final starInfo = _effectiveStarInfo;
     final id = _getStarId();
-    final scientificName = widget.starInfo.modelData?.identifier;
-    final shortName = widget.starInfo.shortName;
+    final scientificName = starInfo.modelData?.identifier;
+    final shortName = starInfo.shortName;
 
     // Check by ID
     if (service.isSaved(id)) return true;
@@ -714,36 +809,57 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
       if (service.findByScientificName(scientificName) != null) return true;
     }
 
+    // Check by HIP identifier (most reliable for matching)
+    final hipId = starInfo.hipIdentifier;
+    if (hipId != null) {
+      // Check if any saved star has this HIP
+      for (final saved in service.savedStars) {
+        final savedHip = _extractHip(saved.id) ?? _extractHip(saved.scientificName ?? '');
+        final currentHip = _extractHip(hipId);
+        if (savedHip != null && currentHip != null && savedHip == currentHip) {
+          return true;
+        }
+      }
+    }
+
     // Check by short name as last resort
     if (service.findByScientificName(shortName) != null) return true;
 
     return false;
   }
 
+  /// Extract HIP number from string like "HIP90156" or "HIP 90156"
+  int? _extractHip(String s) {
+    final match = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(s);
+    return match != null ? int.tryParse(match.group(1)!) : null;
+  }
+
   String _getStarId() {
+    final starInfo = _effectiveStarInfo;
     // Use scientific identifier as primary ID for consistency
     // This matches the ID used in home_screen.dart when auto-saving
-    if (widget.starInfo.modelData?.identifier != null &&
-        widget.starInfo.modelData!.identifier.isNotEmpty) {
-      return widget.starInfo.modelData!.identifier;
+    if (starInfo.modelData?.identifier != null &&
+        starInfo.modelData!.identifier.isNotEmpty) {
+      return starInfo.modelData!.identifier;
     }
     // Fallback to registration number or short name
-    if (widget.starInfo.registryInfo?.registrationNumber != null &&
-        widget.starInfo.registryInfo!.registrationNumber.isNotEmpty) {
-      return widget.starInfo.registryInfo!.registrationNumber;
+    if (starInfo.registryInfo?.registrationNumber != null &&
+        starInfo.registryInfo!.registrationNumber.isNotEmpty) {
+      return starInfo.registryInfo!.registrationNumber;
     }
-    return widget.starInfo.shortName;
+    return starInfo.shortName;
   }
 
   Future<void> _toggleSave() async {
-    final modelData = widget.starInfo.modelData;
-    final registryInfo = widget.starInfo.registryInfo;
+    final starInfo = _effectiveStarInfo;
+    final modelData = starInfo.modelData;
+    final registryInfo = starInfo.registryInfo;
 
     final star = SavedStar(
       id: _getStarId(),
-      displayName: widget.starInfo.isRegistered && registryInfo != null
+      displayName: starInfo.isRegistered && registryInfo != null
           ? registryInfo.name
-          : (modelData?.shortName ?? widget.starInfo.shortName),
+          : (modelData?.shortName ?? starInfo.shortName),
       scientificName: modelData?.identifier,
       registrationNumber: registryInfo?.registrationNumber,
       ra: modelData?.rightAscension,
@@ -878,7 +994,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                     ],
 
                     // "Name this star" button (if not registered and not loading)
-                    if (!starInfo.isRegistered && widget.onNameStar != null) ...[
+                    if (!starInfo.isRegistered &&
+                        widget.onNameStar != null) ...[
                       _buildNameStarCard(context),
                       const SizedBox(height: 20),
                     ],
@@ -890,7 +1007,9 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                     ],
 
                     // Notification Toggle
-                    if (modelData != null && (modelData.rightAscension != 0 || modelData.declination != 0)) ...[
+                    if (modelData != null &&
+                        (modelData.rightAscension != 0 ||
+                            modelData.declination != 0)) ...[
                       _buildNotificationToggle(context),
                       const SizedBox(height: 20),
                     ],
@@ -996,12 +1115,16 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
               children: [
                 Flexible(
                   child: _isLoadingRegistry
-                      ? const _SkeletonBox(width: 140, height: 24, borderRadius: 6)
+                      ? const _SkeletonBox(
+                          width: 140, height: 24, borderRadius: 6)
                       : Text(
                           // Use registered name if available, otherwise use scientific name
-                          _effectiveStarInfo.isRegistered && _effectiveStarInfo.registryInfo != null
+                          _effectiveStarInfo.isRegistered &&
+                                  _effectiveStarInfo.registryInfo != null
                               ? _effectiveStarInfo.registryInfo!.name
-                              : _cleanStarName(widget.starInfo.modelData?.shortName ?? widget.starInfo.shortName),
+                              : _cleanStarName(
+                                  widget.starInfo.modelData?.shortName ??
+                                      widget.starInfo.shortName),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -1017,7 +1140,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                   onTap: _toggleSave,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: _isSaved
                           ? _goldColor.withValues(alpha: 0.15)
@@ -1033,13 +1157,17 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          _isSaved ? Icons.star_rounded : Icons.star_outline_rounded,
+                          _isSaved
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
                           color: _isSaved ? _goldColor : Colors.white60,
                           size: 14,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _isSaved ? AppLocalizations.of(context)!.saved : AppLocalizations.of(context)!.save,
+                          _isSaved
+                              ? AppLocalizations.of(context)!.saved
+                              : AppLocalizations.of(context)!.save,
                           style: TextStyle(
                             color: _isSaved ? _goldColor : Colors.white60,
                             fontSize: 12,
@@ -1109,7 +1237,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                   label: l10n.magnitude,
                   value: modelData.vMagnitude!.toStringAsFixed(1),
                   tooltipTitle: l10n.magnitude,
-                  tooltipContent: 'Magnitude ${modelData.vMagnitude!.toStringAsFixed(2)} measures how bright the star appears from Earth. Lower numbers are brighter (e.g., Sirius is -1.46).',
+                  tooltipContent:
+                      'Magnitude ${modelData.vMagnitude!.toStringAsFixed(2)} measures how bright the star appears from Earth. Lower numbers are brighter (e.g., Sirius is -1.46).',
                 ),
 
               // HIP/Catalog ID Badge
@@ -1121,7 +1250,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                   label: null,
                   value: _formatIdentifier(modelData.identifier),
                   tooltipTitle: l10n.catalogId,
-                  tooltipContent: '${_formatIdentifier(modelData.identifier)} is the identifier for this star in the Hipparcos catalog, a high-precision scientific star catalog.',
+                  tooltipContent:
+                      '${_formatIdentifier(modelData.identifier)} is the identifier for this star in the Hipparcos catalog, a high-precision scientific star catalog.',
                   isMono: true,
                 ),
               ],
@@ -1133,9 +1263,11 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                   id: 'dist',
                   icon: Icons.straighten,
                   label: null,
-                  value: '${modelData.distanceLightYears!.toStringAsFixed(0)} ly',
+                  value:
+                      '${modelData.distanceLightYears!.toStringAsFixed(0)} ly',
                   tooltipTitle: AppLocalizations.of(context)!.distance,
-                  tooltipContent: 'The distance from Earth. Light from this star takes ${modelData.distanceLightYears!.toStringAsFixed(0)} years to reach us.',
+                  tooltipContent:
+                      'The distance from Earth. Light from this star takes ${modelData.distanceLightYears!.toStringAsFixed(0)} years to reach us.',
                 ),
               ],
 
@@ -1148,7 +1280,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                   label: null,
                   value: modelData.spectralType,
                   tooltipTitle: l10n.spectralType,
-                  tooltipContent: 'The spectral type ${modelData.spectralType} indicates the star\'s temperature and chemical composition.',
+                  tooltipContent:
+                      'The spectral type ${modelData.spectralType} indicates the star\'s temperature and chemical composition.',
                   isMono: true,
                 ),
               ],
@@ -1157,8 +1290,7 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
         ),
 
         // Tooltip Overlay
-        if (_activeTooltip != null)
-          _buildTooltipOverlay(),
+        if (_activeTooltip != null) _buildTooltipOverlay(),
       ],
     );
   }
@@ -1294,7 +1426,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
     );
   }
 
-  Widget _buildRegistrationCardNew(BuildContext context, StarRegistryInfo info) {
+  Widget _buildRegistrationCardNew(
+      BuildContext context, StarRegistryInfo info) {
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
@@ -1335,19 +1468,24 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
           // Info rows
           _buildInfoRowNew(Icons.person_outline, l10n.registeredTo, info.name),
           const SizedBox(height: 12),
-          _buildInfoRowNew(Icons.calendar_today_outlined, l10n.registrationDate, info.registrationDate),
+          _buildInfoRowNew(Icons.calendar_today_outlined, l10n.registrationDate,
+              info.registrationDate),
           const SizedBox(height: 12),
-          _buildInfoRowNew(Icons.tag, l10n.registrationNumber, info.registrationNumber, isMono: true),
+          _buildInfoRowNew(
+              Icons.tag, l10n.registrationNumber, info.registrationNumber,
+              isMono: true),
           if (info.register.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _buildInfoRowNew(Icons.language, l10n.registry, info.register, isLink: true),
+            _buildInfoRowNew(Icons.language, l10n.registry, info.register,
+                isLink: true),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildInfoRowNew(IconData icon, String label, String value, {bool isMono = false, bool isLink = false}) {
+  Widget _buildInfoRowNew(IconData icon, String label, String value,
+      {bool isMono = false, bool isLink = false}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1466,7 +1604,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
           color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: _buildLoadingIndicator(AppLocalizations.of(context)!.visibilityCalculating),
+        child: _buildLoadingIndicator(
+            AppLocalizations.of(context)!.visibilityCalculating),
       );
     }
 
@@ -1516,7 +1655,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                   color: _accentCyan.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.visibility_outlined, size: 16, color: _accentCyan),
+                child: Icon(Icons.visibility_outlined,
+                    size: 16, color: _accentCyan),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1537,7 +1677,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          visibleDuration ?? _getTranslatedStatusText(context, visibility),
+                          visibleDuration ??
+                              _getTranslatedStatusText(context, visibility),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -1633,7 +1774,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
           if (widget.onToggleStarTrack != null) ...[
             const SizedBox(height: 14),
             GestureDetector(
-              onTap: () => widget.onToggleStarTrack?.call(!widget.starTrackEnabled),
+              onTap: () =>
+                  widget.onToggleStarTrack?.call(!widget.starTrackEnabled),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1646,7 +1788,9 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      widget.starTrackEnabled ? Icons.visibility_off_outlined : Icons.timeline,
+                      widget.starTrackEnabled
+                          ? Icons.visibility_off_outlined
+                          : Icons.timeline,
                       size: 14,
                       color: _accentCyan,
                     ),
@@ -1692,7 +1836,9 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              _notificationsEnabled ? Icons.notifications_active : Icons.notifications_outlined,
+              _notificationsEnabled
+                  ? Icons.notifications_active
+                  : Icons.notifications_outlined,
               color: _notificationsEnabled ? Colors.white : _accentPurple,
               size: 20,
             ),
@@ -1727,12 +1873,16 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
               width: 44,
               height: 24,
               decoration: BoxDecoration(
-                color: _notificationsEnabled ? _accentPurple : const Color(0xFF334155),
+                color: _notificationsEnabled
+                    ? _accentPurple
+                    : const Color(0xFF334155),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 200),
-                alignment: _notificationsEnabled ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: _notificationsEnabled
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: Container(
                   width: 20,
                   height: 20,
@@ -1777,7 +1927,9 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  data.j2000Ra.isNotEmpty ? data.j2000Ra : '${data.rightAscension.toStringAsFixed(4)}°',
+                  data.j2000Ra.isNotEmpty
+                      ? data.j2000Ra
+                      : '${data.rightAscension.toStringAsFixed(4)}°',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
@@ -1808,7 +1960,9 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  data.j2000Dec.isNotEmpty ? data.j2000Dec : '${data.declination.toStringAsFixed(4)}°',
+                  data.j2000Dec.isNotEmpty
+                      ? data.j2000Dec
+                      : '${data.declination.toStringAsFixed(4)}°',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
@@ -1836,9 +1990,11 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
               label: l10n.viewStarIn3D,
               onTap: () {
                 // Pass the effective name (registry name if available)
-                final effectiveName = _effectiveStarInfo.isRegistered && _effectiveStarInfo.registryInfo != null
+                final effectiveName = _effectiveStarInfo.isRegistered &&
+                        _effectiveStarInfo.registryInfo != null
                     ? _effectiveStarInfo.registryInfo!.name
-                    : _cleanStarName(widget.starInfo.modelData?.shortName ?? widget.starInfo.shortName);
+                    : _cleanStarName(widget.starInfo.modelData?.shortName ??
+                        widget.starInfo.shortName);
                 widget.onViewIn3D!(effectiveName);
               },
               color: _accentPurple,
@@ -1873,7 +2029,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.gps_fixed, size: 18, color: Color(0xFF1E293B)),
+                        const Icon(Icons.gps_fixed,
+                            size: 18, color: Color(0xFF1E293B)),
                         const SizedBox(width: 8),
                         Text(
                           l10n.pointAtStar,

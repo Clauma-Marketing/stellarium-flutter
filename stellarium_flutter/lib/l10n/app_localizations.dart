@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Night Sky Guide'**
+  /// **'Star Registration Planetarium'**
   String get appTitle;
 
   /// No description provided for @menu.
@@ -949,7 +949,7 @@ abstract class AppLocalizations {
   /// No description provided for @locationAllowAccess.
   ///
   /// In en, this message translates to:
-  /// **'Allow Location Access'**
+  /// **'Continue'**
   String get locationAllowAccess;
 
   /// No description provided for @locationAccuratePositions.
@@ -1045,7 +1045,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationAllowNotifications.
   ///
   /// In en, this message translates to:
-  /// **'Allow Notifications'**
+  /// **'Continue'**
   String get notificationAllowNotifications;
 
   /// No description provided for @notificationMoonPhase.
@@ -1105,7 +1105,7 @@ abstract class AppLocalizations {
   /// No description provided for @attAllowTracking.
   ///
   /// In en, this message translates to:
-  /// **'Allow Tracking'**
+  /// **'Continue'**
   String get attAllowTracking;
 
   /// No description provided for @attDontTrack.
@@ -1485,6 +1485,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{days}d {hours}h'**
   String visibilityStatusInDays(int days, int hours);
+
+  /// No description provided for @legal.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal'**
+  String get legal;
+
+  /// No description provided for @legalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Use & Privacy Policy'**
+  String get legalSubtitle;
+
+  /// No description provided for @termsOfUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Use'**
+  String get termsOfUse;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyPolicy;
 }
 
 class _AppLocalizationsDelegate

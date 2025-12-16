@@ -9,7 +9,7 @@ class AppLocalizationsDe extends AppLocalizations {
   AppLocalizationsDe([String locale = 'de']) : super(locale);
 
   @override
-  String get appTitle => 'Night Sky Guide';
+  String get appTitle => 'Star Registration Planetarium';
 
   @override
   String get menu => 'Menü';
@@ -760,4 +760,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String visibilityStatusInDays(int days, int hours) {
     return '${days}T ${hours}Std';
   }
+
+  @override
+  String get legal => 'Rechtliches';
+
+  @override
+  String get legalSubtitle => 'Nutzungsbedingungen & Datenschutz';
+
+  @override
+  String get termsOfUse => 'Nutzungsbedingungen';
+
+  @override
+  String get privacyPolicy => 'Datenschutzerklärung';
 }

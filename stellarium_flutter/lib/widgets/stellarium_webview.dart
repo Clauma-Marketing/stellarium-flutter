@@ -8,7 +8,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
@@ -25,6 +24,12 @@ class SelectedObjectInfo {
   final double? ra;
   final double? dec;
   final double? distance;
+  /// Hipparcos catalog number (if available)
+  final int? hip;
+  /// Gaia catalog number (if available)
+  final int? gaia;
+  /// Full sky source data from API (when available from registration number lookup)
+  final Map<String, dynamic>? skySource;
 
   SelectedObjectInfo({
     required this.name,
@@ -35,7 +40,17 @@ class SelectedObjectInfo {
     this.ra,
     this.dec,
     this.distance,
+    this.hip,
+    this.gaia,
+    this.skySource,
   });
+
+  /// Check if we have full registry info from skySource (from registration number lookup)
+  bool get hasFullRegistryInfo {
+    if (skySource == null) return false;
+    final info = skySource!['info'] as Map<String, dynamic>?;
+    return info != null && info['resolved'] == true;
+  }
 
   factory SelectedObjectInfo.fromJson(Map<String, dynamic> json) {
     final name = json['name'] as String? ?? 'Unknown';
@@ -48,6 +63,9 @@ class SelectedObjectInfo {
       ra: (json['ra'] as num?)?.toDouble(),
       dec: (json['dec'] as num?)?.toDouble(),
       distance: (json['distance'] as num?)?.toDouble(),
+      hip: (json['hip'] as num?)?.toInt(),
+      gaia: (json['gaia'] as num?)?.toInt(),
+      skySource: json['skySource'] as Map<String, dynamic>?,
     );
   }
 }
@@ -332,34 +350,6 @@ class StellariumWebViewState extends State<StellariumWebView>
     if (_isDisposed) return;
 
     try {
-      // Copy assets to a temp directory that can be served
-      final tempDir = await getTemporaryDirectory();
-      if (_isDisposed) return;
-
-      final stellariumDir = Directory('${tempDir.path}/stellarium');
-
-      if (!await stellariumDir.exists()) {
-        await stellariumDir.create(recursive: true);
-      }
-
-      // Copy HTML file
-      final htmlContent =
-          await rootBundle.loadString('assets/stellarium/stellarium.html');
-      final htmlFile = File('${stellariumDir.path}/stellarium.html');
-      await htmlFile.writeAsString(htmlContent);
-
-      // Copy JS file
-      final jsData =
-          await rootBundle.load('assets/stellarium/stellarium-web-engine.js');
-      final jsFile = File('${stellariumDir.path}/stellarium-web-engine.js');
-      await jsFile.writeAsBytes(jsData.buffer.asUint8List());
-
-      // Copy WASM file
-      final wasmData =
-          await rootBundle.load('assets/stellarium/stellarium-web-engine.wasm');
-      final wasmFile = File('${stellariumDir.path}/stellarium-web-engine.wasm');
-      await wasmFile.writeAsBytes(wasmData.buffer.asUint8List());
-
       // Start local HTTP server
       _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       final port = _server!.port;
@@ -368,26 +358,67 @@ class StellariumWebViewState extends State<StellariumWebView>
         var path = request.uri.path;
         if (path == '/') path = '/stellarium.html';
 
-        final file = File('${stellariumDir.path}$path');
-        if (await file.exists()) {
+        final assetPath = path.startsWith('/') ? path.substring(1) : path;
+        final assetKey = 'assets/stellarium/$assetPath';
+
+        try {
+          final isPropertiesFile = path.endsWith('/properties') ||
+              path.endsWith('/properties.txt') ||
+              path.endsWith('/properties.properties');
+
           // Set appropriate content type
-          String contentType = 'text/html';
-          if (path.endsWith('.js')) {
+          String contentType = 'application/octet-stream';
+          if (path.endsWith('.html')) {
+            contentType = 'text/html; charset=utf-8';
+          } else if (path.endsWith('.js')) {
             contentType = 'application/javascript';
           } else if (path.endsWith('.wasm')) {
             contentType = 'application/wasm';
+          } else if (path.endsWith('.json')) {
+            contentType = 'application/json; charset=utf-8';
+          } else if (path.endsWith('.png')) {
+            contentType = 'image/png';
+          } else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
+            contentType = 'image/jpeg';
+          } else if (path.endsWith('.webp')) {
+            contentType = 'image/webp';
+          } else if (path.endsWith('.svg')) {
+            contentType = 'image/svg+xml';
+          } else if (path.endsWith('.txt') || path.endsWith('.properties')) {
+            contentType = 'text/plain; charset=utf-8';
+          } else if (path.endsWith('.utf8')) {
+            contentType = 'text/plain; charset=utf-8';
+          } else if (path.endsWith('.gz')) {
+            contentType = 'application/gzip';
+          } else if (isPropertiesFile) {
+            contentType = 'text/plain; charset=utf-8';
           }
 
           request.response.headers.set('Content-Type', contentType);
           request.response.headers.set('Access-Control-Allow-Origin', '*');
-          await request.response.addStream(file.openRead());
-        } else {
+
+          final isTextAsset = path.endsWith('.html') ||
+              path.endsWith('.json') ||
+              path.endsWith('.svg') ||
+              path.endsWith('.txt') ||
+              path.endsWith('.properties') ||
+              isPropertiesFile;
+
+          if (isTextAsset) {
+            final text = await rootBundle.loadString(assetKey);
+            request.response.write(text);
+          } else {
+            final data = await rootBundle.load(assetKey);
+            request.response.add(data.buffer.asUint8List());
+          }
+        } catch (e) {
           request.response.statusCode = HttpStatus.notFound;
           if (kDebugMode) {
-            debugPrint('Stellarium local server 404: $path');
+            debugPrint('Stellarium local server 404: $path ($e)');
           }
+        } finally {
+          await request.response.close();
         }
-        await request.response.close();
       });
 
       if (_isDisposed) {
@@ -395,8 +426,16 @@ class StellariumWebViewState extends State<StellariumWebView>
         return;
       }
 
-      final debugQuery = kDebugMode ? '?debugNet=1' : '';
-      _localServerUrl = 'http://127.0.0.1:$port/stellarium.html$debugQuery';
+      final queryParameters = <String, String>{
+        // Prefer locally bundled star survey tiles when available.
+        'localStars': '1',
+        // Prefer locally bundled landscapes when available.
+        'localLandscapes': '1',
+        if (kDebugMode) 'debugNet': '1',
+      };
+      _localServerUrl =
+          Uri.http('127.0.0.1:$port', '/stellarium.html', queryParameters)
+              .toString();
       debugPrint('Stellarium local server started at: $_localServerUrl');
 
       // Small delay to allow any previous platform views to fully clean up
@@ -446,7 +485,11 @@ class StellariumWebViewState extends State<StellariumWebView>
             debugPrint('WebView error: ${error.description}');
           },
         ),
-      );
+      )
+      ..setOnConsoleMessage((message) {
+        // Forward JavaScript console messages to Flutter debug console
+        debugPrint('JS: ${message.message}');
+      });
 
     // Enable mixed content on Android (HTTP page loading HTTPS resources)
     if (Platform.isAndroid) {

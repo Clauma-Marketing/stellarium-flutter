@@ -42,6 +42,9 @@ class SkyView extends StatefulWidget {
   /// Callback when the engine time changes
   final void Function(double utc)? onTimeChanged;
 
+  /// Callback when the sky view is tapped (for dismissing overlays)
+  final VoidCallback? onTap;
+
   const SkyView({
     super.key,
     this.initialObserver,
@@ -53,6 +56,7 @@ class SkyView extends StatefulWidget {
     this.onObjectSelected,
     this.onEngineReady,
     this.onTimeChanged,
+    this.onTap,
   });
 
   @override
@@ -920,6 +924,8 @@ class SkyViewState extends State<SkyView> {
                   dy < tapThreshold &&
                   duration < tapMaxDuration) {
                 debugPrint('[SKYVIEW] Tap detected at ($x, $y)');
+                // Notify parent of tap (for dismissing overlays like time slider)
+                widget.onTap?.call();
                 // Tap detection is handled by the WebView's JavaScript
               }
             }
@@ -1017,8 +1023,9 @@ class SkyViewState extends State<SkyView> {
             if (_touchBlocked) return;
             // When gyroscope is enabled, block single-finger panning but allow
             // multi-finger gestures (pinch-to-zoom)
-            if (widget.gyroscopeEnabled)
+            if (widget.gyroscopeEnabled) {
               return; // Web doesn't track multi-touch the same way
+            }
             _engine?.onPointerMove(
               event.pointer,
               event.localPosition.dx * dpr,

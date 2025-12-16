@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Night Sky Guide';
+  String get appTitle => 'Star Registration Planetarium';
 
   @override
   String get menu => 'Menu';
@@ -453,7 +453,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'See the night sky exactly as it appears from your location. We use your position for accurate star positions.';
 
   @override
-  String get locationAllowAccess => 'Allow Location Access';
+  String get locationAllowAccess => 'Continue';
 
   @override
   String get locationAccuratePositions => 'Accurate Star Positions';
@@ -509,7 +509,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Never miss meteor showers and the best nights for stargazing. We\'ll send you timely alerts before they happen.';
 
   @override
-  String get notificationAllowNotifications => 'Allow Notifications';
+  String get notificationAllowNotifications => 'Continue';
 
   @override
   String get notificationMoonPhase => 'Moon Phase Alerts';
@@ -543,7 +543,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Help us improve your cosmic journey. We use data to personalize insights and suggest relevant events.';
 
   @override
-  String get attAllowTracking => 'Allow Tracking';
+  String get attAllowTracking => 'Continue';
 
   @override
   String get attDontTrack => 'Ask App Not to Track';
@@ -750,4 +750,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String visibilityStatusInDays(int days, int hours) {
     return '${days}d ${hours}h';
   }
+
+  @override
+  String get legal => 'Legal';
+
+  @override
+  String get legalSubtitle => 'Terms of Use & Privacy Policy';
+
+  @override
+  String get termsOfUse => 'Terms of Use';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
 }

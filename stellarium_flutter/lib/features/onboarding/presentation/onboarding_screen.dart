@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -71,10 +72,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  void _skipToNextPage() {
-    _goToNextPage();
-  }
-
   Future<void> _completeOnboarding() async {
     await OnboardingService.completeOnboarding();
     // Track onboarding completion
@@ -97,9 +94,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         KlaviyoService.instance.setupTokenRefreshListener();
       }
 
-      // Initialize Firestore sync
-      await FirestoreSyncService.instance.initialize();
-      await FirestoreSyncService.instance.syncSavedStars();
+      // Firestore sync must not block the transition out of onboarding (it can hang when offline).
+      unawaited(() async {
+        try {
+          await FirestoreSyncService.instance
+              .initialize()
+              .timeout(const Duration(seconds: 8));
+          await FirestoreSyncService.instance
+              .syncSavedStars()
+              .timeout(const Duration(seconds: 8));
+        } catch (e) {
+          debugPrint('Deferred Firestore sync failed: $e');
+        }
+      }());
     }
 
     widget.onComplete();
@@ -126,7 +133,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Page 1: Location Permission
       LocationPermissionPage(
         onContinue: _goToNextPage,
-        onSkip: _skipToNextPage,
         onLocationObtained: _onLocationObtained,
         currentPage: 1,
         totalPages: _totalPages,
@@ -134,7 +140,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // Page 2: Notification Permission
       NotificationPermissionPage(
         onContinue: _goToNextPage,
-        onSkip: _skipToNextPage,
         currentPage: 2,
         totalPages: _totalPages,
       ),
@@ -145,7 +150,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       pages.add(
         AttPermissionPage(
           onContinue: _completeOnboarding,
-          onSkip: _completeOnboarding,
           currentPage: 3,
           totalPages: _totalPages,
         ),

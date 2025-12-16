@@ -168,9 +168,13 @@ static int star_init(obj_t *obj, json_value *args)
         pra = json_get_attr_f(model, "pm_ra", 0) * ERFA_DMAS2R;
         pde = json_get_attr_f(model, "pm_de", 0) * ERFA_DMAS2R;
         star->vmag = json_get_attr_f(model, "Vmag", NAN);
+        if (isnan(star->vmag))
+            star->vmag = json_get_attr_f(model, "vmag", NAN);  // Also try lowercase
         epoch = json_get_attr_f(model, "epoch", 2000);
         if (isnan(star->vmag))
             star->vmag = json_get_attr_f(model, "Bmag", NAN);
+        if (isnan(star->vmag))
+            star->vmag = json_get_attr_f(model, "bmag", NAN);  // Also try lowercase
         star->illuminance = core_mag_to_illuminance(star->vmag);
         compute_pv(ra, de, pra, pde, star->plx, epoch, star);
     }
@@ -230,6 +234,12 @@ static json_value *star_get_json_data(const obj_t *obj)
     const star_t *star = (const star_t*)obj;
     json_value* ret = json_object_new(0);
     json_value* md = json_object_new(0);
+    if (star->hip) {
+        json_object_push(md, "hip", json_integer_new(star->hip));
+    }
+    if (star->gaia) {
+        json_object_push(md, "gaia", json_integer_new(star->gaia));
+    }
     if (!isnan(star->plx)) {
         json_object_push(md, "plx", json_double_new(star->plx * 1000));
     }
@@ -963,6 +973,7 @@ static int stars_add_data_source(obj_t *obj, const char *url, const char *key)
     return 0;
 }
 
+EMSCRIPTEN_KEEPALIVE
 obj_t *obj_get_by_hip(int hip, int *code)
 {
     int order, pix, i;

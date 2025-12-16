@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FLUTTER_BIN="$(command -v flutter || true)"
+if [[ -z "${FLUTTER_BIN}" ]]; then
+  echo "flutter not found in PATH" >&2
+  exit 127
+fi
+
+FLUTTER_DIR="$(cd "$(dirname "${FLUTTER_BIN}")" && pwd)"
+DART_BIN="${FLUTTER_DIR}/cache/dart-sdk/bin/dart"
+
+if [[ ! -x "${DART_BIN}" ]]; then
+  echo "Flutter Dart SDK not found at: ${DART_BIN}" >&2
+  exit 127
+fi
+
+exec "${DART_BIN}" "$@"
+

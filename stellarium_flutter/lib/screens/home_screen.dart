@@ -218,13 +218,14 @@ class _HomeScreenState extends State<HomeScreen> {
     // SkyView has its own Listener that forwards non-blocked touches to the WebView.
     return Scaffold(
       backgroundColor: Colors.transparent,
-      // GestureDetector to unfocus search field and hide suggestions when tapping elsewhere
+      // GestureDetector to unfocus search field, hide suggestions, and close time slider when tapping elsewhere
       body: GestureDetector(
         onTap: () {
           FocusScope.of(context).unfocus();
-          if (_searchSuggestions.isNotEmpty) {
+          if (_searchSuggestions.isNotEmpty || _showTimeSlider) {
             setState(() {
               _searchSuggestions = [];
+              _showTimeSlider = false;
             });
           }
         },
@@ -267,6 +268,14 @@ class _HomeScreenState extends State<HomeScreen> {
               onObjectSelected: _onObjectSelected,
               onEngineReady: _onEngineReady,
               onTimeChanged: _onEngineTimeChanged,
+              onTap: () {
+                // Close time slider when tapping on sky view
+                if (_showTimeSlider) {
+                  setState(() {
+                    _showTimeSlider = false;
+                  });
+                }
+              },
             ),
           ),
 
@@ -354,9 +363,10 @@ class _HomeScreenState extends State<HomeScreen> {
       onPointAt: () {
         // Track point at action
         AnalyticsService.instance.logStarPointAt(starName: _selectedStarInfo!.shortName);
-        final modelData = _selectedStarInfo!.modelData;
-        if (modelData != null && modelData.identifier.isNotEmpty) {
-          _pointAtOrSelect(modelData.searchIdentifier);
+        // Use searchQuery which returns registration number for registered stars
+        final query = _selectedStarInfo!.searchQuery;
+        if (query.isNotEmpty) {
+          _pointAtOrSelect(query);
         }
       },
       onNameStar: () async {
@@ -478,12 +488,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Helper to point at or select a star based on gyroscope mode.
-  /// In gyroscope mode, only selects the object (shows marker) without moving camera.
-  /// In normal mode, points at the object and moves camera to it.
   void _pointAtOrSelect(String searchId) {
     if (_gyroscopeEnabled) {
-      _skyViewKey.currentState?.webView?.selectObject(searchId);
+      // Gyroscope mode: start guidance (finds object, notifies Flutter, shows arrow)
+      _skyViewKey.currentState?.webView?.setGyroscopeEnabled(true);
+      _skyViewKey.currentState?.webView?.startGuidance(searchId);
     } else {
+      // Normal mode: animate camera to the star
       _skyViewKey.currentState?.webView?.pointAt(searchId);
       _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
         if (obj != null) {
@@ -640,9 +651,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dateStr = '${weekdays[displayDateTime.weekday - 1]}, ${displayDateTime.day} ${months[displayDateTime.month - 1]} ${displayDateTime.year}';
 
-    // No Listener wrapper needed - event blocking is handled at HomeScreen level
-    // via _isPositionOnUI() check before forwarding to SkyView.
-    return Container(
+    // Wrap in GestureDetector to absorb taps and prevent closing when interacting with the slider
+    return GestureDetector(
+      onTap: () {}, // Absorb taps to prevent the parent GestureDetector from closing the slider
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -838,6 +850,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -929,11 +942,18 @@ class _HomeScreenState extends State<HomeScreen> {
       // Clear the saved star so we don't show it again next time
       await OnboardingService.clearFoundStar();
 
-      // Small delay to ensure the engine is fully ready
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Wait for gyroscope state to be determined (up to 2 seconds)
+      // This ensures _gyroscopeEnabled is correctly set before _pointAtOrSelect
+      int waitMs = 0;
+      while (!_gyroscopeAvailable && waitMs < 2000 && mounted) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waitMs += 100;
+      }
+
+      // Additional small delay to ensure everything is ready
+      await Future.delayed(const Duration(milliseconds: 300));
 
       if (mounted) {
-        // Search for the star by registration number
         _searchRegistrationNumber(foundStar.registrationNumber!);
       }
     }
@@ -945,8 +965,20 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final star in savedStars) {
       // Only add persistent label if displayName is different from scientificName
       if (star.displayName != star.scientificName && star.scientificName != null) {
+        // Try to use HIP identifier if available (engine looks up by HIP)
+        String labelId = star.scientificName!;
+        final hipMatch = RegExp(r'^HIP\s*(\d+)', caseSensitive: false).firstMatch(star.id);
+        if (hipMatch != null) {
+          labelId = 'HIP ${hipMatch.group(1)}';
+        } else {
+          final hipMatch2 = RegExp(r'^HIP\s*(\d+)', caseSensitive: false).firstMatch(star.scientificName!);
+          if (hipMatch2 != null) {
+            labelId = 'HIP ${hipMatch2.group(1)}';
+          }
+        }
+        debugPrint('_loadPersistentLabels: Adding label with ID: $labelId for ${star.displayName}');
         _skyViewKey.currentState?.webView?.addPersistentLabel(
-          star.scientificName!,
+          labelId,
           star.displayName,
         );
       }
@@ -1262,13 +1294,14 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       if (starInfo != null && starInfo.found && mounted) {
-        // Auto-point at the star using formatted identifier (e.g., "HIP 14778")
+        // Use searchQuery which returns registration number for registered stars
+        final query = starInfo.searchQuery;
         final modelData = starInfo.modelData;
-        if (modelData != null && modelData.identifier.isNotEmpty) {
-          _pointAtOrSelect(modelData.searchIdentifier);
+        if (query.isNotEmpty) {
+          _pointAtOrSelect(query);
 
           // Show registered name as custom label if available and auto-save
-          if (starInfo.isRegistered && starInfo.registryInfo != null) {
+          if (starInfo.isRegistered && starInfo.registryInfo != null && modelData != null) {
             final registeredName = starInfo.registryInfo!.name;
             // Set temporary selection label (will be cleared when panel closes)
             _skyViewKey.currentState?.webView?.setCustomLabel(registeredName);
@@ -1286,8 +1319,11 @@ class _HomeScreenState extends State<HomeScreen> {
             SavedStarsService.instance.saveStar(savedStar);
 
             // Also add as persistent label so it shows without selection
+            // Use HIP identifier if available, as engine looks up by HIP
+            final labelId = starInfo.hipIdentifier ?? modelData.identifier;
+            debugPrint('Adding persistent label with ID: $labelId for $registeredName');
             _skyViewKey.currentState?.webView?.addPersistentLabel(
-              modelData.identifier,
+              labelId,
               registeredName,
             );
           }
@@ -1330,6 +1366,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onObjectSelected(SelectedObjectInfo info) {
     debugPrint('HomeScreen: _onObjectSelected called with name: ${info.name}, type: ${info.type}');
+    debugPrint('HomeScreen: HIP: ${info.hip}, GAIA: ${info.gaia}');
+    debugPrint('HomeScreen: hasFullRegistryInfo: ${info.hasFullRegistryInfo}');
 
     // Always clear the selection custom label - persistent labels handle saved star names
     _skyViewKey.currentState?.webView?.clearCustomLabel();
@@ -1343,13 +1381,23 @@ class _HomeScreenState extends State<HomeScreen> {
     // Track star selection
     AnalyticsService.instance.logStarSelect(starName: info.displayName);
 
+    // If we already have full registry info from skySource (from registration number lookup),
+    // use it directly instead of making another API call
+    if (info.hasFullRegistryInfo && info.skySource != null) {
+      debugPrint('HomeScreen: Using skySource data directly, skipping API lookup');
+      final starInfo = StarInfo.fromApiResponse(info.skySource!);
+      _showStarInfo(starInfo);
+      return;
+    }
+
     // Create basic star info immediately from selection data
     final basicStarInfo = StarInfo.fromBasicData(
       name: info.displayName,
       ra: info.ra,
       dec: info.dec,
       magnitude: info.magnitude,
-      names: info.names, // Pass names to extract HIP/HD for catalog ID
+      names: info.names,
+      hip: info.hip, // Direct HIP from engine (most reliable)
     );
 
     // Create a future for the registry lookup (runs in background)
@@ -1361,78 +1409,72 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Fetch registry info trying multiple identifiers
   Future<StarInfo?> _fetchRegistryInfo(SelectedObjectInfo info) async {
-    StarInfo? registryInfo;
-
-    // First, check if we have a saved star with a registration number
-    // This handles the case where user previously looked up by registration number
-    final savedStars = SavedStarsService.instance.savedStars;
-    String? savedRegistrationNumber;
-
-    // Helper to normalize identifiers for comparison (remove spaces, lowercase)
+    // Helper to normalize identifiers for comparison
     String normalize(String s) => s.toLowerCase().replaceAll(' ', '');
 
+    // Helper to extract HIP number from string like "HIP90156" or "HIP 90156"
+    int? extractHip(String s) {
+      final match = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(s);
+      return match != null ? int.tryParse(match.group(1)!) : null;
+    }
+
+    // 1. Check if we have a saved registration number for this star
+    final savedStars = SavedStarsService.instance.savedStars;
     for (final saved in savedStars) {
-      if (saved.registrationNumber != null && saved.registrationNumber!.isNotEmpty) {
-        final savedIdNorm = normalize(saved.id);
-        final savedScientificNorm = normalize(saved.scientificName ?? '');
-        final infoNameNorm = normalize(info.name);
+      if (saved.registrationNumber == null || saved.registrationNumber!.isEmpty) continue;
 
-        // Match by normalized ID, scientific name, or any name in the list
-        bool matches = savedIdNorm == infoNameNorm ||
-            savedScientificNorm == infoNameNorm ||
-            info.names.any((n) => normalize(n) == savedIdNorm) ||
-            info.names.any((n) => normalize(n) == savedScientificNorm);
+      final savedIdNorm = normalize(saved.id);
+      final savedScientificNorm = normalize(saved.scientificName ?? '');
+      final infoNameNorm = normalize(info.name);
 
-        if (matches) {
-          savedRegistrationNumber = saved.registrationNumber;
-          debugPrint('Found saved registration number: $savedRegistrationNumber for ${info.name} (matched ${saved.id})');
-          break;
+      // Check by HIP number if available (most reliable)
+      final savedHip = extractHip(saved.id) ?? extractHip(saved.scientificName ?? '');
+      final hipMatches = info.hip != null && savedHip != null && info.hip == savedHip;
+
+      final nameMatches = savedIdNorm == infoNameNorm ||
+          savedScientificNorm == infoNameNorm ||
+          info.names.any((n) => normalize(n) == savedIdNorm || normalize(n) == savedScientificNorm);
+
+      if (hipMatches || nameMatches) {
+        final result = await StarRegistryService.searchByRegistrationNumber(saved.registrationNumber!);
+        if (result != null && result.found) {
+          _handleRegisteredStar(result);
+          return result;
         }
       }
     }
 
-    // If we have a saved registration number, use it directly
-    if (savedRegistrationNumber != null) {
-      registryInfo = await StarRegistryService.searchByRegistrationNumber(savedRegistrationNumber);
-      if (registryInfo != null && registryInfo.found) {
-        debugPrint('Found star via saved registration number');
-        _handleRegisteredStar(registryInfo);
-        return registryInfo;
-      }
-    }
-
-    // Use the star's identifiers to validate API results (prevent fuzzy match errors)
+    // 2. Build ordered list of identifiers to try: HIP first, then HD, then others
     final validIdentifiers = info.names.isNotEmpty ? info.names : [info.name];
+    final identifiersToTry = <String>[];
 
-    // Try primary name
-    registryInfo = await StarRegistryService.searchByName(info.name, validIdentifiers: validIdentifiers);
+    // Direct HIP from engine has highest priority
+    if (info.hip != null) {
+      identifiersToTry.add('HIP ${info.hip}');
+    }
 
-    // If not found, try HIP numbers
-    if ((registryInfo == null || !registryInfo.found) && info.names.isNotEmpty) {
-      for (final name in info.names) {
-        if (name.startsWith('HIP ')) {
-          registryInfo = await StarRegistryService.searchByName(name, validIdentifiers: validIdentifiers);
-          if (registryInfo != null && registryInfo.found) break;
+    // Add HIP and HD from names first, then everything else
+    for (final name in validIdentifiers) {
+      if (name.startsWith('HIP ') || name.startsWith('HD ')) {
+        if (!identifiersToTry.contains(name)) identifiersToTry.add(name);
+      }
+    }
+    for (final name in validIdentifiers) {
+      if (!identifiersToTry.contains(name)) identifiersToTry.add(name);
+    }
+
+    // 3. Try each identifier until we find a match
+    for (final identifier in identifiersToTry) {
+      final result = await StarRegistryService.searchByName(identifier, validIdentifiers: validIdentifiers);
+      if (result != null && result.found) {
+        if (result.isRegistered) {
+          _handleRegisteredStar(result);
         }
+        return result;
       }
     }
 
-    // If still not found, try HD numbers
-    if ((registryInfo == null || !registryInfo.found) && info.names.isNotEmpty) {
-      for (final name in info.names) {
-        if (name.startsWith('HD ')) {
-          registryInfo = await StarRegistryService.searchByName(name, validIdentifiers: validIdentifiers);
-          if (registryInfo != null && registryInfo.found) break;
-        }
-      }
-    }
-
-    // If registered, handle custom label and auto-save
-    if (registryInfo != null && registryInfo.found && registryInfo.isRegistered) {
-      _handleRegisteredStar(registryInfo);
-    }
-
-    return registryInfo;
+    return null;
   }
 
   /// Handle a registered star - set label and save
@@ -1454,8 +1496,11 @@ class _HomeScreenState extends State<HomeScreen> {
         magnitude: modelData.vMagnitude,
       );
       SavedStarsService.instance.saveStar(savedStar);
+      // Use HIP identifier if available, as engine looks up by HIP
+      final labelId = registryInfo.hipIdentifier ?? modelData.identifier;
+      debugPrint('_handleRegisteredStar: Adding persistent label with ID: $labelId for $registeredName');
       _skyViewKey.currentState?.webView?.addPersistentLabel(
-        modelData.identifier,
+        labelId,
         registeredName,
       );
     }

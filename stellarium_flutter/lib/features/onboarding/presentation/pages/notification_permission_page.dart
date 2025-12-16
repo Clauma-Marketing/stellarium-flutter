@@ -11,14 +11,12 @@ import '../widgets/permission_page_template.dart';
 /// Notification permission page - requests notification access during onboarding
 class NotificationPermissionPage extends StatefulWidget {
   final VoidCallback onContinue;
-  final VoidCallback onSkip;
   final int? currentPage;
   final int? totalPages;
 
   const NotificationPermissionPage({
     super.key,
     required this.onContinue,
-    required this.onSkip,
     this.currentPage,
     this.totalPages,
   });
@@ -68,11 +66,6 @@ class _NotificationPermissionPageState
     widget.onContinue();
   }
 
-  void _skipPermission() {
-    AnalyticsService.instance.logPermissionSkipped(permission: 'notification');
-    widget.onSkip();
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -82,9 +75,7 @@ class _NotificationPermissionPageState
       subtitle: l10n.notificationSubtitle,
       features: const [],
       primaryButtonText: _isLoading ? l10n.onboardingRequesting : l10n.notificationAllowNotifications,
-      secondaryButtonText: l10n.onboardingMaybeLater,
       onPrimaryPressed: _requestNotificationPermission,
-      onSecondaryPressed: _skipPermission,
       isLoading: _isLoading,
       currentPage: widget.currentPage,
       totalPages: widget.totalPages,

@@ -1,7 +1,7 @@
 {
   "@@locale": "de",
 
-  "appTitle": "Night Sky Guide",
+  "appTitle": "Star Registration Planetarium",
 
   "menu": "Menü",
   "myStars": "Meine Sterne",
@@ -335,5 +335,10 @@
         "type": "int"
       }
     }
-  }
+  },
+
+  "legal": "Rechtliches",
+  "legalSubtitle": "Nutzungsbedingungen & Datenschutz",
+  "termsOfUse": "Nutzungsbedingungen",
+  "privacyPolicy": "Datenschutzerklärung"
 }

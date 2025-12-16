@@ -47,11 +47,22 @@ Future<void> _initializeStarNotificationServices() async {
     // This prevents triggering notification permission dialogs for new users
     final onboardingComplete = await OnboardingService.isOnboardingComplete();
     if (onboardingComplete) {
-      // Initialize Firestore sync for cloud-based notifications
-      await FirestoreSyncService.instance.initialize();
+      // Firestore sync must not block app startup (it can hang when offline).
+      unawaited(() async {
+        try {
+          // Initialize Firestore sync for cloud-based notifications
+          await FirestoreSyncService.instance
+              .initialize()
+              .timeout(const Duration(seconds: 8));
 
-      // Sync all saved stars to Firestore (Firebase Functions handles notifications)
-      await FirestoreSyncService.instance.syncSavedStars();
+          // Sync all saved stars to Firestore (Firebase Functions handles notifications)
+          await FirestoreSyncService.instance
+              .syncSavedStars()
+              .timeout(const Duration(seconds: 8));
+        } catch (e) {
+          debugPrint('Deferred Firestore sync failed: $e');
+        }
+      }());
     }
 
     debugPrint('Star notification services initialized successfully');
@@ -78,10 +89,12 @@ void main() async {
         AnalyticsService.instance.initialize();
 
         // Initialize Crashlytics
-        FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+        FlutterError.onError =
+            FirebaseCrashlytics.instance.recordFlutterFatalError;
 
         // Disable Crashlytics in debug mode (optional - remove if you want debug crashes)
-        await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
+        await FirebaseCrashlytics.instance
+            .setCrashlyticsCollectionEnabled(!kDebugMode);
       } catch (e) {
         debugPrint('Firebase initialization error: $e');
       }
@@ -93,8 +106,9 @@ void main() async {
         await Adapty().activate(
           configuration: AdaptyConfiguration(
             apiKey: 'public_live_IOi0yFDb.WFTHrIKk8DzeTfEPmBwQ',
-          )..withLogLevel(AdaptyLogLevel.verbose)
-           ..withActivateUI(true),
+          )
+            ..withLogLevel(AdaptyLogLevel.verbose)
+            ..withActivateUI(true),
         );
       } catch (e) {
         debugPrint('Adapty initialization error: $e');
@@ -109,7 +123,8 @@ void main() async {
 
       if (onboardingComplete) {
         // Set up Firebase Messaging background handler
-        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+        FirebaseMessaging.onBackgroundMessage(
+            _firebaseMessagingBackgroundHandler);
 
         // Handle foreground messages for Klaviyo tracking (if initialized)
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -179,6 +194,7 @@ class _StellariumAppState extends State<StellariumApp> {
       supportedLocales: const [
         Locale('en'),
         Locale('de'),
+        Locale('zh'),
       ],
       // Use custom locale if set, otherwise use system locale
       locale: LocaleService.instance.locale,

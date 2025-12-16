@@ -9,7 +9,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => 'Night Sky Guide';
+  String get appTitle => 'Star Registration Planetarium';
 
   @override
   String get menu => '菜单';
@@ -720,4 +720,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String visibilityStatusInDays(int days, int hours) {
     return '$days天$hours小时';
   }
+
+  @override
+  String get legal => '法律条款';
+
+  @override
+  String get legalSubtitle => '使用条款和隐私政策';
+
+  @override
+  String get termsOfUse => '使用条款';
+
+  @override
+  String get privacyPolicy => '隐私政策';
 }

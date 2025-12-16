@@ -10,6 +10,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../services/analytics_service.dart';
 import '../services/locale_service.dart';
@@ -252,6 +253,17 @@ class SettingsBottomSheet extends StatelessWidget {
                         onTap: (ctx) => _showAppSettingsSheet(ctx),
                       ),
                     ),
+                    _buildMainMenuItem(
+                      context,
+                      MainMenuItem(
+                        title: AppLocalizations.of(context)!.legal,
+                        subtitle: AppLocalizations.of(context)!.legalSubtitle,
+                        icon: Icons.description_outlined,
+                        color: Colors.blueGrey,
+                        isSubmenu: true,
+                        onTap: (ctx) => _showLegalSheet(ctx),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -387,6 +399,19 @@ class SettingsBottomSheet extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => const AppSettingsBottomSheet(),
+    ).whenComplete(() {
+      onSubMenuClosed?.call(); // Notify parent that sub-menu is closed
+    });
+  }
+
+  void _showLegalSheet(BuildContext context) {
+    Navigator.of(context).pop(); // Close main menu
+    onSubMenuOpening?.call(); // Notify parent that sub-menu is opening
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const LegalBottomSheet(),
     ).whenComplete(() {
       onSubMenuClosed?.call(); // Notify parent that sub-menu is closed
     });
@@ -2958,5 +2983,146 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
     AdaptyError? error,
   ) {
     debugPrint('Web payment navigation finished');
+  }
+}
+
+/// Legal information bottom sheet
+class LegalBottomSheet extends StatelessWidget {
+  const LegalBottomSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.4,
+      minChildSize: 0.3,
+      maxChildSize: 0.6,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0a1628),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    const Icon(Icons.description_outlined, color: Colors.white70, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        l10n.legal,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white70),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 1),
+              // Legal links
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildLegalLink(
+                      context: context,
+                      title: l10n.termsOfUse,
+                      icon: Icons.article_outlined,
+                      url: 'https://www.star-registration.com/pages/terms-of-service',
+                    ),
+                    const SizedBox(height: 8),
+                    _buildLegalLink(
+                      context: context,
+                      title: l10n.privacyPolicy,
+                      icon: Icons.privacy_tip_outlined,
+                      url: 'https://www.star-registration.com/policies/privacy-policy',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLegalLink({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required String url,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            final uri = Uri.parse(url);
+            try {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } catch (e) {
+              debugPrint('Error launching URL: $e');
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.white54,
+                  size: 24,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.open_in_new,
+                  color: Colors.white24,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

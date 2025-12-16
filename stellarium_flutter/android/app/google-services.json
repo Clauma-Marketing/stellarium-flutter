@@ -50,6 +50,43 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:984409956037:android:ade274fc3417dd15b65aac",
+        "android_client_info": {
+          "package_name": "com.starregistration.planetarium"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "984409956037-k1qfkfkkf9lucrv019h41mrjorhnlahs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAppKW8ku1xHw-2Xk4CR11c17QUXwiVBDk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "984409956037-jfrvfn9ephb58fiufngavcmko8v49gjs.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "984409956037-dsgm0kf26qs6g2i9v4bu9j7ip11fdfj1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.scythestudio.starregistration",
+                "app_store_id": "1542535191"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

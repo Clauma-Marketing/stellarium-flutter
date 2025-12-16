@@ -1,0 +1,12 @@
+hips_order            = 0
+hips_order_min        = 0
+hips_tile_width       = 512
+hips_tile_format      = webp
+dataproduct_type      = image
+obs_title             = Mars
+hips_service_url      = https://data.stellarium.org/landscapes/mars
+hips_release_date     = 2018-10-11T19:01Z
+source_md5            = ca6172ede53e6d652c429c5c4a6304d4
+type                  = landscape
+obs_copyright         = NASA/JPL-Caltech/Cornell & Michael Smith
+obs_description       = The panoramic camera on NASA's Mars Exploration Rover Spirit took the hundreds of images combined into this 360-degree view, the "Husband Hill Summit" panorama. The images were acquired on Spirit's sols 583 to 586 (Aug. 24 to 27, 2005), shortly after the rover reached the crest of "Husband Hill" inside Mars' Gusev Crater.

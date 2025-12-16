@@ -214,95 +214,104 @@
           }
 
           const core = stel.core;
-          const baseUrl = 'https://data.star-register.com/';
+          // Remote base URL depends on the device language.
+          // For Chinese locales, use the China-specific mirror.
+          const language =
+            (navigator.languages && navigator.languages.length ? navigator.languages[0] : navigator.language || '')
+              .toLowerCase();
+          const remoteBaseUrl = language.startsWith('zh')
+            ? 'https://data.star-registration.com.cn/'
+            : 'https://data.star-register.com/';
+          // Always load star data from remote server (data.star-register.com)
+          // to ensure we have the full catalog including dim stars
 
 	          // Add data sources
-	          core.stars.addDataSource({ url: baseUrl + 'surveys/stars/v1' });
+	          core.stars.addDataSource({ url: remoteBaseUrl + 'surveys/stars/v1' });
 	          core.stars.addDataSource({
-	            url: baseUrl + 'surveys/gaia/v1',
+	            url: remoteBaseUrl + 'surveys/gaia/v1',
 	            key: 'gaia'
 	          });
 	          core.skycultures.addDataSource({
-	            url: baseUrl + 'skycultures/v2/western',
+	            url: remoteBaseUrl + 'skycultures/v2/western',
 	            key: 'western'
 	          });
-	          core.dsos.addDataSource({ url: baseUrl + 'surveys/dso/v1' });
-	          core.milkyway.addDataSource({ url: baseUrl + 'surveys/milkyway/v1' });
-	          core.dss.addDataSource({ url: baseUrl + 'surveys/dss/v1' });
+	          core.dsos.addDataSource({ url: remoteBaseUrl + 'surveys/dso/v1' });
+	          core.milkyway.addDataSource({ url: remoteBaseUrl + 'surveys/milkyway/v1' });
+	          core.dss.addDataSource({ url: remoteBaseUrl + 'surveys/dss/v1' });
 	          core.minor_planets.addDataSource({
-	            url: baseUrl + 'mpc/v1/mpcorb.dat',
+	            url: remoteBaseUrl + 'mpc/v1/mpcorb.dat',
 	            key: 'mpc_asteroids'
 	          });
 	          core.comets.addDataSource({
-	            url: baseUrl + 'mpc/v1/CometEls.txt?v=2019-12-17',
+	            url: remoteBaseUrl + 'mpc/v1/CometEls.txt?v=2019-12-17',
 	            key: 'mpc_comets'
 	          });
 	          core.satellites.addDataSource({
-	            url: baseUrl + 'skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16',
+	            url: remoteBaseUrl + 'skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16',
 	            key: 'jsonl/sat'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/moon/v1',
+	            url: remoteBaseUrl + 'surveys/sso/moon/v1',
 	            key: 'moon'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/sun/v1',
+	            url: remoteBaseUrl + 'surveys/sso/sun/v1',
 	            key: 'sun'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/callisto/v1',
+	            url: remoteBaseUrl + 'surveys/sso/callisto/v1',
 	            key: 'callisto'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/default/v1',
+	            url: remoteBaseUrl + 'surveys/sso/default/v1',
 	            key: 'default'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/europa/v1',
+	            url: remoteBaseUrl + 'surveys/sso/europa/v1',
 	            key: 'europa'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/ganymede/v1',
+	            url: remoteBaseUrl + 'surveys/sso/ganymede/v1',
 	            key: 'ganymede'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/io/v1',
+	            url: remoteBaseUrl + 'surveys/sso/io/v1',
 	            key: 'io'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/jupiter/v1',
+	            url: remoteBaseUrl + 'surveys/sso/jupiter/v1',
 	            key: 'jupiter'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/mars/v1',
+	            url: remoteBaseUrl + 'surveys/sso/mars/v1',
 	            key: 'mars'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/mercury/v1',
+	            url: remoteBaseUrl + 'surveys/sso/mercury/v1',
 	            key: 'mercury'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/moon-normal/v1',
+	            url: remoteBaseUrl + 'surveys/sso/moon-normal/v1',
 	            key: 'moon-normal'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/neptune/v1',
+	            url: remoteBaseUrl + 'surveys/sso/neptune/v1',
 	            key: 'neptune'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/saturn/v1',
+	            url: remoteBaseUrl + 'surveys/sso/saturn/v1',
 	            key: 'saturn'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/uranus/v1',
+	            url: remoteBaseUrl + 'surveys/sso/uranus/v1',
 	            key: 'uranus'
 	          });
 	          core.planets.addDataSource({
-	            url: baseUrl + 'surveys/sso/venus/v1',
+	            url: remoteBaseUrl + 'surveys/sso/venus/v1',
 	            key: 'venus'
 	          });
 	          core.landscapes.addDataSource({
-	            url: baseUrl + 'landscapes/v1/guereins',
+	            url: remoteBaseUrl + 'landscapes/v1/guereins',
 	            key: 'guereins'
 	          });
 
@@ -487,102 +496,391 @@
         };
       },
 
-      search: function(query) {
-        if (!window.stellarium) return Promise.resolve(null);
-        try {
-          // Try different name formats
-          var obj = window.stellarium.getObj('NAME ' + query);
-          if (!obj) obj = window.stellarium.getObj(query);
-          if (!obj) return Promise.resolve(null);
-          return Promise.resolve({
-            name: query,
-            type: obj.type || 'unknown'
-          });
-        } catch(e) {
-          console.error('search error:', e);
-          return Promise.resolve(null);
+      // Helper to normalize a name for comparison (remove spaces, uppercase)
+      normalizeName: function(name) {
+        return name.toUpperCase().replace(/\s+/g, '');
+      },
+
+      // Check if a query looks like a registration number (e.g., "9736-58577-3012084")
+      isRegistrationNumber: function(query) {
+        // Registration numbers have format: XXXX-XXXXX-XXXXXXX (digits with dashes)
+        return /^\d{4}-\d{5}-\d{7}$/.test(query);
+      },
+
+      // Get the appropriate API URL for a query
+      getApiUrl: function(query) {
+        if (this.isRegistrationNumber(query)) {
+          // Registration number endpoint
+          return 'https://registry-api.celestial-register.com/?RN=' + encodeURIComponent(query);
+        } else {
+          // Name search endpoint
+          return 'https://registry-api.celestial-register.com/search?name=' + encodeURIComponent(query);
         }
       },
 
-      pointAt: function(name, duration) {
-        if (!window.stellarium) return;
-        try {
-          const stel = window.stellarium;
-          // Try different name formats
-          var obj = stel.getObj('NAME ' + name);
-          if (!obj) obj = stel.getObj(name);
-          if (obj) {
-            // Select the object (shows crosshair marker)
-            stel.core.selection = obj;
-            console.log('Selected:', name);
-
-            // Get current FOV to calculate offset
-            const fov = stel.observer.fov || (60 * Math.PI / 180);
-
-            // Set view_offset_alt to move star up on screen
-            // Positive offset = star appears higher on screen
-            const offset = fov * 0.35;
-            stel.observer.view_offset_alt = offset;
-            console.log('Set view_offset_alt to ' + (offset * 180 / Math.PI).toFixed(1) + '° (FOV: ' + (fov * 180 / Math.PI).toFixed(1) + '°)');
-
-            // Point and lock to the object (with offset applied)
-            stel.pointAndLock(obj, duration || 1.0);
-            console.log('Pointing at:', name, '(with offset)');
-
-            // Send object selection to Flutter so info sheet can be shown
-            // Use designations() method (not property) to get names
-            const names = typeof obj.designations === 'function' ? obj.designations() : (obj.names || [name]);
-            const info = {
-              name: (names && names.length > 0) ? names[0] : name,
-              names: names || [name],
-              type: obj.type || 'unknown',
-              vmag: obj.vmag,
-              ra: obj.ra !== undefined ? obj.ra * stel.R2D : null,
-              dec: obj.de !== undefined ? obj.de * stel.R2D : null,
-              distance: obj.distance
-            };
-            console.log('pointAt: sending objectSelected to Flutter:', info);
-            sendToFlutter('objectSelected', info);
-          } else {
-            console.log('Object not found:', name);
+      // Parse API response - different endpoints return different formats
+      parseApiResponse: function(query, response) {
+        if (this.isRegistrationNumber(query)) {
+          // RN endpoint returns a single object with { found: true, model, model_data, ... }
+          if (response && response.found && response.model_data) {
+            return response;  // Return the object directly as a sky source
           }
-        } catch(e) {
-          console.error('pointAt error:', e);
+          return null;
+        } else {
+          // search endpoint returns an array of results
+          if (response && response.length > 0) {
+            return response[0];
+          }
+          return null;
         }
+      },
+
+      // Validate that API result matches the search query (prevent fuzzy match errors)
+      validateApiResult: function(searchQuery, skySource) {
+        if (!skySource) return false;
+
+        // For registration number queries, validate differently
+        if (this.isRegistrationNumber(searchQuery)) {
+          // RN endpoint returns { found: true, info: { registration_number: "..." } }
+          if (skySource.found && skySource.info && skySource.info.registration_number) {
+            const matches = skySource.info.registration_number === searchQuery;
+            console.log('[validateApiResult] Registration number match:', matches);
+            return matches;
+          }
+          // Also accept if found is true and we have model_data
+          if (skySource.found && skySource.model_data) {
+            console.log('[validateApiResult] Registration number found with model_data');
+            return true;
+          }
+          return false;
+        }
+
+        // For name searches, require names array
+        if (!skySource.names) return false;
+
+        const normalizedQuery = this.normalizeName(searchQuery);
+
+        // Check if any of the returned names exactly match the query
+        for (const name of skySource.names) {
+          const normalizedName = this.normalizeName(name);
+          if (normalizedName === normalizedQuery) {
+            console.log('[validateApiResult] Exact match found:', name);
+            return true;
+          }
+        }
+
+        // Check short_name
+        if (skySource.short_name) {
+          const normalizedShortName = this.normalizeName(skySource.short_name);
+          if (normalizedShortName === normalizedQuery) {
+            console.log('[validateApiResult] Short name match:', skySource.short_name);
+            return true;
+          }
+        }
+
+        // Check match field
+        if (skySource.match) {
+          const normalizedMatch = this.normalizeName(skySource.match);
+          if (normalizedMatch === normalizedQuery) {
+            console.log('[validateApiResult] Match field match:', skySource.match);
+            return true;
+          }
+        }
+
+        console.log('[validateApiResult] REJECTED - No exact match for query:', searchQuery, 'in names:', skySource.names);
+        return false;
+      },
+
+      // Convert API sky source response to SweObj (mirrors sw_helpers.js skySource2SweObj)
+      skySource2SweObj: function(ss) {
+        if (!ss || !ss.model) {
+          console.log('[skySource2SweObj] No model in sky source');
+          return undefined;
+        }
+        if (!window.stellarium) {
+          console.log('[skySource2SweObj] Stellarium not ready');
+          return undefined;
+        }
+        const stel = window.stellarium;
+        let obj = null;
+
+        // Helper to normalize catalog designations (add space after catalog prefix)
+        // Engine stores "HIP 90156" but API may return "HIP90156"
+        const normalizeDesignation = (name) => {
+          // Match catalog prefixes followed immediately by digits
+          const match = name.match(/^(HIP|HD|HR|SAO|TYC|NGC|IC|M|Gaia DR2|GAIA)(\d+.*)$/i);
+          if (match) {
+            return match[1].toUpperCase() + ' ' + match[2];
+          }
+          return name;
+        };
+
+        // Helper to try a name with various formats
+        const tryName = (name) => {
+          console.log('[tryName] Input name:', name);
+
+          // PRIORITY: Direct HIP lookup by number - fastest and most reliable
+          // Registry API always returns HIP information, so try this first
+          const hipMatch = name.match(/^HIP\s*(\d+)/i);
+          console.log('[tryName] HIP match result:', hipMatch);
+          if (hipMatch && typeof stel.getObjByHip === 'function') {
+            const hipNumber = parseInt(hipMatch[1], 10);
+            console.log('[tryName] Trying direct HIP lookup for:', hipNumber);
+            const result = stel.getObjByHip(hipNumber);
+            console.log('[tryName] HIP lookup result:', result);
+            if (result) {
+              console.log('[tryName] FOUND via HIP lookup:', hipNumber);
+              if (typeof result.designations === 'function') {
+                console.log('[tryName] Found object designations:', result.designations());
+              }
+              return result;
+            } else {
+              console.log('[tryName] HIP lookup returned null for:', hipNumber);
+            }
+          } else if (hipMatch) {
+            console.log('[tryName] getObjByHip not available');
+          }
+
+          // Fallback: string-based search with various name formats
+          const attempts = [];
+
+          // Direct name
+          attempts.push(name);
+
+          // With "NAME " prefix
+          attempts.push('NAME ' + name);
+
+          // With "* " prefix (Bayer/Flamsteed star designations)
+          attempts.push('* ' + name);
+
+          // Normalized version (add space after catalog prefix like HIP, HD)
+          const normalized = normalizeDesignation(name);
+          if (normalized !== name) {
+            attempts.push(normalized);
+          }
+
+          // Try with "* " prefix on normalized too
+          if (normalized !== name) {
+            attempts.push('* ' + normalized);
+          }
+
+          // If name has a component suffix like "A" or "B", try without it
+          const withoutComponent = name.replace(/\s*[A-Z]$/, '');
+          if (withoutComponent !== name) {
+            attempts.push(withoutComponent);
+            attempts.push('* ' + withoutComponent);
+          }
+
+          for (const attempt of attempts) {
+            console.log('[skySource2SweObj] Trying:', attempt);
+            const result = stel.getObj(attempt);
+            if (result) {
+              console.log('[skySource2SweObj] FOUND with:', attempt);
+              if (typeof result.designations === 'function') {
+                console.log('[skySource2SweObj] Found object designations:', result.designations());
+              }
+              return result;
+            }
+          }
+
+          return null;
+        };
+
+        // Handle TLE satellites specially
+        if (ss.model === 'tle_satellite' && ss.model_data && ss.model_data.norad_number) {
+          const id = 'NORAD ' + ss.model_data.norad_number;
+          console.log('[skySource2SweObj] TLE satellite, trying:', id);
+          obj = stel.getObj(id);
+        }
+        // Handle constellations specially
+        else if (ss.model === 'constellation' && ss.model_data && ss.model_data.iau_abbreviation) {
+          const id = 'CON western ' + ss.model_data.iau_abbreviation;
+          console.log('[skySource2SweObj] Constellation, trying:', id);
+          obj = stel.getObj(id);
+        }
+
+        // Default: try names from the API response
+        if (!obj && ss.names && ss.names.length > 0) {
+          for (let i = 0; i < ss.names.length; i++) {
+            obj = tryName(ss.names[i]);
+            if (obj) break;
+
+            // Gaia DR2 fallback - transform name format
+            if (ss.names[i].startsWith('Gaia DR2 ')) {
+              const gname = ss.names[i].replace(/^Gaia DR2 /, 'GAIA ');
+              console.log('[skySource2SweObj] Gaia fallback, trying:', gname);
+              obj = stel.getObj(gname);
+              if (obj) break;
+            }
+          }
+        }
+
+        // Last resort: CREATE the object from coordinates using createObj()
+        // This is the key insight from engineHelper.js - you don't search, you CREATE
+        if (!obj && ss.model_data && ss.model_data.ra !== undefined && ss.model_data.de !== undefined) {
+          console.log('[skySource2SweObj] Object not found locally, creating from coordinates...');
+          console.log('[skySource2SweObj] model:', ss.model);
+          console.log('[skySource2SweObj] model_data:', JSON.stringify(ss.model_data));
+          console.log('[skySource2SweObj] RA:', ss.model_data.ra, 'DE:', ss.model_data.de);
+          console.log('[skySource2SweObj] stel.createObj exists:', typeof stel.createObj);
+          try {
+            // createObj takes (model, objectData) and returns a SweObj pointer
+            obj = stel.createObj(ss.model, ss);
+            console.log('[skySource2SweObj] createObj returned:', obj);
+            if (obj) {
+              console.log('[skySource2SweObj] SUCCESS - Created object from coordinates');
+              console.log('[skySource2SweObj] Object type:', typeof obj, 'value:', obj);
+            } else {
+              console.log('[skySource2SweObj] createObj returned null/undefined');
+            }
+          } catch (createErr) {
+            console.error('[skySource2SweObj] createObj failed:', createErr);
+            console.error('[skySource2SweObj] Error stack:', createErr.stack);
+          }
+        } else if (!obj) {
+          console.log('[skySource2SweObj] Cannot create - missing data:');
+          console.log('[skySource2SweObj]   ss.model_data:', ss.model_data);
+          console.log('[skySource2SweObj]   ra:', ss.model_data?.ra);
+          console.log('[skySource2SweObj]   de:', ss.model_data?.de);
+        }
+
+        if (obj) {
+          console.log('[skySource2SweObj] SUCCESS - Found/created object');
+        } else {
+          console.log('[skySource2SweObj] FAILED - Object not found and could not be created');
+        }
+        return obj;
+      },
+
+      // Unified object finder - searches API first, then falls back to local engine
+      // Returns { obj, skySource, displayName } or null
+      findObject: async function(query) {
+        console.log('[FIND] Looking for:', query);
+        if (!window.stellarium) return null;
+
+        const stel = window.stellarium;
+        const isRegNum = this.isRegistrationNumber(query);
+
+        // 1. Try API search first
+        try {
+          const apiUrl = this.getApiUrl(query);
+          const response = await fetch(apiUrl);
+          if (response.ok) {
+            const rawResponse = await response.json();
+            const skySource = this.parseApiResponse(query, rawResponse);
+            if (skySource && this.validateApiResult(query, skySource)) {
+              const obj = this.skySource2SweObj(skySource);
+              if (obj) {
+                // Determine display name
+                let displayName = query;
+                if (isRegNum && skySource.info && skySource.info.name) {
+                  displayName = skySource.info.name;
+                } else if (skySource.names && skySource.names.length > 0) {
+                  displayName = skySource.names[0];
+                }
+                console.log('[FIND] Found via API:', displayName);
+                return { obj, skySource, displayName };
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[FIND] API error:', e);
+        }
+
+        // 2. Fall back to local engine
+        let obj = stel.getObj('NAME ' + query) || stel.getObj(query);
+        if (obj) {
+          console.log('[FIND] Found locally:', query);
+          return { obj, skySource: null, displayName: query };
+        }
+
+        console.log('[FIND] Not found:', query);
+        return null;
+      },
+
+      // Build object info for Flutter from found object
+      buildObjectInfo: function(obj, displayName, skySource) {
+        const stel = window.stellarium;
+        let names = typeof obj.designations === 'function' ? obj.designations() : (obj.names || []);
+
+        // Fall back to skySource names if needed
+        if ((!names || names.length === 0) && skySource) {
+          if (skySource.names && skySource.names.length > 0) {
+            names = skySource.names;
+          } else if (skySource.model_data) {
+            const md = skySource.model_data;
+            names = [];
+            if (md.short_name) names.push(md.short_name);
+            if (md.identifier) names.push(md.identifier);
+          }
+        }
+
+        return {
+          name: displayName,
+          names: names.length > 0 ? names : [displayName],
+          type: obj.type || 'unknown',
+          vmag: obj.vmag,
+          ra: obj.ra !== undefined ? obj.ra * stel.R2D : null,
+          dec: obj.de !== undefined ? obj.de * stel.R2D : null,
+          distance: obj.distance,
+          skySource: skySource
+        };
+      },
+
+      search: async function(query) {
+        const result = await this.findObject(query);
+        if (!result) return null;
+        return { name: result.displayName, type: result.obj.type || 'unknown', skySource: result.skySource };
+      },
+
+      pointAt: async function(name, duration) {
+        if (!window.stellarium) return;
+        const result = await this.findObject(name);
+        if (!result) return;
+
+        const stel = window.stellarium;
+        const { obj, skySource, displayName } = result;
+
+        // Log current zoom level
+        const currentFov = stel.observer.fov * 180 / Math.PI;
+        console.log('[pointAt] Current FOV:', currentFov.toFixed(2) + '°');
+
+        // Clear any existing lock first to ensure clean transition
+        stel.core.lock = null;
+        stel.observer.view_offset_alt = 0;
+
+        // Target FOV for viewing stars
+        const targetFov = 20 * Math.PI / 180;  // 20 degrees
+        console.log('[pointAt] Target FOV:', (targetFov * 180 / Math.PI).toFixed(2) + '°');
+
+        // Step 1: Zoom out first
+        const zoomDuration = 0.5;
+        stel.zoomTo(targetFov, zoomDuration);
+
+        // Step 2: After zoom completes, move to the star
+        setTimeout(() => {
+          stel.core.selection = obj;
+          stel.observer.view_offset_alt = targetFov * 0.35;
+          stel.pointAndLock(obj, duration || 1.0);
+        }, zoomDuration * 1000);
+
+        // Notify Flutter
+        const info = this.buildObjectInfo(obj, displayName, skySource);
+        sendToFlutter('objectSelected', info);
       },
 
       // Select an object without moving the camera (for gyroscope mode)
-      selectObject: function(name) {
+      selectObject: async function(name) {
         if (!window.stellarium) return;
-        try {
-          const stel = window.stellarium;
-          // Try different name formats
-          var obj = stel.getObj('NAME ' + name);
-          if (!obj) obj = stel.getObj(name);
-          if (obj) {
-            // Select the object (shows crosshair marker) without moving camera
-            stel.core.selection = obj;
-            console.log('Selected (no camera move):', name);
+        const result = await this.findObject(name);
+        if (!result) return;
 
-            // Send object selection to Flutter so info sheet can be shown
-            const names = typeof obj.designations === 'function' ? obj.designations() : (obj.names || [name]);
-            const info = {
-              name: (names && names.length > 0) ? names[0] : name,
-              names: names || [name],
-              type: obj.type || 'unknown',
-              vmag: obj.vmag,
-              ra: obj.ra !== undefined ? obj.ra * stel.R2D : null,
-              dec: obj.de !== undefined ? obj.de * stel.R2D : null,
-              distance: obj.distance
-            };
-            console.log('selectObject: sending objectSelected to Flutter:', info);
-            sendToFlutter('objectSelected', info);
-          } else {
-            console.log('Object not found:', name);
-          }
-        } catch(e) {
-          console.error('selectObject error:', e);
-        }
+        const stel = window.stellarium;
+        const { obj, skySource, displayName } = result;
+
+        stel.core.selection = obj;
+        const info = this.buildObjectInfo(obj, displayName, skySource);
+        sendToFlutter('objectSelected', info);
       },
 
       lookAt: function(azimuthDeg, altitudeDeg, duration) {
@@ -693,10 +991,49 @@
         try {
           const stel = window.stellarium;
           const selection = stel.core.selection;
+          console.log('[getSelectedObjectInfo] selection:', selection);
           if (!selection) return null;
 
           // Use designations() method (not property) to get names
           const names = typeof selection.designations === 'function' ? selection.designations() : (selection.names || []);
+          console.log('[getSelectedObjectInfo] designations():', names);
+          console.log('[getSelectedObjectInfo] selection.type:', selection.type);
+          console.log('[getSelectedObjectInfo] selection.ra:', selection.ra, 'de:', selection.de);
+          console.log('[getSelectedObjectInfo] selection.vmag:', selection.vmag);
+
+          // Get JSON data which includes HIP number for stars
+          // Note: jsonData is a property getter, not a method
+          let hip = null;
+          let gaia = null;
+          let jsonData = null;
+          console.log('[getSelectedObjectInfo] checking jsonData property...');
+          console.log('[getSelectedObjectInfo] selection keys:', Object.keys(selection));
+          console.log('[getSelectedObjectInfo] has jsonData:', 'jsonData' in selection);
+          try {
+            jsonData = selection.jsonData;  // Property, not method
+            console.log('[getSelectedObjectInfo] jsonData raw:', jsonData);
+            console.log('[getSelectedObjectInfo] jsonData stringified:', JSON.stringify(jsonData));
+            if (jsonData && jsonData.model_data) {
+              console.log('[getSelectedObjectInfo] model_data:', JSON.stringify(jsonData.model_data));
+              hip = jsonData.model_data.hip || null;
+              gaia = jsonData.model_data.gaia || null;
+              console.log('[getSelectedObjectInfo] HIP:', hip, 'GAIA:', gaia);
+            } else {
+              console.log('[getSelectedObjectInfo] jsonData or model_data is missing');
+            }
+          } catch (jsonErr) {
+            console.error('[getSelectedObjectInfo] jsonData error:', jsonErr);
+            console.error('[getSelectedObjectInfo] error stack:', jsonErr.stack);
+          }
+
+          // Debug: try to get more info about the object
+          if (typeof selection.getInfo === 'function') {
+            const obs = stel.core.observer;
+            console.log('[getSelectedObjectInfo] getInfo("name"):', selection.getInfo('name', obs));
+            console.log('[getSelectedObjectInfo] getInfo("short_name"):', selection.getInfo('short_name', obs));
+            console.log('[getSelectedObjectInfo] getInfo("designations"):', selection.getInfo('designations', obs));
+          }
+
           const info = {
             name: (names && names.length > 0) ? names[0] : 'Unknown',
             names: names || [],
@@ -704,8 +1041,11 @@
             vmag: selection.vmag,
             ra: selection.ra * stel.R2D,
             dec: selection.de * stel.R2D,
-            distance: selection.distance
+            distance: selection.distance,
+            hip: hip,
+            gaia: gaia
           };
+          console.log('[getSelectedObjectInfo] returning:', info);
           return info;
         } catch(e) {
           console.error('getSelectedObjectInfo error:', e);
@@ -857,25 +1197,21 @@
         });
       },
 
-      // Start gyroscope guidance to a star by name
-      startGuidance: function(name) {
+      // Start gyroscope guidance to a star by name (also notifies Flutter)
+      startGuidance: async function(name) {
         if (!window.stellarium) return false;
-        try {
-          const stel = window.stellarium;
-          var obj = stel.getObj('NAME ' + name);
-          if (!obj) obj = stel.getObj(name);
-          if (obj) {
-            // Set selection (shows crosshair marker) without changing view
-            stel.core.selection = obj;
-            // Start gyroscope guidance
-            startGyroscopeGuidance(obj, name);
-            return true;
-          }
-          return false;
-        } catch(e) {
-          console.error('startGuidance error:', e);
-          return false;
-        }
+        const result = await this.findObject(name);
+        if (!result) return false;
+
+        const stel = window.stellarium;
+        const { obj, skySource, displayName } = result;
+        stel.core.selection = obj;
+        startGyroscopeGuidance(obj, displayName);
+
+        // Notify Flutter about the selected object
+        const info = this.buildObjectInfo(obj, displayName, skySource);
+        sendToFlutter('objectSelected', info);
+        return true;
       },
 
       // Stop gyroscope guidance
