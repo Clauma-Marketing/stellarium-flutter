@@ -209,6 +209,12 @@ class SkyViewState extends State<SkyView> {
   bool _compassFlipped = false;
   double _lastRawCompass = 0.0;
 
+  // Web-specific: track if we're getting absolute compass data
+  bool _webHasAbsoluteCompass = false;
+  // Web-specific: flip detection (same as mobile but tracked separately)
+  bool _webCompassFlipped = false;
+  double _webLastRawCompass = 0.0;
+
   // Debug frame counter
   int _debugFrameCount = 0;
 
@@ -322,6 +328,10 @@ class SkyViewState extends State<SkyView> {
 
     // Web platform: use DeviceOrientationEvent
     if (kIsWeb) {
+      // Reset web-specific state
+      _webHasAbsoluteCompass = false;
+      _webCompassFlipped = false;
+      _webLastRawCompass = 0.0;
       _startWebSensors();
       return;
     }
@@ -469,28 +479,69 @@ class SkyViewState extends State<SkyView> {
       return;
     }
 
-    final alpha = web_sensors.getEventAlpha(event); // Compass heading (0-360, 0 = north)
     final beta = web_sensors.getEventBeta(event);   // Front-back tilt (-180 to 180)
     final gamma = web_sensors.getEventGamma(event); // Left-right tilt (-90 to 90)
 
-    if (alpha == null || beta == null) {
-      debugPrint('Web DeviceOrientation: alpha or beta is null, skipping');
+    if (beta == null) {
+      debugPrint('Web DeviceOrientation: beta is null, skipping');
       return;
     }
 
-    // Convert alpha to azimuth (radians)
-    // DeviceOrientation alpha: 0 = north, increases clockwise
-    // Our azimuth: 0 = north, increases clockwise
-    final compassHeadingDeg = alpha;
+    // Get the best available compass heading (webkitCompassHeading on iOS, absolute alpha on Android)
+    final compassHeadingDeg = web_sensors.getBestCompassHeading(event);
+
+    // Check if we have absolute orientation data
+    final hasAbsolute = web_sensors.hasAbsoluteOrientation(event);
+    if (hasAbsolute && !_webHasAbsoluteCompass) {
+      _webHasAbsoluteCompass = true;
+      debugPrint('Web AR Mode: absolute compass available');
+    }
+
+    // If we don't have absolute compass, fall back to alpha (but warn)
+    double rawHeadingDeg;
+    if (compassHeadingDeg != null) {
+      rawHeadingDeg = compassHeadingDeg;
+    } else {
+      // Fallback to alpha (may be arbitrary reference frame on iOS)
+      final alpha = web_sensors.getEventAlpha(event);
+      if (alpha == null) {
+        debugPrint('Web DeviceOrientation: no compass heading available');
+        return;
+      }
+      rawHeadingDeg = alpha;
+      if (_debugFrameCount % 300 == 0) {
+        debugPrint('Web AR Mode: WARNING - using non-absolute alpha (compass may drift)');
+      }
+    }
+
+    // Detect 180° flip by checking if raw compass suddenly jumped ~180° (same as mobile)
+    double correctedHeadingDeg = rawHeadingDeg;
+    if (_compassInitialized) {
+      double rawDiff = (rawHeadingDeg - _webLastRawCompass).abs();
+      // Handle wrap-around
+      if (rawDiff > 180) rawDiff = 360 - rawDiff;
+
+      // If compass jumped close to 180° (between 150° and 210°), toggle flip state
+      if (rawDiff > 150 && rawDiff < 210) {
+        _webCompassFlipped = !_webCompassFlipped;
+        debugPrint('Web AR Mode: 180° flip detected, flipped=$_webCompassFlipped');
+      }
+    }
+    _webLastRawCompass = rawHeadingDeg;
+
+    // Apply flip compensation if needed
+    if (_webCompassFlipped) {
+      correctedHeadingDeg = (rawHeadingDeg + 180.0) % 360.0;
+    }
 
     // Apply adaptive filtering to compass heading
     if (!_compassInitialized) {
-      _filteredCompassHeading = compassHeadingDeg;
+      _filteredCompassHeading = correctedHeadingDeg;
       _compassInitialized = true;
-      debugPrint('Web AR Mode: calibrated with alpha=${alpha.toStringAsFixed(1)}°');
+      debugPrint('Web AR Mode: calibrated with heading=${correctedHeadingDeg.toStringAsFixed(1)}° (absolute=$_webHasAbsoluteCompass)');
     } else {
       // Calculate shortest angular difference
-      double diff = compassHeadingDeg - _filteredCompassHeading;
+      double diff = correctedHeadingDeg - _filteredCompassHeading;
       if (diff > 180) diff -= 360;
       if (diff < -180) diff += 360;
 
@@ -508,10 +559,15 @@ class SkyViewState extends State<SkyView> {
     _currentAzimuth = _filteredCompassHeading * math.pi / 180.0;
 
     // Calculate altitude from beta
-    // beta: 0 = flat, 90 = pointing up, -90 = pointing down
-    // We want: 0 = horizon, pi/2 = zenith, -pi/2 = nadir
-    // When phone is held vertically (screen facing user), beta ≈ 90
-    // Subtract 90 to get: 0 = screen vertical, positive = tilted back (looking up)
+    // beta: -180 to 180 degrees, where:
+    //   - beta = 0: phone flat, screen up → back of phone faces DOWN → looking down
+    //   - beta = 90: phone vertical, screen facing user → looking at horizon
+    //   - beta = 180/-180: phone flat, screen down → back faces UP → looking up
+    //
+    // Formula: tiltDeg = beta - 90
+    //   - beta = 0 → tiltDeg = -90 (looking down at ground)
+    //   - beta = 90 → tiltDeg = 0 (looking at horizon)
+    //   - beta = 180 → tiltDeg = 90 (looking up at sky)
     final tiltDeg = beta - 90.0;
     _currentAltitude = (tiltDeg * math.pi / 180.0).clamp(-math.pi / 2, math.pi / 2);
 
@@ -528,9 +584,9 @@ class SkyViewState extends State<SkyView> {
     _debugFrameCount++;
     if (_debugFrameCount % 60 == 0) {
       debugPrint(
-        'Web DeviceOrientation: alpha=${alpha.toStringAsFixed(1)}° beta=${beta.toStringAsFixed(1)}° '
+        'Web DeviceOrientation: heading=${correctedHeadingDeg.toStringAsFixed(1)}° beta=${beta.toStringAsFixed(1)}° '
         'gamma=${gamma?.toStringAsFixed(1) ?? "null"}° -> az=${(_currentAzimuth * 180 / math.pi).toStringAsFixed(1)}° '
-        'alt=${(_currentAltitude * 180 / math.pi).toStringAsFixed(1)}°'
+        'alt=${(_currentAltitude * 180 / math.pi).toStringAsFixed(1)}° (absolute=$_webHasAbsoluteCompass, flipped=$_webCompassFlipped)'
       );
     }
   }

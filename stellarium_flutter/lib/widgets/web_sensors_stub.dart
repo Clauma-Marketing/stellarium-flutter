@@ -24,3 +24,15 @@ double? getEventBeta(dynamic event) => null;
 
 /// Get gamma (left-right tilt) from event - stub returns null
 double? getEventGamma(dynamic event) => null;
+
+/// Get webkitCompassHeading (iOS Safari) from event - stub returns null
+double? getEventWebkitCompassHeading(dynamic event) => null;
+
+/// Get webkitCompassAccuracy (iOS Safari) from event - stub returns null
+double? getEventWebkitCompassAccuracy(dynamic event) => null;
+
+/// Check if event has absolute orientation - stub returns false
+bool hasAbsoluteOrientation(dynamic event) => false;
+
+/// Get best available compass heading - stub returns null
+double? getBestCompassHeading(dynamic event) => null;
