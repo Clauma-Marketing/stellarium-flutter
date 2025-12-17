@@ -1048,22 +1048,19 @@ class SkyViewState extends State<SkyView> {
           );
         }
 
-        final dpr = MediaQuery.of(context).devicePixelRatio;
-
         // On web, canvas has pointer-events: none, so Flutter must forward events.
         // Flutter's hit-testing ensures UI elements block touches naturally -
         // only touches that reach this widget (not blocked by UI) get forwarded.
+        // Note: Coordinates are in CSS pixels (logical pixels), NOT physical pixels.
+        // The canvas style is set in CSS pixels while canvas.width/height are physical,
+        // but the engine expects CSS pixel coordinates for proper hit testing.
         return Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: (event) {
             if (_touchBlocked) return;
             final x = event.localPosition.dx;
             final y = event.localPosition.dy;
-            _engine?.onPointerDown(
-              event.pointer,
-              x * dpr,
-              y * dpr,
-            );
+            _engine?.onPointerDown(event.pointer, x, y);
             // Track for tap detection
             _touchStartX = x;
             _touchStartY = y;
@@ -1074,19 +1071,15 @@ class SkyViewState extends State<SkyView> {
             if (widget.gyroscopeEnabled) return;
             _engine?.onPointerMove(
               event.pointer,
-              event.localPosition.dx * dpr,
-              event.localPosition.dy * dpr,
+              event.localPosition.dx,
+              event.localPosition.dy,
             );
           },
           onPointerUp: (event) {
             if (_touchBlocked) return;
             final x = event.localPosition.dx;
             final y = event.localPosition.dy;
-            _engine?.onPointerUp(
-              event.pointer,
-              x * dpr,
-              y * dpr,
-            );
+            _engine?.onPointerUp(event.pointer, x, y);
 
             // Tap detection - check if this was a tap (small movement, short duration)
             if (_touchStartX != null &&
@@ -1115,8 +1108,8 @@ class SkyViewState extends State<SkyView> {
             if (event is PointerScrollEvent) {
               _engine?.onZoom(
                 event.scrollDelta.dy > 0 ? 1.1 : 0.9,
-                event.localPosition.dx * dpr,
-                event.localPosition.dy * dpr,
+                event.localPosition.dx,
+                event.localPosition.dy,
               );
             }
           },

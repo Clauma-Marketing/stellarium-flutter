@@ -91,6 +91,33 @@
           window.stellarium = stel;
           window.stellariumReady = true;
 
+          // Capture Module reference for touch forwarding (same as mobile)
+          // Module is created by Emscripten and has _core_on_mouse
+          if (typeof Module !== 'undefined') {
+            window.stelModule = Module;
+          } else if (typeof window.Module !== 'undefined') {
+            window.stelModule = window.Module;
+          } else if (stel._module) {
+            window.stelModule = stel._module;
+          } else if (stel.Module) {
+            window.stelModule = stel.Module;
+          } else {
+            // Search for _core_on_mouse in window properties
+            for (var key in window) {
+              try {
+                if (window[key] && typeof window[key]._core_on_mouse === 'function') {
+                  window.stelModule = window[key];
+                  console.log('[INIT] Found Module with _core_on_mouse at window.' + key);
+                  break;
+                }
+              } catch (e) {}
+            }
+          }
+          console.log('[INIT] stelModule captured:', window.stelModule ? 'yes' : 'no');
+          if (window.stelModule) {
+            console.log('[INIT] _core_on_mouse exists:', typeof window.stelModule._core_on_mouse);
+          }
+
           // Add default data sources
           const core = stel.core;
 
@@ -228,24 +255,25 @@
 
     window.stelCoreOnMouse = function (id, state, x, y, buttons) {
       console.log('[FLUTTER->STEL] stelCoreOnMouse called: id=' + id + ' state=' + state + ' x=' + x.toFixed(0) + ' y=' + y.toFixed(0) + ' buttons=' + buttons);
-      // window.stellarium IS the Module object from StelWebEngine
-      var stel = window.stellarium;
-      if (stel && stel._core_on_mouse) {
+      // Use captured stelModule (which has _core_on_mouse), or fall back to stellarium
+      var module = window.stelModule || window.stellarium;
+      if (module && module._core_on_mouse) {
         // Set flag so the wrapper knows this is from Flutter
         window._flutterForwardingEvent = true;
-        stel._core_on_mouse(id, state, x, y, buttons);
+        module._core_on_mouse(id, state, x, y, buttons);
         window._flutterForwardingEvent = false;
+        console.log('[FLUTTER->STEL] _core_on_mouse executed');
       } else {
-        console.log('[FLUTTER->STEL] stellarium._core_on_mouse not available');
+        console.log('[FLUTTER->STEL] _core_on_mouse not available. stelModule:', !!window.stelModule, 'stellarium:', !!window.stellarium);
       }
     };
 
     window.stelCoreOnZoom = function (factor, x, y) {
       console.log('[FLUTTER->STEL] stelCoreOnZoom called: factor=' + factor + ' x=' + x.toFixed(0) + ' y=' + y.toFixed(0));
-      var stel = window.stellarium;
-      if (stel && stel._core_on_zoom) {
+      var module = window.stelModule || window.stellarium;
+      if (module && module._core_on_zoom) {
         window._flutterForwardingEvent = true;
-        stel._core_on_zoom(factor, x, y);
+        module._core_on_zoom(factor, x, y);
         window._flutterForwardingEvent = false;
       }
     };
@@ -601,32 +629,32 @@
 
       // Touch/mouse event forwarding from Flutter (since pointer-events: none)
       onTouchStart: function(id, x, y) {
-        var stel = window.stellarium;
-        if (stel && stel._core_on_mouse) {
-          stel._core_on_mouse(id, 1, x, y, 1); // state=1 (down), buttons=1
+        var module = window.stelModule || window.stellarium;
+        if (module && module._core_on_mouse) {
+          module._core_on_mouse(id, 1, x, y, 1); // state=1 (down), buttons=1
         }
       },
 
       onTouchMove: function(id, x, y) {
-        var stel = window.stellarium;
-        if (!window.gyroscopeEnabled && stel && stel._core_on_mouse) {
-          stel._core_on_mouse(id, -1, x, y, 1); // state=-1 (move), buttons=1
+        var module = window.stelModule || window.stellarium;
+        if (!window.gyroscopeEnabled && module && module._core_on_mouse) {
+          module._core_on_mouse(id, -1, x, y, 1); // state=-1 (move), buttons=1
         }
       },
 
       onTouchEnd: function(id, x, y) {
-        var stel = window.stellarium;
-        if (stel && stel._core_on_mouse) {
-          stel._core_on_mouse(id, 0, x, y, 1); // state=0 (up), buttons=1
+        var module = window.stelModule || window.stellarium;
+        if (module && module._core_on_mouse) {
+          module._core_on_mouse(id, 0, x, y, 1); // state=0 (up), buttons=1
         }
       },
 
       onMouseWheel: function(deltaY, x, y) {
-        var stel = window.stellarium;
-        if (stel && stel._core_on_zoom) {
+        var module = window.stelModule || window.stellarium;
+        if (module && module._core_on_zoom) {
           // Convert deltaY to zoom factor (negative = zoom in, positive = zoom out)
           const factor = deltaY > 0 ? 1.1 : 0.9;
-          stel._core_on_zoom(factor, x, y);
+          module._core_on_zoom(factor, x, y);
         }
       }
     };
