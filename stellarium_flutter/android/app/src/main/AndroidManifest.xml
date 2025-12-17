@@ -1,12 +1,15 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- FCM push notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Remove AD_ID permission to comply with Google Play policy for API 33+ -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
     <application
         android:usesCleartextTraffic="true"
-        android:label="NStar Registration Planetarium"
+        android:label="Star Registration Planetarium"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -46,6 +49,16 @@
             android:value="false" />
         <meta-data
             android:name="AdaptyGoogleAdvertisingIdCollectionDisabled"
+            android:value="true" />
+
+        <!-- Disable Google Analytics advertising ID collection -->
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
+
+        <!-- Disable Klaviyo advertising ID collection -->
+        <meta-data
+            android:name="com.klaviyo.core.networking.AnalyticsCollector.ADVERTISING_ID_ENABLED"
             android:value="false" />
 
         <!-- Google Maps API Key -->

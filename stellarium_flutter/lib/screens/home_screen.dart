@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -21,6 +22,7 @@ import '../widgets/star_info_sheet.dart';
 import '../widgets/stellarium_webview.dart';
 import '../widgets/time_slider.dart';
 import 'certificate_scanner_screen.dart';
+import 'certificate_scanner_screen_web.dart';
 import 'star_viewer_screen.dart';
 
 const String _googleApiKey = 'AIzaSyCc4LPIozIoEHVAMFz5uyQ_LrT1nAlbmfc';
@@ -259,8 +261,9 @@ class _HomeScreenState extends State<HomeScreen> {
               onGyroscopeAvailabilityChanged: (available) {
                 setState(() {
                   _gyroscopeAvailable = available;
-                  // Auto-enable gyroscope when it becomes available
-                  if (available && !_gyroscopeEnabled) {
+                  // Auto-enable gyroscope when it becomes available (mobile only)
+                  // On web, require explicit user tap to trigger permission request
+                  if (!kIsWeb && available && !_gyroscopeEnabled) {
                     _gyroscopeEnabled = true;
                   }
                 });
@@ -313,7 +316,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   AnalyticsService.instance.logAtmosphereToggle(enabled: newValue);
                   _onSettingChanged('atmosphere', newValue);
                 },
-                onGyroscopeTap: () {
+                onGyroscopeTap: () async {
+                  // On web iOS, must request permission directly from user tap
+                  if (kIsWeb && !_gyroscopeEnabled) {
+                    final granted = await _skyViewKey.currentState?.requestMotionPermission() ?? false;
+                    if (!granted) {
+                      debugPrint('Motion permission denied');
+                      return;
+                    }
+                  }
                   setState(() {
                     _gyroscopeEnabled = !_gyroscopeEnabled;
                     AnalyticsService.instance.logGyroscopeToggle(enabled: _gyroscopeEnabled);
@@ -496,11 +507,19 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       // Normal mode: animate camera to the star
       _skyViewKey.currentState?.webView?.pointAt(searchId);
-      _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
-        if (obj != null) {
-          _skyViewKey.currentState?.engine?.pointAt(obj);
+      // On web, use pointAtByName which calls JS API with registry lookup
+      if (kIsWeb) {
+        final engine = _skyViewKey.currentState?.engine;
+        if (engine != null) {
+          (engine as dynamic).pointAtByName(searchId);
         }
-      });
+      } else {
+        _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
+          if (obj != null) {
+            _skyViewKey.currentState?.engine?.pointAt(obj);
+          }
+        });
+      }
     }
   }
 
@@ -981,6 +1000,13 @@ class _HomeScreenState extends State<HomeScreen> {
           labelId,
           star.displayName,
         );
+        // Web support
+        if (kIsWeb) {
+          final engine = _skyViewKey.currentState?.engine;
+          if (engine != null) {
+            (engine as dynamic).addPersistentLabel(labelId, star.displayName);
+          }
+        }
       }
     }
   }
@@ -1229,7 +1255,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (context) => const CertificateScannerScreen(),
+        builder: (context) => kIsWeb
+            ? const CertificateScannerScreenWeb()
+            : const CertificateScannerScreen(),
       ),
     );
 
@@ -1326,6 +1354,13 @@ class _HomeScreenState extends State<HomeScreen> {
               labelId,
               registeredName,
             );
+            // Web support
+            if (kIsWeb) {
+              final engine = _skyViewKey.currentState?.engine;
+              if (engine != null) {
+                (engine as dynamic).addPersistentLabel(labelId, registeredName);
+              }
+            }
           }
         }
 
@@ -1503,6 +1538,13 @@ class _HomeScreenState extends State<HomeScreen> {
         labelId,
         registeredName,
       );
+      // Web support
+      if (kIsWeb) {
+        final engine = _skyViewKey.currentState?.engine;
+        if (engine != null) {
+          (engine as dynamic).addPersistentLabel(labelId, registeredName);
+        }
+      }
     }
   }
 

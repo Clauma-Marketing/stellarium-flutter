@@ -732,4 +732,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get privacyPolicy => '隐私政策';
+
+  @override
+  String get ok => '确定';
+
+  @override
+  String get scannerNotAvailable => '扫描仪不可用';
+
+  @override
+  String get scannerNotAvailableOnWeb => '证书扫描仪需要相机,仅在移动应用程序中可用。请手动输入您的注册号码。';
 }

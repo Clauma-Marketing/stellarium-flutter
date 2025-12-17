@@ -340,5 +340,9 @@
   "legal": "Legal",
   "legalSubtitle": "Terms of Use & Privacy Policy",
   "termsOfUse": "Terms of Use",
-  "privacyPolicy": "Privacy Policy"
+  "privacyPolicy": "Privacy Policy",
+
+  "ok": "OK",
+  "scannerNotAvailable": "Scanner Not Available",
+  "scannerNotAvailableOnWeb": "The certificate scanner requires a camera and is only available on the mobile app. Please enter your registration number manually."
 }

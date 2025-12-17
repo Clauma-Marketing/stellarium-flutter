@@ -5,13 +5,12 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:motion_core/motion_core.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 
 import '../stellarium/stellarium.dart';
 import 'stellarium_webview.dart';
+import 'web_sensors.dart' as web_sensors;
 
 /// A widget that displays the Stellarium sky view with gesture controls.
 class SkyView extends StatefulWidget {
@@ -90,6 +89,21 @@ class SkyViewState extends State<SkyView> {
     });
   }
 
+  /// Request motion sensor permission (must be called from user gesture on iOS web)
+  /// Returns true if permission granted or not needed
+  Future<bool> requestMotionPermission() async {
+    if (!kIsWeb) return true;
+
+    if (web_sensors.hasDeviceOrientationPermissionApi()) {
+      debugPrint('Requesting DeviceOrientation permission...');
+      final granted = await web_sensors.requestOrientationPermission();
+      debugPrint('DeviceOrientation permission: ${granted ? "granted" : "denied"}');
+      return granted;
+    }
+    // No permission API needed (non-iOS or older browser)
+    return true;
+  }
+
   /// Forward a pointer down event to the engine (called from parent widget)
   void onPointerDown(PointerDownEvent event, double devicePixelRatio) {
     if (_touchBlocked || !kIsWeb) return;
@@ -131,14 +145,12 @@ class SkyViewState extends State<SkyView> {
   }
 
   // Gyroscope and sensors
-  StreamSubscription<GyroscopeEvent>? _gyroSubscription;
   StreamSubscription<CompassEvent>? _compassSubscription;
-  StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<MotionData>? _motionSubscription;
+  // Web-specific: store the deviceorientation event listener for cleanup
+  web_sensors.WebEventListener? _webDeviceOrientationListener;
   bool _gyroscopeAvailable = false;
   bool _compassAvailable = false;
-  bool _isCalibrated = false;
-  bool _useMotionCore = false;
 
   // When interacting with the screen in gyroscope mode, we temporarily damp
   // orientation updates to avoid tap-induced shake, especially when zoomed in.
@@ -154,10 +166,6 @@ class SkyViewState extends State<SkyView> {
   double _compassHeading = 0.0;
   double _filteredCompassHeading = 0.0;
   bool _compassInitialized = false;
-  double _compassAzimuthRad = 0.0;
-  double _gyroHeadingRad = 0.0;
-  bool _gyroHeadingInitialized = false;
-  int? _lastGyroTimestampMicros;
 
   // MotionCore on iOS uses an arbitrary reference frame for yaw. We align it to
   // magnetic north using the filtered compass heading.
@@ -201,40 +209,18 @@ class SkyViewState extends State<SkyView> {
   bool _compassFlipped = false;
   double _lastRawCompass = 0.0;
 
-  // Low-pass filtered accelerometer values (for stable altitude)
-  double _filteredAccX = 0.0;
-  double _filteredAccY = 0.0;
-  double _filteredAccZ = 0.0;
+  // Web-specific: track if we're getting absolute compass data
+  bool _webHasAbsoluteCompass = false;
+  // Web-specific: flip detection (same as mobile but tracked separately)
+  bool _webCompassFlipped = false;
+  double _webLastRawCompass = 0.0;
 
   // Debug frame counter
   int _debugFrameCount = 0;
 
-  // Dead zone thresholds - set to 0 so we forward every change to the engine
-  static const double _compassDeadZone = 0.0;
-  static const double _altitudeDeadZone = 0.0;
-  static const double _compassFusionGainStill = 0.0; // Gyro-only while running
-  static const double _compassFusionGainMoving =
-      0.0; // No compass correction while turning
-  static const double _maxGyroDtSeconds = 0.25;
-  static const double _motionStillYawRadPerSec = 0.03; // ~1.7°/s
-  static const double _correctionDeadZoneRad = 0.01; // ~0.57°
-  static const double _yawStartThresholdRadPerSec =
-      0.07; // Require >4.0°/s to start motion
-  static const double _yawStopThresholdRadPerSec =
-      0.03; // Drop below 1.7°/s to stop
-  static const int _yawStartHoldMs = 90; // Require sustained motion to engage
-  static const int _yawStopHoldMs =
-      140; // Require sustained stillness to disengage
-  static const double _stillHeadingDamp =
-      0.1; // Light smoothing when effectively still
-
   // Output smoothing to reduce jitter when holding still.
-  // We smooth the azimuth/altitude we send to the engine, and apply a small
-  // dead-zone for micro-movements.
   static const double _azimuthOutputDeadZoneRad = 0.0012; // ~0.07°
   static const double _altitudeOutputDeadZoneRad = 0.0012; // ~0.07°
-  static const double _gyroMotionThresholdRadPerSec =
-      0.035; // ~2.0°/s overall motion
 
   // Last applied values (for dead zone comparison)
   double _lastAppliedAzimuth = 0.0;
@@ -242,9 +228,6 @@ class SkyViewState extends State<SkyView> {
   double _smoothedAzimuth = 0.0;
   double _smoothedAltitude = math.pi / 4;
   bool _smoothedOrientationInitialized = false;
-  bool _yawActive = false;
-  int? _yawAboveSinceMs;
-  int? _yawBelowSinceMs;
 
   @override
   void initState() {
@@ -276,25 +259,16 @@ class SkyViewState extends State<SkyView> {
     // Check if device has required sensors
     debugPrint('Sensors: checking availability...');
 
-    // Prefer native fused attitude if available
-    try {
-      final motionAvailable = await MotionCore.isAvailable();
-      if (motionAvailable) {
-        _useMotionCore = true;
-        _gyroscopeAvailable = true;
-        debugPrint('MotionCore: available = true');
-      } else {
-        _useMotionCore = false;
-        debugPrint(
-            'MotionCore: available = false, falling back to raw sensors');
-      }
-    } catch (e, stackTrace) {
-      _useMotionCore = false;
-      debugPrint('MotionCore availability error: $e');
-      FirebaseCrashlytics.instance.recordError(e, stackTrace);
-    }
+    // On web, use DeviceOrientationEvent (skip MotionCore which isn't available)
+    if (kIsWeb) {
+      debugPrint('Sensors: checking web DeviceOrientationEvent...');
 
-    if (_useMotionCore) {
+      // DeviceOrientationEvent is available in all modern browsers
+      // On iOS 13+, it requires user permission which is requested on first use
+      // We'll assume it's available and handle errors when starting
+      _gyroscopeAvailable = true;
+      debugPrint('Web DeviceOrientation: assumed available (will test on start)');
+
       widget.onGyroscopeAvailabilityChanged?.call(_gyroscopeAvailable);
       if (widget.gyroscopeEnabled && _gyroscopeAvailable) {
         _startGyroscope();
@@ -302,66 +276,20 @@ class SkyViewState extends State<SkyView> {
       return;
     }
 
-    // Test gyroscope
+    // Mobile: Use MotionCore for fused attitude
     try {
-      bool gyroError = false;
-      final testSub = gyroscopeEventStream().listen(
-        (event) {
-          debugPrint(
-              'Gyroscope: test event received: x=${event.x}, y=${event.y}, z=${event.z}');
-        },
-        onError: (error, stackTrace) {
-          gyroError = true;
-          // Only report unexpected errors to Crashlytics (not NO_SENSOR)
-          if (error is PlatformException && error.code == 'NO_SENSOR') {
-            debugPrint('Gyroscope: not available on this device');
-          } else {
-            debugPrint('Gyroscope: unexpected error: $error');
-            FirebaseCrashlytics.instance.recordError(error, stackTrace);
-          }
-        },
-        cancelOnError: true,
-      );
-      await Future.delayed(const Duration(milliseconds: 500));
-      await testSub.cancel();
-      _gyroscopeAvailable = !gyroError;
-      debugPrint('Gyroscope: available = $_gyroscopeAvailable');
-    } on PlatformException catch (e, stackTrace) {
-      _gyroscopeAvailable = false;
-      // Only report unexpected errors to Crashlytics (not NO_SENSOR)
-      if (e.code == 'NO_SENSOR') {
-        debugPrint('Gyroscope: not available on this device');
+      final motionAvailable = await MotionCore.isAvailable();
+      if (motionAvailable) {
+        _gyroscopeAvailable = true;
+        debugPrint('MotionCore: available = true');
       } else {
-        debugPrint('Gyroscope: unexpected error: ${e.code}');
-        FirebaseCrashlytics.instance.recordError(e, stackTrace);
+        _gyroscopeAvailable = false;
+        debugPrint('MotionCore: not available - gyroscope mode disabled');
       }
     } catch (e, stackTrace) {
       _gyroscopeAvailable = false;
-      debugPrint('Gyroscope: available = false, error: $e');
+      debugPrint('MotionCore availability error: $e');
       FirebaseCrashlytics.instance.recordError(e, stackTrace);
-    }
-
-    // Test compass (flutter_compass uses Core Location on iOS for reliable heading)
-    try {
-      bool compassReceived = false;
-      final compassTestSub = FlutterCompass.events?.listen((event) {
-        if (!compassReceived && event.heading != null) {
-          compassReceived = true;
-          debugPrint(
-              'Compass: test heading received: ${event.heading!.toStringAsFixed(1)}°');
-        }
-      }, onError: (e) {
-        debugPrint('Compass: test error: $e');
-      });
-      await Future.delayed(const Duration(milliseconds: 500));
-      await compassTestSub?.cancel();
-      debugPrint('Compass: available = $compassReceived');
-      if (!compassReceived) {
-        debugPrint(
-            'Compass: WARNING - No heading received! AR mode may not work correctly.');
-      }
-    } catch (e) {
-      debugPrint('Compass: not available, error: $e');
     }
 
     widget.onGyroscopeAvailabilityChanged?.call(_gyroscopeAvailable);
@@ -378,19 +306,13 @@ class SkyViewState extends State<SkyView> {
     }
 
     debugPrint('AR Mode: starting sensors');
-    _isCalibrated = false;
 
     // Disable touch panning in the WebView while gyroscope is active
-    _webViewKey.currentState?.setGyroscopeEnabled(true);
+    if (!kIsWeb) {
+      _webViewKey.currentState?.setGyroscopeEnabled(true);
+    }
 
-    // Reset filtered values so they initialize from first reading
-    _filteredAccX = 0.0;
-    _filteredAccY = 0.0;
-    _filteredAccZ = 0.0;
-    _gyroHeadingInitialized = false;
-    _gyroHeadingRad = 0.0;
-    _compassAzimuthRad = 0.0;
-    _lastGyroTimestampMicros = null;
+    // Reset state
     _lastAppliedAzimuth = 0.0;
     _lastAppliedAltitude = 0.0;
     _smoothedAzimuth = 0.0;
@@ -404,23 +326,25 @@ class SkyViewState extends State<SkyView> {
     _compassNeedsCalibration = false;
     _compassBadSinceMs = null;
 
-    if (_useMotionCore) {
-      // Ensure raw-sensor subscriptions are stopped. Keep compass running for
-      // yaw alignment to north.
-      _gyroSubscription?.cancel();
-      _gyroSubscription = null;
-      _accelerometerSubscription?.cancel();
-      _accelerometerSubscription = null;
-
-      _motionSubscription?.cancel();
-      _motionSubscription = MotionCore.motionStream.listen(
-        _onMotionData,
-        onError: (e, stackTrace) {
-          debugPrint('MotionCore stream error: $e');
-          FirebaseCrashlytics.instance.recordError(e, stackTrace);
-        },
-      );
+    // Web platform: use DeviceOrientationEvent
+    if (kIsWeb) {
+      // Reset web-specific state
+      _webHasAbsoluteCompass = false;
+      _webCompassFlipped = false;
+      _webLastRawCompass = 0.0;
+      _startWebSensors();
+      return;
     }
+
+    // Mobile: Use MotionCore
+    _motionSubscription?.cancel();
+    _motionSubscription = MotionCore.motionStream.listen(
+      _onMotionData,
+      onError: (e, stackTrace) {
+        debugPrint('MotionCore stream error: $e');
+        FirebaseCrashlytics.instance.recordError(e, stackTrace);
+      },
+    );
 
     // Start compass for heading (uses Core Location on iOS for reliable compass)
     _compassSubscription?.cancel();
@@ -484,207 +408,189 @@ class SkyViewState extends State<SkyView> {
     }, onError: (e) {
       debugPrint('Compass error: $e');
     });
-
-    if (_useMotionCore) return;
-
-    // Start accelerometer for device tilt (altitude)
-    _accelerometerSubscription?.cancel();
-    _accelerometerSubscription = accelerometerEventStream(
-      samplingPeriod: SensorInterval.gameInterval,
-    ).listen((event) {
-      final ax = event.x;
-      final ay = event.y;
-      final az = event.z;
-      // Initialize filter with first reading, then apply adaptive filter
-      if (_filteredAccX == 0.0 &&
-          _filteredAccY == 0.0 &&
-          _filteredAccZ == 0.0) {
-        _filteredAccX = ax;
-        _filteredAccY = ay;
-        _filteredAccZ = az;
-      } else {
-        // Adaptive filtering based on movement magnitude
-        final diffX = ax - _filteredAccX;
-        final diffY = ay - _filteredAccY;
-        final diffZ = az - _filteredAccZ;
-        final diffMag = diffX.abs() + diffY.abs() + diffZ.abs();
-        final double alpha =
-            diffMag < 0.5 ? 0.08 : (diffMag < 2.0 ? 0.18 : 0.3);
-
-        _filteredAccX = _filteredAccX + alpha * diffX;
-        _filteredAccY = _filteredAccY + alpha * diffY;
-        _filteredAccZ = _filteredAccZ + alpha * diffZ;
-      }
-    }, onError: (e) {
-      debugPrint('Accelerometer error: $e');
-    });
-
-    // Start gyroscope for triggering view updates at high frequency
-    _gyroSubscription?.cancel();
-    _gyroSubscription = gyroscopeEventStream(
-      samplingPeriod: SensorInterval.gameInterval,
-    ).listen(_onGyroscopeEvent, onError: (e) {
-      debugPrint('Gyroscope error: $e');
-    });
-  }
-
-  void _updateOrientationFromSensors() {
-    // Need both compass and accelerometer data
-    if (!_compassAvailable) return;
-    if (_filteredAccX == 0 && _filteredAccY == 0 && _filteredAccZ == 0) return;
-
-    final ax = _filteredAccX;
-    final ay = _filteredAccY;
-    final az = _filteredAccZ;
-
-    // Normalize accelerometer to get gravity direction
-    final accNorm = math.sqrt(ax * ax + ay * ay + az * az);
-    if (accNorm < 0.1) return; // Invalid reading
-
-    final upZ = az / accNorm;
-
-    // Altitude: how much the camera (-Z direction) points above/below horizon
-    // When phone is upright facing horizon: az ≈ 0 → upZ ≈ 0 → altitude ≈ 0
-    // When phone points at zenith (screen up): az ≈ -9.8 → upZ ≈ -1 → altitude = 90°
-    _currentAltitude = math.asin((-upZ).clamp(-1.0, 1.0));
-
-    final altitudeDeg = _currentAltitude.abs() * 180.0 / math.pi;
-
-    // Track compass heading (radians) and use it to seed the gyro integrator
-    _compassAzimuthRad = _filteredCompassHeading * math.pi / 180.0;
-    if (!_gyroHeadingInitialized) {
-      _gyroHeadingRad = _compassAzimuthRad;
-      _gyroHeadingInitialized = true;
-    }
-
-    if (!_isCalibrated) {
-      _isCalibrated = true;
-      debugPrint('AR Mode: calibrated');
-    }
-
-    // Periodic debug output (every 60 frames ≈ 1 second)
-    _debugFrameCount++;
-    if (_debugFrameCount % 60 == 0) {
-      debugPrint(
-          'DEBUG: compass=${_filteredCompassHeading.toStringAsFixed(1)}° (raw=${_compassHeading.toStringAsFixed(1)}°), alt=${altitudeDeg.toStringAsFixed(1)}°, fov=${_currentFovDeg.toStringAsFixed(1)}°${_compassFlipped ? " FLIP" : ""}');
-    }
   }
 
   void _stopGyroscope() {
     _motionSubscription?.cancel();
     _motionSubscription = null;
-    _gyroSubscription?.cancel();
-    _gyroSubscription = null;
     _compassSubscription?.cancel();
     _compassSubscription = null;
-    _accelerometerSubscription?.cancel();
-    _accelerometerSubscription = null;
-    _isCalibrated = false;
+
+    // Remove web DeviceOrientationEvent listener
+    if (kIsWeb && _webDeviceOrientationListener != null) {
+      web_sensors.removeDeviceOrientationListener(_webDeviceOrientationListener);
+      _webDeviceOrientationListener = null;
+
+      // Tell the engine that gyroscope mode is disabled
+      if (_engine != null) {
+        final webEngine = _engine as dynamic;
+        webEngine.setGyroscopeEnabled(false);
+      }
+    }
+
     _compassAvailable = false;
-    _gyroHeadingInitialized = false;
-    _lastGyroTimestampMicros = null;
     _touchActive = false;
     _lastTouchChangeMs = null;
     _compassAccuracyDeg = null;
     _compassNeedsCalibration = false;
     _compassBadSinceMs = null;
 
-    // Re-enable touch panning in the WebView
-    _webViewKey.currentState?.setGyroscopeEnabled(false);
+    // Re-enable touch panning in the WebView (mobile only)
+    if (!kIsWeb) {
+      _webViewKey.currentState?.setGyroscopeEnabled(false);
+    }
   }
 
-  void _onGyroscopeEvent(GyroscopeEvent event) {
-    if (!_isInitialized) return;
+  /// Start sensors for web platform using DeviceOrientationEvent
+  void _startWebSensors() {
+    // Permission should already be granted (requested from user tap in home_screen)
+    _setupWebOrientationListener();
+  }
 
-    // Update orientation from accelerometer/compass
-    _updateOrientationFromSensors();
+  /// Set up the DeviceOrientationEvent listener
+  void _setupWebOrientationListener() {
+    // Remove any existing listener
+    if (_webDeviceOrientationListener != null) {
+      web_sensors.removeDeviceOrientationListener(_webDeviceOrientationListener);
+      _webDeviceOrientationListener = null;
+    }
 
-    if (!_isCalibrated || !_gyroHeadingInitialized) {
-      _lastGyroTimestampMicros ??= DateTime.now().microsecondsSinceEpoch;
-      _currentAzimuth = _gyroHeadingRad;
+    // Create the event listener using the web_sensors abstraction
+    _webDeviceOrientationListener = web_sensors.addDeviceOrientationListener(
+      (event) => _onWebDeviceOrientation(event),
+    );
+
+    // Tell the engine that gyroscope mode is active (disables native panning)
+    if (_engine != null) {
+      final webEngine =
+          _engine as dynamic; // Cast to access web-specific method
+      webEngine.setGyroscopeEnabled(true);
+    }
+
+    _compassAvailable = true;
+    _compassInitialized = false;
+    debugPrint('Web AR Mode: DeviceOrientationEvent listener added');
+  }
+
+  /// Handle DeviceOrientationEvent on web
+  void _onWebDeviceOrientation(dynamic event) {
+    if (!_isInitialized) {
+      debugPrint('Web DeviceOrientation: engine not initialized, skipping');
       return;
     }
 
-    // Integrate gyroscope (z = yaw) for responsiveness, correct drift toward compass
-    final nowMicros = DateTime.now().microsecondsSinceEpoch;
-    if (_lastGyroTimestampMicros == null) {
-      _lastGyroTimestampMicros = nowMicros;
-      _currentAzimuth = _gyroHeadingRad;
-      return;
-    }
-    final dt = (nowMicros - _lastGyroTimestampMicros!) / 1000000.0;
-    _lastGyroTimestampMicros = nowMicros;
-    if (dt <= 0 || dt > _maxGyroDtSeconds) {
-      _currentAzimuth = _gyroHeadingRad;
+    final beta = web_sensors.getEventBeta(event);   // Front-back tilt (-180 to 180)
+    final gamma = web_sensors.getEventGamma(event); // Left-right tilt (-90 to 90)
+
+    if (beta == null) {
+      debugPrint('Web DeviceOrientation: beta is null, skipping');
       return;
     }
 
-    // Project gyro onto gravity/up vector so yaw tracks correctly regardless of phone tilt
-    double yawRate = event.z;
-    final accNorm = math.sqrt(_filteredAccX * _filteredAccX +
-        _filteredAccY * _filteredAccY +
-        _filteredAccZ * _filteredAccZ);
-    if (accNorm > 0.1) {
-      final upX = _filteredAccX / accNorm;
-      final upY = _filteredAccY / accNorm;
-      final upZ = _filteredAccZ / accNorm;
-      yawRate = event.x * upX + event.y * upY + event.z * upZ;
+    // Get the best available compass heading (webkitCompassHeading on iOS, absolute alpha on Android)
+    final compassHeadingDeg = web_sensors.getBestCompassHeading(event);
+
+    // Check if we have absolute orientation data
+    final hasAbsolute = web_sensors.hasAbsoluteOrientation(event);
+    if (hasAbsolute && !_webHasAbsoluteCompass) {
+      _webHasAbsoluteCompass = true;
+      debugPrint('Web AR Mode: absolute compass available');
     }
-    double absYawRate = yawRate.abs();
 
-    final nowMs = nowMicros ~/ 1000;
-
-    // Hysteresis with hold times: only treat as moving if above start threshold for a bit,
-    // and require sustained stillness before stopping.
-    if (_yawActive) {
-      if (absYawRate < _yawStopThresholdRadPerSec) {
-        _yawBelowSinceMs ??= nowMs;
-        if (nowMs - _yawBelowSinceMs! >= _yawStopHoldMs) {
-          _yawActive = false;
-          _yawAboveSinceMs = null;
-          _yawBelowSinceMs = null;
-        }
-      } else {
-        _yawBelowSinceMs = null;
-      }
+    // If we don't have absolute compass, fall back to alpha (but warn)
+    double rawHeadingDeg;
+    if (compassHeadingDeg != null) {
+      rawHeadingDeg = compassHeadingDeg;
     } else {
-      if (absYawRate > _yawStartThresholdRadPerSec) {
-        _yawAboveSinceMs ??= nowMs;
-        if (nowMs - _yawAboveSinceMs! >= _yawStartHoldMs) {
-          _yawActive = true;
-          _yawBelowSinceMs = null;
-        }
-      } else {
-        _yawAboveSinceMs = null;
+      // Fallback to alpha (may be arbitrary reference frame on iOS)
+      final alpha = web_sensors.getEventAlpha(event);
+      if (alpha == null) {
+        debugPrint('Web DeviceOrientation: no compass heading available');
+        return;
+      }
+      rawHeadingDeg = alpha;
+      if (_debugFrameCount % 300 == 0) {
+        debugPrint('Web AR Mode: WARNING - using non-absolute alpha (compass may drift)');
       }
     }
 
-    if (!_yawActive) {
-      yawRate = 0.0;
-      absYawRate = 0.0;
+    // Detect 180° flip by checking if raw compass suddenly jumped ~180° (same as mobile)
+    double correctedHeadingDeg = rawHeadingDeg;
+    if (_compassInitialized) {
+      double rawDiff = (rawHeadingDeg - _webLastRawCompass).abs();
+      // Handle wrap-around
+      if (rawDiff > 180) rawDiff = 360 - rawDiff;
+
+      // If compass jumped close to 180° (between 150° and 210°), toggle flip state
+      if (rawDiff > 150 && rawDiff < 210) {
+        _webCompassFlipped = !_webCompassFlipped;
+        debugPrint('Web AR Mode: 180° flip detected, flipped=$_webCompassFlipped');
+      }
+    }
+    _webLastRawCompass = rawHeadingDeg;
+
+    // Apply flip compensation if needed
+    if (_webCompassFlipped) {
+      correctedHeadingDeg = (rawHeadingDeg + 180.0) % 360.0;
     }
 
-    // Gyro coordinates are right-handed; negate yaw so clockwise turns increase heading like the compass
-    _gyroHeadingRad = _normalizeRadians(_gyroHeadingRad - yawRate * dt);
+    // Apply adaptive filtering to compass heading
+    if (!_compassInitialized) {
+      _filteredCompassHeading = correctedHeadingDeg;
+      _compassInitialized = true;
+      debugPrint('Web AR Mode: calibrated with heading=${correctedHeadingDeg.toStringAsFixed(1)}° (absolute=$_webHasAbsoluteCompass)');
+    } else {
+      // Calculate shortest angular difference
+      double diff = correctedHeadingDeg - _filteredCompassHeading;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
 
-    // Compass is only used for initial seeding; no ongoing correction while running
+      // Adaptive filtering
+      final absDiff = diff.abs();
+      final double filterAlpha = absDiff < 2.0 ? 0.1 : (absDiff < 8.0 ? 0.25 : 0.4);
+      _filteredCompassHeading += filterAlpha * diff;
 
-    // Light damping when effectively still to avoid micro jitter
-    if (!_yawActive) {
-      _gyroHeadingRad = _lerpAngleRadians(
-          _currentAzimuth, _gyroHeadingRad, _stillHeadingDamp);
+      // Normalize to 0-360
+      if (_filteredCompassHeading < 0) _filteredCompassHeading += 360;
+      if (_filteredCompassHeading >= 360) _filteredCompassHeading -= 360;
     }
-    _currentAzimuth = _gyroHeadingRad;
 
-    final gyroMag =
-        math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
-    final deviceMoving = _yawActive || gyroMag > _gyroMotionThresholdRadPerSec;
+    // Convert to radians for azimuth
+    _currentAzimuth = _filteredCompassHeading * math.pi / 180.0;
+
+    // Calculate altitude from beta
+    // beta: -180 to 180 degrees, where:
+    //   - beta = 0: phone flat, screen up → back of phone faces DOWN → looking down
+    //   - beta = 90: phone vertical, screen facing user → looking at horizon
+    //   - beta = 180/-180: phone flat, screen down → back faces UP → looking up
+    //
+    // Formula: tiltDeg = beta - 90
+    //   - beta = 0 → tiltDeg = -90 (looking down at ground)
+    //   - beta = 90 → tiltDeg = 0 (looking at horizon)
+    //   - beta = 180 → tiltDeg = 90 (looking up at sky)
+    final tiltDeg = beta - 90.0;
+    _currentAltitude = (tiltDeg * math.pi / 180.0).clamp(-math.pi / 2, math.pi / 2);
+
+    // Determine if device is moving (simple heuristic based on change rate)
+    final deviceMoving = true; // Always responsive on web
+
     _applySmoothedOrientation(
       targetAzimuth: _currentAzimuth,
       targetAltitude: _currentAltitude,
       deviceMoving: deviceMoving,
     );
+
+    // Debug output periodically
+    _debugFrameCount++;
+    if (_debugFrameCount % 60 == 0) {
+      debugPrint(
+        'Web DeviceOrientation: heading=${correctedHeadingDeg.toStringAsFixed(1)}° beta=${beta.toStringAsFixed(1)}° '
+        'gamma=${gamma?.toStringAsFixed(1) ?? "null"}° -> az=${(_currentAzimuth * 180 / math.pi).toStringAsFixed(1)}° '
+        'alt=${(_currentAltitude * 180 / math.pi).toStringAsFixed(1)}° (absolute=$_webHasAbsoluteCompass, flipped=$_webCompassFlipped)'
+      );
+    }
   }
+
 
   void _onMotionData(MotionData data) {
     if (!_isInitialized) return;
@@ -715,8 +621,8 @@ class SkyViewState extends State<SkyView> {
           '[SKYVIEW] MotionCore yaw calibrated to compass (offset=${_motionYawOffsetRad.toStringAsFixed(3)} rad)');
     }
 
-    // MotionCore yaw uses right-hand rule (positive CCW). Negate so clockwise
-    // turns increase azimuth like the engine expects, then apply offset if known.
+    // MotionCore yaw uses right-hand rule (positive CCW) after platform normalization.
+    // Negate so clockwise turns increase azimuth like the engine expects, then apply offset.
     final azimuth = _normalizeRadians(
         -yaw + (_motionYawOffsetInitialized ? _motionYawOffsetRad : 0.0));
 
@@ -748,11 +654,47 @@ class SkyViewState extends State<SkyView> {
       // Set render callback
       _engine!.onRender = _onEngineRender;
 
+      // Set up selection callback for web
+      if (kIsWeb) {
+        _setupWebSelectionCallback();
+      }
+
       setState(() {});
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to create engine: $e';
       });
+    }
+  }
+
+  void _setupWebSelectionCallback() {
+    // Import the web engine type dynamically
+    final engine = _engine;
+    if (engine == null) return;
+
+    // Use dynamic to access web-specific property
+    try {
+      (engine as dynamic).onSelectionChanged = (Map<String, dynamic>? info) {
+        if (info == null || !mounted) return;
+
+        final selectionInfo = SelectedObjectInfo(
+          name: info['name'] as String? ?? 'Unknown',
+          displayName: info['name'] as String? ?? 'Unknown',
+          names: (info['names'] as List?)?.cast<String>() ?? [],
+          type: info['type'] as String? ?? 'unknown',
+          magnitude: (info['vmag'] as num?)?.toDouble(),
+          ra: (info['ra'] as num?)?.toDouble(),
+          dec: (info['dec'] as num?)?.toDouble(),
+          distance: (info['distance'] as num?)?.toDouble(),
+          hip: (info['hip'] as num?)?.toInt(),
+          gaia: (info['gaia'] as num?)?.toInt(),
+        );
+
+        debugPrint('[SKYVIEW] Web selection: ${selectionInfo.name}');
+        widget.onObjectSelected?.call(selectionInfo);
+      };
+    } catch (e) {
+      debugPrint('[SKYVIEW] Failed to set up web selection callback: $e');
     }
   }
 
@@ -792,6 +734,9 @@ class SkyViewState extends State<SkyView> {
       setState(() {
         _isInitialized = true;
       });
+
+      // Notify parent that engine is ready (for web)
+      widget.onEngineReady?.call(true);
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to initialize engine: $e';
@@ -1001,54 +946,68 @@ class SkyViewState extends State<SkyView> {
           );
         }
 
-        final dpr = MediaQuery.of(context).devicePixelRatio;
-
-        // Event forwarding Listener is now INSIDE SkyView.
-        // This means UI elements in the parent Stack (home_screen) are hit-tested
-        // BEFORE this widget. Only events that "fall through" (don't hit any UI)
-        // reach this Listener and get forwarded to Stellarium.
+        // On web, canvas has pointer-events: none, so Flutter must forward events.
+        // Flutter's hit-testing ensures UI elements block touches naturally -
+        // only touches that reach this widget (not blocked by UI) get forwarded.
+        // Note: Coordinates are in CSS pixels (logical pixels), NOT physical pixels.
+        // The canvas style is set in CSS pixels while canvas.width/height are physical,
+        // but the engine expects CSS pixel coordinates for proper hit testing.
         return Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: (event) {
-            debugPrint(
-                '[SKYVIEW] onPointerDown at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
             if (_touchBlocked) return;
-            _engine?.onPointerDown(
-              event.pointer,
-              event.localPosition.dx * dpr,
-              event.localPosition.dy * dpr,
-            );
+            final x = event.localPosition.dx;
+            final y = event.localPosition.dy;
+            _engine?.onPointerDown(event.pointer, x, y);
+            // Track for tap detection
+            _touchStartX = x;
+            _touchStartY = y;
+            _touchStartTime = DateTime.now().millisecondsSinceEpoch;
           },
           onPointerMove: (event) {
             if (_touchBlocked) return;
-            // When gyroscope is enabled, block single-finger panning but allow
-            // multi-finger gestures (pinch-to-zoom)
-            if (widget.gyroscopeEnabled) {
-              return; // Web doesn't track multi-touch the same way
-            }
+            if (widget.gyroscopeEnabled) return;
             _engine?.onPointerMove(
               event.pointer,
-              event.localPosition.dx * dpr,
-              event.localPosition.dy * dpr,
+              event.localPosition.dx,
+              event.localPosition.dy,
             );
           },
           onPointerUp: (event) {
-            debugPrint(
-                '[SKYVIEW] onPointerUp at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
             if (_touchBlocked) return;
-            _engine?.onPointerUp(
-              event.pointer,
-              event.localPosition.dx * dpr,
-              event.localPosition.dy * dpr,
-            );
+            final x = event.localPosition.dx;
+            final y = event.localPosition.dy;
+            _engine?.onPointerUp(event.pointer, x, y);
+
+            // Tap detection - check if this was a tap (small movement, short duration)
+            if (_touchStartX != null &&
+                _touchStartY != null &&
+                _touchStartTime != null) {
+              final dx = (x - _touchStartX!).abs();
+              final dy = (y - _touchStartY!).abs();
+              final duration =
+                  DateTime.now().millisecondsSinceEpoch - _touchStartTime!;
+              const tapThreshold = 15.0;
+              const tapMaxDuration = 300;
+
+              if (dx < tapThreshold &&
+                  dy < tapThreshold &&
+                  duration < tapMaxDuration) {
+                debugPrint('[SKYVIEW WEB] Tap detected at ($x, $y)');
+                widget.onTap?.call();
+              }
+            }
+            _touchStartX = null;
+            _touchStartY = null;
+            _touchStartTime = null;
           },
           onPointerSignal: (event) {
             if (_touchBlocked) return;
             if (event is PointerScrollEvent) {
               _engine?.onZoom(
                 event.scrollDelta.dy > 0 ? 1.1 : 0.9,
-                event.localPosition.dx * dpr,
-                event.localPosition.dy * dpr,
+                event.localPosition.dx,
+                event.localPosition.dy,
               );
             }
           },
@@ -1308,6 +1267,12 @@ class SkyViewState extends State<SkyView> {
       _webViewKey.currentState
           ?.lookAt(_lastAppliedAzimuth, _lastAppliedAltitude, 0.0);
     } else {
+      // Debug: log lookAt call on web
+      if (_debugFrameCount % 60 == 0) {
+        debugPrint(
+            'Web lookAt: az=${(_lastAppliedAzimuth * 180 / math.pi).toStringAsFixed(1)}° '
+            'alt=${(_lastAppliedAltitude * 180 / math.pi).toStringAsFixed(1)}°');
+      }
       _engine?.lookAt(
         azimuth: _lastAppliedAzimuth,
         altitude: _lastAppliedAltitude,

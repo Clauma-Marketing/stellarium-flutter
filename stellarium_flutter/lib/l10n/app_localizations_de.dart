@@ -772,4 +772,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'Datenschutzerklärung';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get scannerNotAvailable => 'Scanner nicht verfügbar';
+
+  @override
+  String get scannerNotAvailableOnWeb =>
+      'Der Zertifikat-Scanner benötigt eine Kamera und ist nur in der mobilen App verfügbar. Bitte geben Sie Ihre Registrierungsnummer manuell ein.';
 }
