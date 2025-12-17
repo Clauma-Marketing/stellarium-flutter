@@ -22,6 +22,7 @@ import '../widgets/star_info_sheet.dart';
 import '../widgets/stellarium_webview.dart';
 import '../widgets/time_slider.dart';
 import 'certificate_scanner_screen.dart';
+import 'certificate_scanner_screen_web.dart';
 import 'star_viewer_screen.dart';
 
 const String _googleApiKey = 'AIzaSyCc4LPIozIoEHVAMFz5uyQ_LrT1nAlbmfc';
@@ -1254,7 +1255,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (context) => const CertificateScannerScreen(),
+        builder: (context) => kIsWeb
+            ? const CertificateScannerScreenWeb()
+            : const CertificateScannerScreen(),
       ),
     );
 

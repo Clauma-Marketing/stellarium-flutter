@@ -9,7 +9,7 @@
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
     <application
         android:usesCleartextTraffic="true"
-        android:label="NStar Registration Planetarium"
+        android:label="Star Registration Planetarium"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

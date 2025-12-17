@@ -1509,6 +1509,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Privacy Policy'**
   String get privacyPolicy;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @scannerNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanner Not Available'**
+  String get scannerNotAvailable;
+
+  /// No description provided for @scannerNotAvailableOnWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'The certificate scanner requires a camera and is only available on the mobile app. Please enter your registration number manually.'**
+  String get scannerNotAvailableOnWeb;
 }
 
 class _AppLocalizationsDelegate

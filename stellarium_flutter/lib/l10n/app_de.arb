@@ -340,5 +340,9 @@
   "legal": "Rechtliches",
   "legalSubtitle": "Nutzungsbedingungen & Datenschutz",
   "termsOfUse": "Nutzungsbedingungen",
-  "privacyPolicy": "Datenschutzerklärung"
+  "privacyPolicy": "Datenschutzerklärung",
+
+  "ok": "OK",
+  "scannerNotAvailable": "Scanner nicht verfügbar",
+  "scannerNotAvailableOnWeb": "Der Zertifikat-Scanner benötigt eine Kamera und ist nur in der mobilen App verfügbar. Bitte geben Sie Ihre Registrierungsnummer manuell ein."
 }

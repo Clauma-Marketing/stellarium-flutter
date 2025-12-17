@@ -762,4 +762,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get scannerNotAvailable => 'Scanner Not Available';
+
+  @override
+  String get scannerNotAvailableOnWeb =>
+      'The certificate scanner requires a camera and is only available on the mobile app. Please enter your registration number manually.';
 }
