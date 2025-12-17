@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../features/onboarding/onboarding_service.dart';
 import '../l10n/app_localizations.dart';
 import '../services/analytics_service.dart';
+import '../services/app_review_service.dart';
 import '../services/locale_service.dart';
 import '../services/saved_stars_service.dart';
 import '../services/search_history_service.dart';
@@ -35,7 +36,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final GlobalKey<SkyViewState> _skyViewKey = GlobalKey<SkyViewState>();
   final TextEditingController _searchController = TextEditingController();
 
@@ -48,6 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Register for app lifecycle events
+    WidgetsBinding.instance.addObserver(this);
     // Track home screen view
     AnalyticsService.instance.logScreenView(screenName: 'home');
     // Load saved stars and search history
@@ -55,6 +58,31 @@ class _HomeScreenState extends State<HomeScreen> {
     SearchHistoryService.instance.load();
     // Load saved location from onboarding
     _loadSavedLocation();
+    // Initialize and start app review tracking
+    _initAppReviewTracking();
+  }
+
+  Future<void> _initAppReviewTracking() async {
+    await AppReviewService.instance.load();
+    AppReviewService.instance.startTracking();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Handle app lifecycle for review tracking
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        AppReviewService.instance.pauseTracking();
+        break;
+      case AppLifecycleState.resumed:
+        AppReviewService.instance.resumeTracking();
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        break;
+    }
   }
 
   Future<void> _loadSavedLocation() async {
@@ -131,6 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    AppReviewService.instance.stopTracking();
     _timeUpdateTimer?.cancel();
     _searchController.dispose();
     super.dispose();
