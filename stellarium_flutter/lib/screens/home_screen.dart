@@ -260,8 +260,9 @@ class _HomeScreenState extends State<HomeScreen> {
               onGyroscopeAvailabilityChanged: (available) {
                 setState(() {
                   _gyroscopeAvailable = available;
-                  // Auto-enable gyroscope when it becomes available
-                  if (available && !_gyroscopeEnabled) {
+                  // Auto-enable gyroscope when it becomes available (mobile only)
+                  // On web, require explicit user tap to trigger permission request
+                  if (!kIsWeb && available && !_gyroscopeEnabled) {
                     _gyroscopeEnabled = true;
                   }
                 });
@@ -314,7 +315,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   AnalyticsService.instance.logAtmosphereToggle(enabled: newValue);
                   _onSettingChanged('atmosphere', newValue);
                 },
-                onGyroscopeTap: () {
+                onGyroscopeTap: () async {
+                  // On web iOS, must request permission directly from user tap
+                  if (kIsWeb && !_gyroscopeEnabled) {
+                    final granted = await _skyViewKey.currentState?.requestMotionPermission() ?? false;
+                    if (!granted) {
+                      debugPrint('Motion permission denied');
+                      return;
+                    }
+                  }
                   setState(() {
                     _gyroscopeEnabled = !_gyroscopeEnabled;
                     AnalyticsService.instance.logGyroscopeToggle(enabled: _gyroscopeEnabled);

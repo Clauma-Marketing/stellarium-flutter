@@ -44,8 +44,6 @@ dependencies:
   # FFI support for native platforms
   ffi: ^2.1.3
 
-  # Sensors for gyroscope navigation
-  sensors_plus: ^7.0.0
 
   # Compass for reliable heading on iOS/Android
   flutter_compass: ^0.8.0

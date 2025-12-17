@@ -4,6 +4,19 @@
 <head>
   <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
+
+  <!-- Polyfill for crypto.randomUUID() when not in secure context (HTTP) -->
+  <script>
+    if (typeof crypto.randomUUID !== 'function') {
+      crypto.randomUUID = function() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = Math.random() * 16 | 0;
+          var v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+    }
+  </script>
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Stellarium Flutter - A planetarium app">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -314,17 +327,37 @@
       console.log('[INIT] Native Stellarium input disabled - only Flutter-forwarded events will be processed');
     }
 
-    // Wait for StelWebEngine to load
-    if (typeof StelWebEngine !== 'undefined') {
-      initStellarium();
-    } else {
-      window.addEventListener('load', function () {
+    // Expose initStellarium so Flutter can call it when ready
+    // Do NOT auto-initialize - wait for Flutter to request initialization
+    window.initStellariumEngine = function() {
+      if (window.stellariumReady) {
+        console.log('[INIT] Stellarium already initialized');
+        return Promise.resolve(window.stellarium);
+      }
+
+      return new Promise(function(resolve, reject) {
         if (typeof StelWebEngine !== 'undefined') {
+          console.log('[INIT] Flutter requested Stellarium initialization');
           initStellarium();
+          // Wait for it to be ready
+          window.onStellariumReady(resolve);
         } else {
-          console.error('StelWebEngine not loaded');
+          reject(new Error('StelWebEngine not loaded'));
         }
       });
+    };
+
+    // Check if StelWebEngine is loaded (but don't auto-initialize)
+    if (typeof StelWebEngine === 'undefined') {
+      window.addEventListener('load', function () {
+        if (typeof StelWebEngine === 'undefined') {
+          console.error('StelWebEngine not loaded');
+        } else {
+          console.log('[INIT] StelWebEngine loaded, waiting for Flutter to initialize');
+        }
+      });
+    } else {
+      console.log('[INIT] StelWebEngine already loaded, waiting for Flutter to initialize');
     }
 
     // Helper function to wait for Stellarium to be ready

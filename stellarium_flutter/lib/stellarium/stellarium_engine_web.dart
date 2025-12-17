@@ -37,6 +37,9 @@ external void _stellariumApiSetGyroscopeEnabled(bool enabled);
 @JS('window.stelInputReady')
 external bool? get _stelInputReady;
 
+@JS('window.initStellariumEngine')
+external JSPromise<StelJS?> _initStellariumEngine();
+
 @JS('window.stellariumAPI.getSelectedObjectInfo')
 external JSObject? _getSelectedObjectInfo();
 
@@ -224,25 +227,32 @@ class StellariumEngineWeb implements StellariumEngine {
   }) async {
     if (_initialized) return;
 
-    final completer = Completer<void>();
-
     // Check if already ready
     if (_stellariumReady && _stel != null) {
       _initialized = true;
       _syncObserverFromEngine();
       _startRenderLoop();
-      completer.complete();
-    } else {
-      // Wait for engine to be ready
+      return;
+    }
+
+    // Request initialization from JavaScript
+    try {
+      await _initStellariumEngine().toDart;
+      _initialized = true;
+      _syncObserverFromEngine();
+      _startRenderLoop();
+    } catch (e) {
+      debugPrint('Stellarium initialization error: $e');
+      // Fall back to waiting for ready callback
+      final completer = Completer<void>();
       _onStellariumReady(((StelJS stel) {
         _initialized = true;
         _syncObserverFromEngine();
         _startRenderLoop();
         completer.complete();
       }).toJS);
+      return completer.future;
     }
-
-    return completer.future;
   }
 
   void _syncObserverFromEngine() {
