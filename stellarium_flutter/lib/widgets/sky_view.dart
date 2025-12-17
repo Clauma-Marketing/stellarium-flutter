@@ -273,6 +273,14 @@ class SkyViewState extends State<SkyView> {
   }
 
   Future<void> _checkGyroscopeAvailability() async {
+    // Gyroscope/sensors are not available on web
+    if (kIsWeb) {
+      debugPrint('Sensors: not available on web platform');
+      _gyroscopeAvailable = false;
+      widget.onGyroscopeAvailabilityChanged?.call(false);
+      return;
+    }
+
     // Check if device has required sensors
     debugPrint('Sensors: checking availability...');
 
@@ -748,11 +756,47 @@ class SkyViewState extends State<SkyView> {
       // Set render callback
       _engine!.onRender = _onEngineRender;
 
+      // Set up selection callback for web
+      if (kIsWeb) {
+        _setupWebSelectionCallback();
+      }
+
       setState(() {});
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to create engine: $e';
       });
+    }
+  }
+
+  void _setupWebSelectionCallback() {
+    // Import the web engine type dynamically
+    final engine = _engine;
+    if (engine == null) return;
+
+    // Use dynamic to access web-specific property
+    try {
+      (engine as dynamic).onSelectionChanged = (Map<String, dynamic>? info) {
+        if (info == null || !mounted) return;
+
+        final selectionInfo = SelectedObjectInfo(
+          name: info['name'] as String? ?? 'Unknown',
+          displayName: info['name'] as String? ?? 'Unknown',
+          names: (info['names'] as List?)?.cast<String>() ?? [],
+          type: info['type'] as String? ?? 'unknown',
+          magnitude: (info['vmag'] as num?)?.toDouble(),
+          ra: (info['ra'] as num?)?.toDouble(),
+          dec: (info['dec'] as num?)?.toDouble(),
+          distance: (info['distance'] as num?)?.toDouble(),
+          hip: (info['hip'] as num?)?.toInt(),
+          gaia: (info['gaia'] as num?)?.toInt(),
+        );
+
+        debugPrint('[SKYVIEW] Web selection: ${selectionInfo.name}');
+        widget.onObjectSelected?.call(selectionInfo);
+      };
+    } catch (e) {
+      debugPrint('[SKYVIEW] Failed to set up web selection callback: $e');
     }
   }
 
@@ -792,6 +836,9 @@ class SkyViewState extends State<SkyView> {
       setState(() {
         _isInitialized = true;
       });
+
+      // Notify parent that engine is ready (for web)
+      widget.onEngineReady?.call(true);
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to initialize engine: $e';
@@ -1003,29 +1050,28 @@ class SkyViewState extends State<SkyView> {
 
         final dpr = MediaQuery.of(context).devicePixelRatio;
 
-        // Event forwarding Listener is now INSIDE SkyView.
-        // This means UI elements in the parent Stack (home_screen) are hit-tested
-        // BEFORE this widget. Only events that "fall through" (don't hit any UI)
-        // reach this Listener and get forwarded to Stellarium.
+        // On web, canvas has pointer-events: none, so Flutter must forward events.
+        // Flutter's hit-testing ensures UI elements block touches naturally -
+        // only touches that reach this widget (not blocked by UI) get forwarded.
         return Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: (event) {
-            debugPrint(
-                '[SKYVIEW] onPointerDown at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
             if (_touchBlocked) return;
+            final x = event.localPosition.dx;
+            final y = event.localPosition.dy;
             _engine?.onPointerDown(
               event.pointer,
-              event.localPosition.dx * dpr,
-              event.localPosition.dy * dpr,
+              x * dpr,
+              y * dpr,
             );
+            // Track for tap detection
+            _touchStartX = x;
+            _touchStartY = y;
+            _touchStartTime = DateTime.now().millisecondsSinceEpoch;
           },
           onPointerMove: (event) {
             if (_touchBlocked) return;
-            // When gyroscope is enabled, block single-finger panning but allow
-            // multi-finger gestures (pinch-to-zoom)
-            if (widget.gyroscopeEnabled) {
-              return; // Web doesn't track multi-touch the same way
-            }
+            if (widget.gyroscopeEnabled) return;
             _engine?.onPointerMove(
               event.pointer,
               event.localPosition.dx * dpr,
@@ -1033,14 +1079,36 @@ class SkyViewState extends State<SkyView> {
             );
           },
           onPointerUp: (event) {
-            debugPrint(
-                '[SKYVIEW] onPointerUp at (${event.localPosition.dx.toStringAsFixed(0)}, ${event.localPosition.dy.toStringAsFixed(0)}) - touchBlocked=$_touchBlocked');
             if (_touchBlocked) return;
+            final x = event.localPosition.dx;
+            final y = event.localPosition.dy;
             _engine?.onPointerUp(
               event.pointer,
-              event.localPosition.dx * dpr,
-              event.localPosition.dy * dpr,
+              x * dpr,
+              y * dpr,
             );
+
+            // Tap detection - check if this was a tap (small movement, short duration)
+            if (_touchStartX != null &&
+                _touchStartY != null &&
+                _touchStartTime != null) {
+              final dx = (x - _touchStartX!).abs();
+              final dy = (y - _touchStartY!).abs();
+              final duration =
+                  DateTime.now().millisecondsSinceEpoch - _touchStartTime!;
+              const tapThreshold = 15.0;
+              const tapMaxDuration = 300;
+
+              if (dx < tapThreshold &&
+                  dy < tapThreshold &&
+                  duration < tapMaxDuration) {
+                debugPrint('[SKYVIEW WEB] Tap detected at ($x, $y)');
+                widget.onTap?.call();
+              }
+            }
+            _touchStartX = null;
+            _touchStartY = null;
+            _touchStartTime = null;
           },
           onPointerSignal: (event) {
             if (_touchBlocked) return;

@@ -38,7 +38,7 @@
       width: 100%;
       height: 100%;
       z-index: 0;
-      /* Disable native events - Flutter will forward events via JS */
+      /* Disable native events - Flutter forwards events via JS */
       pointer-events: none;
     }
 
@@ -196,13 +196,11 @@
 	          stel.observer.longitude = -74.0060 * stel.D2R;
 	          stel.observer.latitude = 40.7128 * stel.D2R;
 
-          // Set up input wrapper functions for Flutter to call
+          // Mark input as ready (for API compatibility)
           window.stelInputReady = true;
 
-          // CRITICAL: Disable native Emscripten input handlers
-          // This ensures only Flutter-forwarded events reach Stellarium
-          // Native browser events (from Emscripten's event listeners) are blocked
-          disableNativeInput();
+          // Native input handling is enabled - canvas handles events directly
+          // (like mobile WebView approach)
 
           // Call all waiting callbacks
           window.stellariumReadyCallbacks.forEach(function (cb) {
@@ -230,34 +228,38 @@
 
     window.stelCoreOnMouse = function (id, state, x, y, buttons) {
       console.log('[FLUTTER->STEL] stelCoreOnMouse called: id=' + id + ' state=' + state + ' x=' + x.toFixed(0) + ' y=' + y.toFixed(0) + ' buttons=' + buttons);
-      if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+      // window.stellarium IS the Module object from StelWebEngine
+      var stel = window.stellarium;
+      if (stel && stel._core_on_mouse) {
         // Set flag so the wrapper knows this is from Flutter
         window._flutterForwardingEvent = true;
-        Module._core_on_mouse(id, state, x, y, buttons);
+        stel._core_on_mouse(id, state, x, y, buttons);
         window._flutterForwardingEvent = false;
       } else {
-        console.log('[FLUTTER->STEL] Module._core_on_mouse not available');
+        console.log('[FLUTTER->STEL] stellarium._core_on_mouse not available');
       }
     };
 
     window.stelCoreOnZoom = function (factor, x, y) {
       console.log('[FLUTTER->STEL] stelCoreOnZoom called: factor=' + factor + ' x=' + x.toFixed(0) + ' y=' + y.toFixed(0));
-      if (typeof Module !== 'undefined' && Module._core_on_zoom) {
+      var stel = window.stellarium;
+      if (stel && stel._core_on_zoom) {
         window._flutterForwardingEvent = true;
-        Module._core_on_zoom(factor, x, y);
+        stel._core_on_zoom(factor, x, y);
         window._flutterForwardingEvent = false;
       }
     };
 
     // Function to disable native Emscripten input handlers
-    // This wraps Module._core_on_mouse to only accept Flutter-forwarded events
+    // This wraps stellarium._core_on_mouse to only accept Flutter-forwarded events
     function disableNativeInput() {
       if (window._nativeInputDisabled) return;
 
-      if (typeof Module !== 'undefined' && Module._core_on_mouse) {
+      var stel = window.stellarium;
+      if (stel && stel._core_on_mouse) {
         // Wrap _core_on_mouse to block native events
-        window._originalCoreOnMouse = Module._core_on_mouse;
-        Module._core_on_mouse = function(id, state, x, y, buttons) {
+        window._originalCoreOnMouse = stel._core_on_mouse;
+        stel._core_on_mouse = function(id, state, x, y, buttons) {
           // Only process if this call came from Flutter (via stelCoreOnMouse)
           if (window._flutterForwardingEvent) {
             console.log('[WRAPPER] ALLOWED Flutter event: state=' + state + ' x=' + x.toFixed(0) + ' y=' + y.toFixed(0));
@@ -268,9 +270,9 @@
         };
       }
 
-      if (typeof Module !== 'undefined' && Module._core_on_zoom) {
-        window._originalCoreOnZoom = Module._core_on_zoom;
-        Module._core_on_zoom = function(factor, x, y) {
+      if (stel && stel._core_on_zoom) {
+        window._originalCoreOnZoom = stel._core_on_zoom;
+        stel._core_on_zoom = function(factor, x, y) {
           if (window._flutterForwardingEvent) {
             console.log('[WRAPPER] ALLOWED Flutter zoom');
             window._originalCoreOnZoom(factor, x, y);
@@ -339,30 +341,292 @@
         console.log('Gyroscope mode:', enabled ? 'enabled' : 'disabled');
       },
 
+      // Get info about currently selected object
+      getSelectedObjectInfo: function() {
+        if (!window.stellarium) return null;
+        try {
+          const stel = window.stellarium;
+          const selection = stel.core.selection;
+          if (!selection) return null;
+
+          // Get names using designations() method
+          const names = typeof selection.designations === 'function' ? selection.designations() : [];
+
+          // Get HIP/GAIA from jsonData if available
+          let hip = null;
+          let gaia = null;
+          try {
+            const jsonData = selection.jsonData;
+            if (jsonData && jsonData.model_data) {
+              hip = jsonData.model_data.hip || null;
+              gaia = jsonData.model_data.gaia || null;
+            }
+          } catch (e) {}
+
+          return {
+            name: (names && names.length > 0) ? names[0] : 'Unknown',
+            names: names || [],
+            type: selection.type || 'unknown',
+            vmag: selection.vmag,
+            ra: selection.ra !== undefined ? selection.ra * stel.R2D : null,
+            dec: selection.de !== undefined ? selection.de * stel.R2D : null,
+            distance: selection.distance,
+            hip: hip,
+            gaia: gaia
+          };
+        } catch(e) {
+          console.error('getSelectedObjectInfo error:', e);
+          return null;
+        }
+      },
+
+      // Check if a query looks like a registration number (e.g., "9736-58577-3012084")
+      isRegistrationNumber: function(query) {
+        return /^\d{4}-\d{5}-\d{7}$/.test(query);
+      },
+
+      // Get the appropriate API URL for a query
+      getApiUrl: function(query) {
+        if (this.isRegistrationNumber(query)) {
+          return 'https://registry-api.celestial-register.com/?RN=' + encodeURIComponent(query);
+        } else {
+          return 'https://registry-api.celestial-register.com/search?name=' + encodeURIComponent(query);
+        }
+      },
+
+      // Parse API response
+      parseApiResponse: function(query, response) {
+        if (this.isRegistrationNumber(query)) {
+          if (response && response.found && response.model_data) {
+            return response;
+          }
+          return null;
+        } else {
+          if (response && response.length > 0) {
+            return response[0];
+          }
+          return null;
+        }
+      },
+
+      // Validate API result matches search query
+      validateApiResult: function(searchQuery, skySource) {
+        if (!skySource) return false;
+
+        if (this.isRegistrationNumber(searchQuery)) {
+          if (skySource.found && skySource.info && skySource.info.registration_number) {
+            return skySource.info.registration_number === searchQuery;
+          }
+          if (skySource.found && skySource.model_data) {
+            return true;
+          }
+          return false;
+        }
+
+        if (!skySource.names) return false;
+        const normalizedQuery = searchQuery.toUpperCase().replace(/\s+/g, '');
+
+        for (const name of skySource.names) {
+          if (name.toUpperCase().replace(/\s+/g, '') === normalizedQuery) {
+            return true;
+          }
+        }
+        return false;
+      },
+
+      // Convert API sky source to SweObj
+      skySource2SweObj: function(ss) {
+        if (!ss || !ss.model || !window.stellarium) return undefined;
+        const stel = window.stellarium;
+        let obj = null;
+
+        // Try HIP lookup first
+        if (ss.names) {
+          for (const name of ss.names) {
+            const hipMatch = name.match(/^HIP\s*(\d+)/i);
+            if (hipMatch && typeof stel.getObjByHip === 'function') {
+              obj = stel.getObjByHip(parseInt(hipMatch[1], 10));
+              if (obj) return obj;
+            }
+          }
+        }
+
+        // Try name lookup
+        if (ss.names) {
+          for (const name of ss.names) {
+            obj = stel.getObj(name) || stel.getObj('NAME ' + name) || stel.getObj('* ' + name);
+            if (obj) return obj;
+          }
+        }
+
+        // Create from coordinates if available
+        if (ss.model_data && ss.model_data.ra !== undefined && ss.model_data.de !== undefined) {
+          try {
+            obj = stel.createObj(ss.model, ss);
+            if (obj) return obj;
+          } catch (e) {
+            console.error('[skySource2SweObj] createObj failed:', e);
+          }
+        }
+
+        return obj;
+      },
+
+      // Unified object finder - searches API first, then falls back to local engine
+      findObject: async function(query) {
+        console.log('[FIND] Looking for:', query);
+        if (!window.stellarium) return null;
+
+        const stel = window.stellarium;
+        const isRegNum = this.isRegistrationNumber(query);
+
+        // 1. Try API search first
+        try {
+          const apiUrl = this.getApiUrl(query);
+          const response = await fetch(apiUrl);
+          if (response.ok) {
+            const rawResponse = await response.json();
+            const skySource = this.parseApiResponse(query, rawResponse);
+            if (skySource && this.validateApiResult(query, skySource)) {
+              const obj = this.skySource2SweObj(skySource);
+              if (obj) {
+                let displayName = query;
+                if (isRegNum && skySource.info && skySource.info.name) {
+                  displayName = skySource.info.name;
+                } else if (skySource.names && skySource.names.length > 0) {
+                  displayName = skySource.names[0];
+                }
+                console.log('[FIND] Found via API:', displayName);
+                return { obj, skySource, displayName };
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[FIND] API error:', e);
+        }
+
+        // 2. Fall back to local engine
+        let obj = stel.getObj('NAME ' + query) || stel.getObj(query);
+        if (obj) {
+          console.log('[FIND] Found locally:', query);
+          return { obj, skySource: null, displayName: query };
+        }
+
+        console.log('[FIND] Not found:', query);
+        return null;
+      },
+
+      // Build object info from found object
+      buildObjectInfo: function(obj, displayName, skySource) {
+        const stel = window.stellarium;
+        let names = typeof obj.designations === 'function' ? obj.designations() : [];
+
+        if ((!names || names.length === 0) && skySource && skySource.names) {
+          names = skySource.names;
+        }
+
+        return {
+          name: displayName,
+          names: names.length > 0 ? names : [displayName],
+          type: obj.type || 'unknown',
+          vmag: obj.vmag,
+          ra: obj.ra !== undefined ? obj.ra * stel.R2D : null,
+          dec: obj.de !== undefined ? obj.de * stel.R2D : null,
+          distance: obj.distance,
+          skySource: skySource
+        };
+      },
+
+      // Point at an object (with API lookup)
+      pointAt: async function(name, duration) {
+        if (!window.stellarium) return;
+        const result = await this.findObject(name);
+        if (!result) {
+          console.log('[pointAt] Object not found:', name);
+          return;
+        }
+
+        const stel = window.stellarium;
+        const { obj, skySource, displayName } = result;
+
+        // Clear existing lock
+        stel.core.lock = null;
+        stel.observer.view_offset_alt = 0;
+
+        // Target FOV
+        const targetFov = 20 * Math.PI / 180;
+
+        // Zoom out first
+        stel.zoomTo(targetFov, 0.5);
+
+        // Move to star after zoom
+        setTimeout(() => {
+          stel.core.selection = obj;
+          stel.observer.view_offset_alt = targetFov * 0.35;
+          stel.pointAndLock(obj, duration || 1.0);
+        }, 500);
+
+        console.log('[pointAt] Navigating to:', displayName);
+      },
+
+      // Add a persistent label for a star (shown without selection)
+      addPersistentLabel: function(identifier, label) {
+        if (!window.stellarium) {
+          console.log('addPersistentLabel: stellarium not ready');
+          return;
+        }
+        window.stellarium.addPersistentLabel(identifier, label);
+        console.log('Persistent label added:', identifier, '->', label);
+      },
+
+      // Remove a persistent label for a star
+      removePersistentLabel: function(identifier) {
+        if (!window.stellarium) {
+          console.log('removePersistentLabel: stellarium not ready');
+          return;
+        }
+        window.stellarium.removePersistentLabel(identifier);
+        console.log('Persistent label removed:', identifier);
+      },
+
+      // Clear all persistent labels
+      clearPersistentLabels: function() {
+        if (!window.stellarium) {
+          console.log('clearPersistentLabels: stellarium not ready');
+          return;
+        }
+        window.stellarium.clearPersistentLabels();
+        console.log('All persistent labels cleared');
+      },
+
       // Touch/mouse event forwarding from Flutter (since pointer-events: none)
       onTouchStart: function(id, x, y) {
-        if (typeof Module !== 'undefined' && Module._core_on_mouse) {
-          Module._core_on_mouse(id, 1, x, y, 1); // state=1 (down), buttons=1
+        var stel = window.stellarium;
+        if (stel && stel._core_on_mouse) {
+          stel._core_on_mouse(id, 1, x, y, 1); // state=1 (down), buttons=1
         }
       },
 
       onTouchMove: function(id, x, y) {
-        if (!window.gyroscopeEnabled && typeof Module !== 'undefined' && Module._core_on_mouse) {
-          Module._core_on_mouse(id, -1, x, y, 1); // state=-1 (move), buttons=1
+        var stel = window.stellarium;
+        if (!window.gyroscopeEnabled && stel && stel._core_on_mouse) {
+          stel._core_on_mouse(id, -1, x, y, 1); // state=-1 (move), buttons=1
         }
       },
 
       onTouchEnd: function(id, x, y) {
-        if (typeof Module !== 'undefined' && Module._core_on_mouse) {
-          Module._core_on_mouse(id, 0, x, y, 1); // state=0 (up), buttons=1
+        var stel = window.stellarium;
+        if (stel && stel._core_on_mouse) {
+          stel._core_on_mouse(id, 0, x, y, 1); // state=0 (up), buttons=1
         }
       },
 
       onMouseWheel: function(deltaY, x, y) {
-        if (typeof Module !== 'undefined' && Module._core_on_zoom) {
+        var stel = window.stellarium;
+        if (stel && stel._core_on_zoom) {
           // Convert deltaY to zoom factor (negative = zoom in, positive = zoom out)
           const factor = deltaY > 0 ? 1.1 : 0.9;
-          Module._core_on_zoom(factor, x, y);
+          stel._core_on_zoom(factor, x, y);
         }
       }
     };

@@ -37,6 +37,21 @@ external void _stellariumApiSetGyroscopeEnabled(bool enabled);
 @JS('window.stelInputReady')
 external bool? get _stelInputReady;
 
+@JS('window.stellariumAPI.getSelectedObjectInfo')
+external JSObject? _getSelectedObjectInfo();
+
+@JS('window.stellariumAPI.pointAt')
+external JSPromise<JSAny?> _stellariumApiPointAt(String name, double duration);
+
+@JS('window.stellariumAPI.addPersistentLabel')
+external void _addPersistentLabel(String identifier, String label);
+
+@JS('window.stellariumAPI.removePersistentLabel')
+external void _removePersistentLabel(String identifier);
+
+@JS('window.stellariumAPI.clearPersistentLabels')
+external void _clearPersistentLabels();
+
 /// Main Stellarium JavaScript object
 @JS()
 extension type StelJS._(JSObject _) implements JSObject {
@@ -164,16 +179,26 @@ extension type StelObjectJS._(JSObject _) implements JSObject {
   external String get type;
 }
 
+/// Callback for selection changes
+typedef OnSelectionChangedCallback = void Function(Map<String, dynamic>? selectionInfo);
+
 /// Web implementation using the global stellarium instance
 class StellariumEngineWeb implements StellariumEngine {
   final Observer _observer = Observer.now();
   final StellariumSettings _settings = StellariumSettings();
   OnRenderCallback? _onRender;
+  OnSelectionChangedCallback? _onSelectionChanged;
   bool _initialized = false;
   int _frameCount = 0;
   DateTime _fpsUpdateTime = DateTime.now();
   double _fps = 0.0;
   int? _animationFrameId;
+  String? _lastSelectionName;
+
+  /// Set callback for when selection changes
+  set onSelectionChanged(OnSelectionChangedCallback? callback) {
+    _onSelectionChanged = callback;
+  }
 
   @override
   bool get isInitialized => _initialized;
@@ -236,6 +261,36 @@ class StellariumEngineWeb implements StellariumEngine {
     _observer.fov = obs.fov ?? _observer.fov;
   }
 
+  void _checkSelectionChanged() {
+    if (_onSelectionChanged == null) return;
+
+    try {
+      final jsInfo = _getSelectedObjectInfo();
+      String? currentName;
+      Map<String, dynamic>? selectionInfo;
+
+      if (jsInfo != null) {
+        // Convert JSObject to Dart Map
+        final dartObj = jsInfo.dartify();
+        if (dartObj is Map) {
+          selectionInfo = Map<String, dynamic>.from(dartObj);
+          currentName = selectionInfo['name'] as String?;
+        }
+      }
+
+      // Only notify if selection changed
+      if (currentName != _lastSelectionName) {
+        _lastSelectionName = currentName;
+        if (currentName != null && currentName.isNotEmpty && currentName != 'Unknown') {
+          debugPrint('[WEB ENGINE] Selection changed to: $currentName');
+          _onSelectionChanged?.call(selectionInfo);
+        }
+      }
+    } catch (e) {
+      // Ignore errors from JS interop
+    }
+  }
+
   void _startRenderLoop() {
     void frame(double timestamp) {
       if (!_initialized) return;
@@ -252,6 +307,9 @@ class StellariumEngineWeb implements StellariumEngine {
 
       // Sync observer
       _syncObserverFromEngine();
+
+      // Check for selection changes
+      _checkSelectionChanged();
 
       // Notify listeners
       _onRender?.call();
@@ -319,8 +377,8 @@ class StellariumEngineWeb implements StellariumEngine {
       debugPrint('[ENGINE] onPointerUp: Stellarium input not ready - SKIPPING');
       return;
     }
-    // state: 0 = up, buttons: 0 = no button
-    _stelCoreOnMouse(pointerId, 0, x, y, 0);
+    // state: 0 = up, buttons: 1 = MUST be 1 for engine to process (movements.c checks buttons==1)
+    _stelCoreOnMouse(pointerId, 0, x, y, 1);
   }
 
   @override
@@ -445,14 +503,56 @@ class StellariumEngineWeb implements StellariumEngine {
 
   @override
   void pointAt(CelestialObject object, {double animationDuration = 1.0}) {
-    final stel = _stel;
-    if (stel == null) return;
+    // Use the JS API which has API lookup support
+    try {
+      _stellariumApiPointAt(object.name, animationDuration);
+    } catch (e) {
+      debugPrint('pointAt error: $e');
+      // Fallback to direct method
+      final stel = _stel;
+      if (stel == null) return;
+      stel.getObjByName(object.name).toDart.then((jsObj) {
+        if (jsObj != null) {
+          stel.pointAndLock(jsObj, animationDuration);
+        }
+      });
+    }
+  }
 
-    stel.getObjByName(object.name).toDart.then((jsObj) {
-      if (jsObj != null) {
-        stel.pointAndLock(jsObj, animationDuration);
-      }
-    });
+  /// Point at an object by name (uses JS API with registry lookup)
+  void pointAtByName(String name, {double animationDuration = 1.0}) {
+    try {
+      _stellariumApiPointAt(name, animationDuration);
+    } catch (e) {
+      debugPrint('pointAtByName error: $e');
+    }
+  }
+
+  /// Add a persistent label for a star (shown without selection)
+  void addPersistentLabel(String identifier, String label) {
+    try {
+      _addPersistentLabel(identifier, label);
+    } catch (e) {
+      debugPrint('addPersistentLabel error: $e');
+    }
+  }
+
+  /// Remove a persistent label for a star
+  void removePersistentLabel(String identifier) {
+    try {
+      _removePersistentLabel(identifier);
+    } catch (e) {
+      debugPrint('removePersistentLabel error: $e');
+    }
+  }
+
+  /// Clear all persistent labels
+  void clearPersistentLabels() {
+    try {
+      _clearPersistentLabels();
+    } catch (e) {
+      debugPrint('clearPersistentLabels error: $e');
+    }
   }
 
   @override

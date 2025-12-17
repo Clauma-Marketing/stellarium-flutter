@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -496,11 +497,19 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       // Normal mode: animate camera to the star
       _skyViewKey.currentState?.webView?.pointAt(searchId);
-      _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
-        if (obj != null) {
-          _skyViewKey.currentState?.engine?.pointAt(obj);
+      // On web, use pointAtByName which calls JS API with registry lookup
+      if (kIsWeb) {
+        final engine = _skyViewKey.currentState?.engine;
+        if (engine != null) {
+          (engine as dynamic).pointAtByName(searchId);
         }
-      });
+      } else {
+        _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
+          if (obj != null) {
+            _skyViewKey.currentState?.engine?.pointAt(obj);
+          }
+        });
+      }
     }
   }
 
@@ -981,6 +990,13 @@ class _HomeScreenState extends State<HomeScreen> {
           labelId,
           star.displayName,
         );
+        // Web support
+        if (kIsWeb) {
+          final engine = _skyViewKey.currentState?.engine;
+          if (engine != null) {
+            (engine as dynamic).addPersistentLabel(labelId, star.displayName);
+          }
+        }
       }
     }
   }
@@ -1326,6 +1342,13 @@ class _HomeScreenState extends State<HomeScreen> {
               labelId,
               registeredName,
             );
+            // Web support
+            if (kIsWeb) {
+              final engine = _skyViewKey.currentState?.engine;
+              if (engine != null) {
+                (engine as dynamic).addPersistentLabel(labelId, registeredName);
+              }
+            }
           }
         }
 
@@ -1503,6 +1526,13 @@ class _HomeScreenState extends State<HomeScreen> {
         labelId,
         registeredName,
       );
+      // Web support
+      if (kIsWeb) {
+        final engine = _skyViewKey.currentState?.engine;
+        if (engine != null) {
+          (engine as dynamic).addPersistentLabel(labelId, registeredName);
+        }
+      }
     }
   }
 
