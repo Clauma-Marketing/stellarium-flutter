@@ -551,11 +551,7 @@ class SkyViewState extends State<SkyView> {
         defaultTargetPlatform == TargetPlatform.android ? -1.0 : 1.0;
     final altitude = math.asin((altitudeSign * upZ).clamp(-1.0, 1.0));
 
-    // MotionCore yaw sign differs per platform. iOS uses right-hand rule (CCW positive),
-    // Android uses left-hand rule (CW positive). Normalize to CCW positive.
-    final yawSign =
-        defaultTargetPlatform == TargetPlatform.android ? -1.0 : 1.0;
-    final yaw = data.yaw * yawSign;
+    final yaw = data.yaw;
 
     // Align MotionCore yaw to magnetic north using the filtered compass heading.
     // iOS MotionCore uses an arbitrary reference frame, so we compute an offset.
