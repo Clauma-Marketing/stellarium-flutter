@@ -222,11 +222,9 @@
           const remoteBaseUrl = language.startsWith('zh')
             ? 'https://data.star-registration.com.cn/'
             : 'https://data.star-register.com/';
-          // Always load star data from remote server (data.star-register.com)
-          // to ensure we have the full catalog including dim stars
 
-	          // Add data sources
-	          core.stars.addDataSource({ url: remoteBaseUrl + 'surveys/stars/v1' });
+	          // Add data sources - use local star surveys, remote Gaia
+	          core.stars.addDataSource({ url: 'data/surveys/stars/v1' });
 	          core.stars.addDataSource({
 	            url: remoteBaseUrl + 'surveys/gaia/v1',
 	            key: 'gaia'
@@ -311,7 +309,7 @@
 	            key: 'venus'
 	          });
 	          core.landscapes.addDataSource({
-	            url: remoteBaseUrl + 'landscapes/v1/guereins',
+	            url: 'data/landscapes/v1/guereins',
 	            key: 'guereins'
 	          });
 
