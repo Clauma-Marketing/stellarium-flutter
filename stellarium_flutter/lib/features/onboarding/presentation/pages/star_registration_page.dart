@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../l10n/app_localizations.dart';
@@ -86,13 +85,6 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
     if (query.isEmpty) {
       setState(() {
         _errorMessage = 'ENTER_NUMBER';
-      });
-      return;
-    }
-
-    if (!StarRegistryService.isRegistrationNumber(query)) {
-      setState(() {
-        _errorMessage = 'INVALID_FORMAT';
       });
       return;
     }
@@ -508,10 +500,6 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
         textAlign: TextAlign.center,
         keyboardType: TextInputType.text,
         textCapitalization: TextCapitalization.none,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
-          _RegistrationNumberFormatter(),
-        ],
         decoration: InputDecoration(
           hintText: 'XXXX-XXXXX-XXXXXXXX',
           hintStyle: TextStyle(
@@ -619,32 +607,4 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
     );
   }
 
-}
-
-/// Input formatter for registration numbers (auto-inserts hyphens)
-class _RegistrationNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    // Remove all non-digits
-    final digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-
-    // Build formatted string with hyphens
-    final buffer = StringBuffer();
-    for (int i = 0; i < digitsOnly.length && i < 17; i++) {
-      if (i == 4 || i == 9) {
-        buffer.write('-');
-      }
-      buffer.write(digitsOnly[i]);
-    }
-
-    final formatted = buffer.toString();
-
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
 }
