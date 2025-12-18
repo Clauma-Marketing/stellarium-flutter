@@ -611,7 +611,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String starRegRemoved(String reason) {
-    return 'Der Stern wurde aus dem Register entfernt. Grund: $reason';
+    return '$reason';
   }
 
   @override

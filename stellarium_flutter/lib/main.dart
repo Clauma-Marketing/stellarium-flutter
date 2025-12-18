@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:adapty_flutter/adapty_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_in_app_messaging/firebase_in_app_messaging.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -95,6 +96,11 @@ void main() async {
         // Disable Crashlytics in debug mode (optional - remove if you want debug crashes)
         await FirebaseCrashlytics.instance
             .setCrashlyticsCollectionEnabled(!kDebugMode);
+
+        // Initialize Firebase In-App Messaging
+        // Messages are configured in Firebase Console and shown automatically
+        FirebaseInAppMessaging.instance.setMessagesSuppressed(false);
+        FirebaseInAppMessaging.instance.setAutomaticDataCollectionEnabled(true);
       } catch (e) {
         debugPrint('Firebase initialization error: $e');
       }

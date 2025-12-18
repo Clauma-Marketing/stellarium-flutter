@@ -1213,7 +1213,7 @@ abstract class AppLocalizations {
   /// No description provided for @starRegRemoved.
   ///
   /// In en, this message translates to:
-  /// **'The star has been removed from the registry. Reason: {reason}'**
+  /// **'{reason}'**
   String starRegRemoved(String reason);
 
   /// No description provided for @scanCertificate.

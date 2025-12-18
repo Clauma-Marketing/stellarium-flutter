@@ -11,6 +11,7 @@ import '../features/onboarding/onboarding_service.dart';
 import '../l10n/app_localizations.dart';
 import '../services/analytics_service.dart';
 import '../services/app_review_service.dart';
+import '../services/engagement_tracking_service.dart';
 import '../services/locale_service.dart';
 import '../services/saved_stars_service.dart';
 import '../services/search_history_service.dart';
@@ -59,6 +60,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _loadSavedLocation();
     // Initialize and start app review tracking
     _initAppReviewTracking();
+    // Initialize engagement tracking for Firebase In-App Messaging
+    _initEngagementTracking();
   }
 
   Future<void> _initAppReviewTracking() async {
@@ -66,17 +69,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     AppReviewService.instance.startTracking();
   }
 
+  Future<void> _initEngagementTracking() async {
+    await EngagementTrackingService.instance.load();
+    // Tracking starts when engine is ready (in _onEngineReady)
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // Handle app lifecycle for review tracking
+    // Handle app lifecycle for review and engagement tracking
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
         AppReviewService.instance.pauseTracking();
+        EngagementTrackingService.instance.pauseTracking();
         break;
       case AppLifecycleState.resumed:
         AppReviewService.instance.resumeTracking();
+        EngagementTrackingService.instance.resumeTracking();
         break;
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
@@ -160,6 +170,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     AppReviewService.instance.stopTracking();
+    EngagementTrackingService.instance.stopTracking();
     _timeUpdateTimer?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -945,6 +956,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() {
       _isEngineReady = true;
     });
+
+    // Start engagement tracking now that engine is ready
+    EngagementTrackingService.instance.startTracking();
 
     // Start timer to keep time display in sync with engine
     _startTimeUpdateTimer();

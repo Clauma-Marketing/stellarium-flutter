@@ -344,9 +344,30 @@ class StarRegistryService {
 
   /// Check if query looks like a registration number
   static bool isRegistrationNumber(String query) {
-    // Registration numbers are in format like "3100-14778-5153771"
-    final regExp = RegExp(r'^\d{4}-\d{4,5}-\d{6,7}$');
-    return regExp.hasMatch(query.trim());
+    // Registration numbers can be in various formats:
+    // - "3100-14778-5153771" (standard format)
+    // - "72BB9B7D3" (alphanumeric ID)
+    // - Any alphanumeric string with optional dashes
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return false;
+
+    // If it contains only letters (like "Polaris"), it's a star name, not a registration
+    if (RegExp(r'^[a-zA-Z]+$').hasMatch(trimmed)) {
+      return false;
+    }
+
+    // If it looks like a star name with spaces (like "Alpha Centauri"), it's not a registration
+    if (trimmed.contains(' ') && RegExp(r'^[a-zA-Z\s]+$').hasMatch(trimmed)) {
+      return false;
+    }
+
+    // Otherwise, if it contains digits and is alphanumeric (with optional dashes/spaces),
+    // treat it as a registration number
+    if (RegExp(r'\d').hasMatch(trimmed)) {
+      return true;
+    }
+
+    return false;
   }
 
   /// Search for a star by registration number
