@@ -1,11 +1,9 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../l10n/app_localizations.dart';
-import '../../../../screens/certificate_scanner_screen.dart';
-import '../../../../screens/certificate_scanner_screen_web.dart';
+import '../../../../screens/certificate_scanner_factory.dart';
 import '../../../../services/analytics_service.dart';
 import '../../../../services/saved_stars_service.dart';
 import '../../../../widgets/star_info_sheet.dart';
@@ -168,11 +166,10 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
   Future<void> _openCertificateScanner() async {
     // Track scanner opened
     AnalyticsService.instance.logScannerOpened();
+    // CertificateScannerScreen is conditionally exported - uses native camera on mobile, web scanner on web
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (context) => kIsWeb
-            ? const CertificateScannerScreenWeb()
-            : const CertificateScannerScreen(),
+        builder: (context) => const CertificateScannerScreen(),
       ),
     );
 
