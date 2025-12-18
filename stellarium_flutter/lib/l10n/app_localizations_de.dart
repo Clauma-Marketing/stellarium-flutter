@@ -385,6 +385,16 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get subscriptionLoading => 'Lade Abonnement-Optionen...';
+
+  @override
+  String get subscriptionRequiredMessage =>
+      'Ein Abonnement oder eine gültige Sternregistrierung ist erforderlich, um die App weiter zu nutzen.';
+
+  @override
+  String get subscriptionSubscribeButton => 'Jetzt abonnieren';
+
+  @override
   String get manageSubscription => 'Abonnement verwalten';
 
   @override

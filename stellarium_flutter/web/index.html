@@ -134,8 +134,14 @@
           // Add default data sources
           const core = stel.core;
 
-          // Use CDN data sources
-	          const baseUrl = 'https://data.star-register.com/';
+          // Remote base URL depends on the device language.
+          // For Chinese locales, use the China-specific mirror.
+          const language =
+            (navigator.languages && navigator.languages.length ? navigator.languages[0] : navigator.language || '')
+              .toLowerCase();
+          const baseUrl = language.startsWith('zh')
+            ? 'https://data.star-registration.com.cn/'
+            : 'https://data.star-register.com/';
 
 	          core.stars.addDataSource({ url: baseUrl + 'surveys/stars/v1' });
 	          core.stars.addDataSource({
@@ -231,6 +237,9 @@
 	          if (core.constellations && core.constellations.illustrations_bscale != null) {
 	            core.constellations.illustrations_bscale = 1.8;
 	          }
+
+	          // Disable atmosphere by default (same as mobile)
+	          core.atmosphere.visible = false;
 
 	          // Set default location (New York)
 	          stel.observer.longitude = -74.0060 * stel.D2R;
@@ -397,8 +406,11 @@
       },
 
       setGyroscopeEnabled: function(enabled) {
-        // When gyroscope is enabled, disable native panning
         window.gyroscopeEnabled = enabled;
+        // Set the engine's gyroscope_mode property for native arrow rendering
+        if (window.stellarium && window.stellarium.core) {
+          window.stellarium.core.gyroscope_mode = enabled;
+        }
         console.log('Gyroscope mode:', enabled ? 'enabled' : 'disabled');
       },
 

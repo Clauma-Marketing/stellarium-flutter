@@ -177,6 +177,9 @@
       }
     }
   },
+  "subscriptionLoading": "Loading subscription options...",
+  "subscriptionRequiredMessage": "A subscription or valid star registration is required to continue using the app.",
+  "subscriptionSubscribeButton": "Subscribe Now",
   "manageSubscription": "Manage Subscription",
   "upgradeToPremium": "Upgrade to Premium",
 

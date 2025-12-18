@@ -3,27 +3,32 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'analytics_service.dart';
+/// Callback type for triggering paywall
+typedef PaywallCallback = void Function();
 
-/// Service for tracking user engagement time and logging Firebase Analytics events
-/// at specific milestones to trigger Firebase In-App Messaging campaigns.
+/// Service for tracking cumulative user engagement time and triggering paywall
+/// after 2 minutes of total sky viewing time.
 ///
-/// Tracks cumulative viewing time across sessions and fires events only once per install.
+/// Tracks cumulative viewing time across all sessions and triggers paywall
+/// once per install when the 2-minute threshold is reached.
 class EngagementTrackingService {
   static const String _accumulatedSecondsKey = 'engagement_accumulated_seconds';
-  static const String _triggeredMilestonesKey = 'engagement_triggered_milestones';
+  static const String _paywallTriggeredKey = 'engagement_paywall_triggered';
 
-  /// Milestones at which to fire Analytics events
-  static const List<int> milestoneMinutes = [2, 5, 10];
+  /// Milestone at which to trigger paywall (in minutes)
+  static const int paywallMinutes = 2;
 
   static EngagementTrackingService? _instance;
 
   Duration _accumulatedTime = Duration.zero;
-  Set<int> _triggeredMilestones = {};
   DateTime? _sessionStart;
   Timer? _checkTimer;
   bool _isLoaded = false;
   bool _isTracking = false;
+  bool _paywallTriggered = false;
+
+  /// Callback to trigger when paywall should be shown
+  PaywallCallback? onPaywallTrigger;
 
   EngagementTrackingService._();
 
@@ -43,15 +48,14 @@ class EngagementTrackingService {
     final seconds = prefs.getInt(_accumulatedSecondsKey) ?? 0;
     _accumulatedTime = Duration(seconds: seconds);
 
-    // Load triggered milestones
-    final triggeredList = prefs.getStringList(_triggeredMilestonesKey) ?? [];
-    _triggeredMilestones = triggeredList.map((s) => int.parse(s)).toSet();
+    // Load whether paywall was already triggered
+    _paywallTriggered = prefs.getBool(_paywallTriggeredKey) ?? false;
 
     _isLoaded = true;
 
     debugPrint('EngagementTrackingService: loaded, '
         'accumulated=${_accumulatedTime.inSeconds}s, '
-        'triggered=$_triggeredMilestones');
+        'paywallTriggered=$_paywallTriggered');
   }
 
   /// Start tracking engagement time.
@@ -66,9 +70,9 @@ class EngagementTrackingService {
       return;
     }
 
-    // Check if all milestones already triggered
-    if (_allMilestonesTriggered()) {
-      debugPrint('EngagementTrackingService: all milestones already triggered, not tracking');
+    // Don't track if paywall was already triggered and handled
+    if (_paywallTriggered) {
+      debugPrint('EngagementTrackingService: paywall already triggered, not tracking');
       return;
     }
 
@@ -107,7 +111,7 @@ class EngagementTrackingService {
 
   /// Resume tracking (e.g., when app comes to foreground)
   void resumeTracking() {
-    if (kIsWeb || !_isLoaded || _allMilestonesTriggered()) return;
+    if (kIsWeb || !_isLoaded || _paywallTriggered) return;
     if (!_isTracking) return;
 
     _sessionStart = DateTime.now();
@@ -116,16 +120,12 @@ class EngagementTrackingService {
     debugPrint('EngagementTrackingService: resumed tracking');
   }
 
-  bool _allMilestonesTriggered() {
-    return milestoneMinutes.every((m) => _triggeredMilestones.contains(m));
-  }
-
   void _startCheckTimer() {
     _cancelCheckTimer();
 
-    // Check every 10 seconds for milestone triggers
+    // Check every 10 seconds for milestone trigger
     _checkTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      _checkMilestones();
+      _checkMilestone();
     });
   }
 
@@ -149,7 +149,9 @@ class EngagementTrackingService {
         'total=${_accumulatedTime.inSeconds}s');
   }
 
-  void _checkMilestones() {
+  void _checkMilestone() {
+    if (_paywallTriggered) return;
+
     // Calculate current total time including current session
     Duration totalTime = _accumulatedTime;
     if (_sessionStart != null) {
@@ -158,52 +160,45 @@ class EngagementTrackingService {
 
     final totalMinutes = totalTime.inMinutes;
 
-    // Check each milestone
-    for (final milestone in milestoneMinutes) {
-      if (totalMinutes >= milestone && !_triggeredMilestones.contains(milestone)) {
-        _triggerMilestone(milestone);
-      }
-    }
+    debugPrint('EngagementTrackingService: total time = ${totalTime.inSeconds}s (${totalMinutes}min)');
 
-    // Stop tracking if all milestones triggered
-    if (_allMilestonesTriggered()) {
-      _cancelCheckTimer();
-      debugPrint('EngagementTrackingService: all milestones triggered, stopping checks');
+    if (totalMinutes >= paywallMinutes) {
+      _triggerPaywall();
     }
   }
 
-  Future<void> _triggerMilestone(int minutes) async {
-    debugPrint('EngagementTrackingService: triggering milestone ${minutes}min');
+  Future<void> _triggerPaywall() async {
+    if (_paywallTriggered) return;
 
-    // Log Firebase Analytics event
-    await AnalyticsService.instance.logSkyViewMilestone(minutes: minutes);
+    debugPrint('EngagementTrackingService: triggering paywall after $paywallMinutes minutes cumulative');
 
-    // Mark as triggered
-    _triggeredMilestones.add(minutes);
-
-    // Persist triggered milestones
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _triggeredMilestonesKey,
-      _triggeredMilestones.map((m) => m.toString()).toList(),
-    );
-
-    debugPrint('EngagementTrackingService: milestone ${minutes}min triggered and saved');
-  }
-
-  /// Reset all tracking data (for testing purposes)
-  Future<void> resetForTesting() async {
-    _accumulatedTime = Duration.zero;
-    _triggeredMilestones = {};
-    _sessionStart = null;
-    _isTracking = false;
+    _paywallTriggered = true;
     _cancelCheckTimer();
 
+    // Persist that paywall was triggered
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_accumulatedSecondsKey);
-    await prefs.remove(_triggeredMilestonesKey);
+    await prefs.setBool(_paywallTriggeredKey, true);
 
-    debugPrint('EngagementTrackingService: reset for testing');
+    // Trigger the callback
+    onPaywallTrigger?.call();
+  }
+
+  /// Reset the paywall trigger state (call when user dismisses without subscribing)
+  /// This allows the paywall to be shown again on next app launch
+  Future<void> resetPaywallTrigger() async {
+    _paywallTriggered = false;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_paywallTriggeredKey, false);
+    debugPrint('EngagementTrackingService: paywall trigger reset');
+  }
+
+  /// Mark paywall as permanently handled (user subscribed or has registration)
+  Future<void> markPaywallHandled() async {
+    _paywallTriggered = true;
+    _cancelCheckTimer();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_paywallTriggeredKey, true);
+    debugPrint('EngagementTrackingService: paywall marked as handled');
   }
 
   /// Get current accumulated time (for debugging)
@@ -215,6 +210,21 @@ class EngagementTrackingService {
     return total;
   }
 
-  /// Get triggered milestones (for debugging)
-  Set<int> get triggeredMilestones => Set.from(_triggeredMilestones);
+  /// Check if paywall was already triggered
+  bool get paywallTriggered => _paywallTriggered;
+
+  /// Reset all tracking data (for testing purposes)
+  Future<void> resetForTesting() async {
+    _accumulatedTime = Duration.zero;
+    _paywallTriggered = false;
+    _sessionStart = null;
+    _isTracking = false;
+    _cancelCheckTimer();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_accumulatedSecondsKey);
+    await prefs.remove(_paywallTriggeredKey);
+
+    debugPrint('EngagementTrackingService: reset for testing');
+  }
 }

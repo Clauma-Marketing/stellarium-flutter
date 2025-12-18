@@ -381,6 +381,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get subscriptionLoading => 'Loading subscription options...';
+
+  @override
+  String get subscriptionRequiredMessage =>
+      'A subscription or valid star registration is required to continue using the app.';
+
+  @override
+  String get subscriptionSubscribeButton => 'Subscribe Now';
+
+  @override
   String get manageSubscription => 'Manage Subscription';
 
   @override
