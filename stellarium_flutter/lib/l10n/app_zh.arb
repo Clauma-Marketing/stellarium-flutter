@@ -176,6 +176,9 @@
       }
     }
   },
+  "subscriptionLoading": "正在加载订阅选项...",
+  "subscriptionRequiredMessage": "需要订阅或有效的星星注册才能继续使用该应用。",
+  "subscriptionSubscribeButton": "立即订阅",
   "manageSubscription": "管理订阅",
   "upgradeToPremium": "升级到高级版",
 

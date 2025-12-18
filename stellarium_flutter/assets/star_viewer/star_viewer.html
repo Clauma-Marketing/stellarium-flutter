@@ -629,9 +629,13 @@ void main() {
 
     function closeViewer() {
       cancelAnimationFrame(animationId);
-      // Send close message to Flutter via the FlutterChannel
+      // Send close message to Flutter via the FlutterChannel (mobile WebView)
       if (window.FlutterChannel) {
         window.FlutterChannel.postMessage('close');
+      }
+      // Also send postMessage to parent window (web iframe)
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage('close', '*');
       }
     }
 

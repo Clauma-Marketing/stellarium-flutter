@@ -808,6 +808,24 @@ abstract class AppLocalizations {
   /// **'Error restoring purchases: {error}'**
   String restoreError(String error);
 
+  /// No description provided for @subscriptionLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading subscription options...'**
+  String get subscriptionLoading;
+
+  /// No description provided for @subscriptionRequiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'A subscription or valid star registration is required to continue using the app.'**
+  String get subscriptionRequiredMessage;
+
+  /// No description provided for @subscriptionSubscribeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe Now'**
+  String get subscriptionSubscribeButton;
+
   /// No description provided for @manageSubscription.
   ///
   /// In en, this message translates to:

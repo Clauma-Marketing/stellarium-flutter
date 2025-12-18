@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:adapty_flutter/adapty_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../features/onboarding/onboarding_service.dart';
+import '../features/subscription/presentation/subscription_required_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../services/analytics_service.dart';
 import '../services/app_review_service.dart';
@@ -36,7 +38,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen>
+    with WidgetsBindingObserver {
   final GlobalKey<SkyViewState> _skyViewKey = GlobalKey<SkyViewState>();
   final TextEditingController _searchController = TextEditingController();
 
@@ -71,7 +74,57 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _initEngagementTracking() async {
     await EngagementTrackingService.instance.load();
+    // Set up paywall callback
+    EngagementTrackingService.instance.onPaywallTrigger = _showEngagementPaywall;
     // Tracking starts when engine is ready (in _onEngineReady)
+  }
+
+  /// Check if user has an active Adapty subscription
+  Future<bool> _isUserSubscribed() async {
+    try {
+      final profile = await Adapty().getProfile();
+      return profile.accessLevels.values.any((level) => level.isActive);
+    } catch (e) {
+      debugPrint('Error checking subscription: $e');
+      return false;
+    }
+  }
+
+  /// Show engagement paywall after 2 minutes of cumulative sky viewing
+  Future<void> _showEngagementPaywall() async {
+    if (kIsWeb) return;
+    if (!mounted) return;
+
+    debugPrint('EngagementPaywall: Checking if paywall should show...');
+
+    // Check 1: User has valid registration → FREE forever
+    if (SavedStarsService.instance.hasValidRegistration()) {
+      debugPrint('EngagementPaywall: User has valid registration, skipping paywall');
+      EngagementTrackingService.instance.markPaywallHandled();
+      return;
+    }
+
+    // Check 2: User is already subscribed
+    final isSubscribed = await _isUserSubscribed();
+    if (isSubscribed) {
+      debugPrint('EngagementPaywall: User is already subscribed, skipping paywall');
+      EngagementTrackingService.instance.markPaywallHandled();
+      return;
+    }
+
+    debugPrint('EngagementPaywall: Navigating to subscription required screen...');
+
+    // Navigate to SubscriptionRequiredScreen
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SubscriptionRequiredScreen(
+          onComplete: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
   }
 
   @override

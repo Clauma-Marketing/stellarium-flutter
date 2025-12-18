@@ -118,6 +118,15 @@ class SavedStarsService extends ChangeNotifier {
   /// Check if loaded
   bool get isLoaded => _isLoaded;
 
+  /// Check if user has any saved star with a valid registration number.
+  /// Users with valid registration get the app for free.
+  bool hasValidRegistration() {
+    return _savedStars.any((star) =>
+      star.registrationNumber != null &&
+      star.registrationNumber!.isNotEmpty
+    );
+  }
+
   /// Load saved stars from storage
   Future<void> load() async {
     if (_isLoaded) return;

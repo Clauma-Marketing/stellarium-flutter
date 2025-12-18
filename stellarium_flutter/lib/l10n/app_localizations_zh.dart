@@ -375,6 +375,15 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get subscriptionLoading => '正在加载订阅选项...';
+
+  @override
+  String get subscriptionRequiredMessage => '需要订阅或有效的星星注册才能继续使用该应用。';
+
+  @override
+  String get subscriptionSubscribeButton => '立即订阅';
+
+  @override
   String get manageSubscription => '管理订阅';
 
   @override

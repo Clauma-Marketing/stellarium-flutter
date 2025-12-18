@@ -177,6 +177,9 @@
       }
     }
   },
+  "subscriptionLoading": "Lade Abonnement-Optionen...",
+  "subscriptionRequiredMessage": "Ein Abonnement oder eine gültige Sternregistrierung ist erforderlich, um die App weiter zu nutzen.",
+  "subscriptionSubscribeButton": "Jetzt abonnieren",
   "manageSubscription": "Abonnement verwalten",
   "upgradeToPremium": "Auf Premium upgraden",
 
