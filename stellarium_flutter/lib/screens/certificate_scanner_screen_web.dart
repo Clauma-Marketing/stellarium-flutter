@@ -40,16 +40,17 @@ extension type RecognizeData._(JSObject _) implements JSObject {
 }
 
 /// Web-specific screen for scanning star certificates using browser camera/file input
-class CertificateScannerScreenWeb extends StatefulWidget {
-  const CertificateScannerScreenWeb({super.key});
+/// Named CertificateScannerScreen to match the mobile version for conditional exports.
+class CertificateScannerScreen extends StatefulWidget {
+  const CertificateScannerScreen({super.key});
 
   @override
-  State<CertificateScannerScreenWeb> createState() =>
-      _CertificateScannerScreenWebState();
+  State<CertificateScannerScreen> createState() =>
+      _CertificateScannerScreenState();
 }
 
-class _CertificateScannerScreenWebState
-    extends State<CertificateScannerScreenWeb> {
+class _CertificateScannerScreenState
+    extends State<CertificateScannerScreen> {
   bool _isProcessing = false;
   bool _hasDetected = false;
   String? _detectedNumber;

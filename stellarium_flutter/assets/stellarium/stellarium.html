@@ -1086,6 +1086,12 @@
           console.log('addPersistentLabel: stellarium not ready');
           return;
         }
+        // Debug: log character codes to verify encoding
+        const codes = [];
+        for (let i = 0; i < label.length; i++) {
+          codes.push('0x' + label.charCodeAt(i).toString(16));
+        }
+        console.log('addPersistentLabel DEBUG:', identifier, '->', label, 'charCodes:', codes.join(' '));
         window.stellarium.addPersistentLabel(identifier, label);
         console.log('Persistent label added:', identifier, '->', label);
       },

@@ -22,8 +22,7 @@ import '../widgets/sky_view.dart';
 import '../widgets/star_info_sheet.dart';
 import '../widgets/stellarium_webview.dart';
 import '../widgets/time_slider.dart';
-import 'certificate_scanner_screen.dart';
-import 'certificate_scanner_screen_web.dart';
+import 'certificate_scanner_factory.dart';
 import 'star_viewer_screen.dart';
 
 const String _googleApiKey = 'AIzaSyCc4LPIozIoEHVAMFz5uyQ_LrT1nAlbmfc';
@@ -1025,7 +1024,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             labelId = 'HIP ${hipMatch2.group(1)}';
           }
         }
-        debugPrint('_loadPersistentLabels: Adding label with ID: $labelId for ${star.displayName}');
+        // Debug: print hex bytes of the label to verify encoding
+        final bytes = star.displayName.codeUnits;
+        debugPrint('_loadPersistentLabels: Adding label with ID: $labelId');
+        debugPrint('  displayName: "${star.displayName}"');
+        debugPrint('  codeUnits: $bytes');
+        debugPrint('  hex: ${bytes.map((b) => '0x${b.toRadixString(16)}').join(' ')}');
         _skyViewKey.currentState?.webView?.addPersistentLabel(
           labelId,
           star.displayName,
@@ -1283,11 +1287,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Track scanner opened
     AnalyticsService.instance.logScannerOpened();
 
+    // CertificateScannerScreen is conditionally exported - uses native camera on mobile, web scanner on web
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (context) => kIsWeb
-            ? const CertificateScannerScreenWeb()
-            : const CertificateScannerScreen(),
+        builder: (context) => const CertificateScannerScreen(),
       ),
     );
 
