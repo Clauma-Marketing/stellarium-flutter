@@ -251,7 +251,7 @@
   "starRegInvalidFormat": "格式无效。请使用：XXXX-XXXXX-XXXXXXXX",
   "starRegNotFound": "未找到星星。请检查您的注册号码。",
   "starRegSearchFailed": "搜索失败。请重试。",
-  "starRegRemoved": "该星星已从注册表中移除。原因：{reason}",
+  "starRegRemoved": "{reason}",
   "@starRegRemoved": {
     "placeholders": {
       "reason": {

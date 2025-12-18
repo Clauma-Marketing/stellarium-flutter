@@ -604,7 +604,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String starRegRemoved(String reason) {
-    return 'The star has been removed from the registry. Reason: $reason';
+    return '$reason';
   }
 
   @override

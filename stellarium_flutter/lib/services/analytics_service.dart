@@ -336,4 +336,16 @@ class AnalyticsService {
       parameters: {'page': page, 'page_index': pageIndex},
     );
   }
+
+  // ==================== Engagement Tracking ====================
+
+  /// Log sky view milestone for Firebase In-App Messaging triggers.
+  /// Fires events like 'sky_view_2_min', 'sky_view_5_min', 'sky_view_10_min'.
+  Future<void> logSkyViewMilestone({required int minutes}) async {
+    await logEvent(
+      name: 'sky_view_${minutes}_min',
+      parameters: {'minutes': minutes},
+    );
+    debugPrint('Analytics: logged sky_view_${minutes}_min event');
+  }
 }

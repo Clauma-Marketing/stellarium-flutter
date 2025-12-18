@@ -577,7 +577,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String starRegRemoved(String reason) {
-    return '该星星已从注册表中移除。原因：$reason';
+    return '$reason';
   }
 
   @override

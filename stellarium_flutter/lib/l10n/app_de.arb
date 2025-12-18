@@ -252,7 +252,7 @@
   "starRegInvalidFormat": "Ungültiges Format. Verwende: XXXX-XXXXX-XXXXXXXX",
   "starRegNotFound": "Stern nicht gefunden. Bitte überprüfe deine Registrierungsnummer.",
   "starRegSearchFailed": "Suche fehlgeschlagen. Bitte versuche es erneut.",
-  "starRegRemoved": "Der Stern wurde aus dem Register entfernt. Grund: {reason}",
+  "starRegRemoved": "{reason}",
   "@starRegRemoved": {
     "placeholders": {
       "reason": {
