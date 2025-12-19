@@ -120,7 +120,10 @@ class _HomeScreenState extends State<HomeScreen>
           },
         ),
       ),
-    );
+    ).then((_) {
+      // Check if a star was found during the paywall flow
+      if (mounted) _checkOnboardingFoundStar();
+    });
   }
 
   /// Check if user has an active Adapty subscription
@@ -168,7 +171,10 @@ class _HomeScreenState extends State<HomeScreen>
           },
         ),
       ),
-    );
+    ).then((_) {
+      // Check if a star was found during the paywall flow
+      if (mounted) _checkOnboardingFoundStar();
+    });
   }
 
   @override

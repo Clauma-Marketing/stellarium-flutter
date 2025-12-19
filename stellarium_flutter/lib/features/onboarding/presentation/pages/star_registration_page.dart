@@ -203,79 +203,84 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
     return AnimatedStarfield(
       starCount: 60,
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              const SizedBox(height: 40),
-              // Pulsating icon with radial gradient background
-              ScaleTransition(
-                scale: _pulseAnimation,
-                child: SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: Clip.none,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
                     children: [
-                      // Radial gradient background (overflows container)
-                      Positioned(
-                        top: (120 - 144) / 2,
-                        left: (120 - 144) / 2,
-                        child: Container(
-                          width: 144, // icon size (120) * 1.2
-                          height: 144,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [
-                                Colors.black.withValues(alpha: 0.95),
-                                Colors.black.withValues(alpha: 0.9),
-                                Colors.black.withValues(alpha: 0.7),
-                                Colors.black.withValues(alpha: 0.5),
-                                Colors.black.withValues(alpha: 0.3),
-                                Colors.transparent,
-                              ],
-                              stops: const [0.0, 0.3, 0.5, 0.7, 0.85, 1.0],
-                            ),
+                      const SizedBox(height: 40),
+                      // Pulsating icon with radial gradient background
+                      ScaleTransition(
+                        scale: _pulseAnimation,
+                        child: SizedBox(
+                          width: 120,
+                          height: 120,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            clipBehavior: Clip.none,
+                            children: [
+                              // Radial gradient background (overflows container)
+                              Positioned(
+                                top: (120 - 144) / 2,
+                                left: (120 - 144) / 2,
+                                child: Container(
+                                  width: 144, // icon size (120) * 1.2
+                                  height: 144,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        Colors.black.withValues(alpha: 0.95),
+                                        Colors.black.withValues(alpha: 0.9),
+                                        Colors.black.withValues(alpha: 0.7),
+                                        Colors.black.withValues(alpha: 0.5),
+                                        Colors.black.withValues(alpha: 0.3),
+                                        Colors.transparent,
+                                      ],
+                                      stops: const [0.0, 0.3, 0.5, 0.7, 0.85, 1.0],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Icon image
+                              Image.asset(
+                                'assets/icons/find_star.png',
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.contain,
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      // Icon image
-                      Image.asset(
-                        'assets/icons/find_star.png',
-                        width: 120,
-                        height: 120,
-                        fit: BoxFit.contain,
+                      const SizedBox(height: 32),
+                      // Title
+                      Text(
+                        l10n.starRegTitle,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                        textAlign: TextAlign.center,
                       ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Title
-              Text(
-                l10n.starRegTitle,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              // Subtitle
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  l10n.starRegSubtitle,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
+                      const SizedBox(height: 12),
+                      // Subtitle
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          l10n.starRegSubtitle,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.white70,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              // Spacer pushes everything below to the bottom
-              const Spacer(),
+                      // Spacer pushes everything below to the bottom (works with IntrinsicHeight)
+                      const Spacer(),
               // Bottom section
               // Saved stars quick select
               if (_savedStarsWithRegistration.isNotEmpty) ...[
@@ -459,9 +464,13 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
-            ],
-          ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

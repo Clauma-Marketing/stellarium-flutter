@@ -6,6 +6,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../services/analytics_service.dart';
 import '../../../services/engagement_tracking_service.dart';
 import '../../../widgets/star_info_sheet.dart';
+import '../../onboarding/onboarding_service.dart';
 import '../../onboarding/presentation/pages/star_registration_page.dart';
 
 /// Screen shown when user has exceeded free usage time.
@@ -90,7 +91,8 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
   void _onStarFound(StarInfo starInfo) {
     // User found a valid star - mark paywall as handled
     EngagementTrackingService.instance.markPaywallHandled();
-    // The star will be saved by StarRegistrationPage
+    // Save the star so HomeScreen can select it after navigation
+    OnboardingService.saveFoundStar(starInfo);
     widget.onComplete();
   }
 
@@ -142,9 +144,24 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
     AdaptyPaywallProduct product,
     AdaptyPurchaseResult purchaseResult,
   ) {
-    debugPrint('SubscriptionRequired: Purchase completed');
-    view.dismiss();
-    _onSubscriptionSuccess();
+    switch (purchaseResult) {
+      case AdaptyPurchaseResultSuccess():
+        debugPrint('SubscriptionRequired: Purchase successful');
+        view.dismiss();
+        _onSubscriptionSuccess();
+        break;
+      case AdaptyPurchaseResultPending():
+        debugPrint('SubscriptionRequired: Purchase pending');
+        // Don't dismiss - let user wait or retry
+        break;
+      case AdaptyPurchaseResultUserCancelled():
+        debugPrint('SubscriptionRequired: Purchase cancelled by user');
+        // Don't dismiss - user stays on paywall
+        break;
+      default:
+        debugPrint('SubscriptionRequired: Unknown purchase result');
+        break;
+    }
   }
 
   @override
@@ -336,7 +353,7 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
                 ],
               ),
             ),
-            // Star registration page
+            // Star registration page (now scrollable, so no overflow)
             Expanded(
               child: StarRegistrationPage(
                 onContinue: _onStarRegistrationContinue,
