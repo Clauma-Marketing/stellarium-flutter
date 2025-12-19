@@ -17,6 +17,7 @@ import 'widgets/star_info_sheet.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
 import 'services/analytics_service.dart';
+import 'services/engagement_tracking_service.dart';
 import 'services/firestore_sync_service.dart';
 import 'services/klaviyo_service.dart';
 import 'services/locale_service.dart';
@@ -267,12 +268,25 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     // Check if user has already subscribed
     final subscriptionShown = await OnboardingService.isSubscriptionShown();
 
-    // After star registration, show subscription screen (on mobile only) if not yet subscribed
+    // Check if engagement paywall was already triggered (user exceeded 2-min free time)
+    await EngagementTrackingService.instance.load();
+    final engagementPaywallTriggered = EngagementTrackingService.instance.paywallTriggered;
+
+    // PAYWALL COORDINATION:
+    // We have two paywall entry points with different placement IDs:
+    // 1. SubscriptionScreen ('night_sky_view') - skippable, shown to new users after onboarding
+    // 2. SubscriptionRequiredScreen ('non_skippable_paywall') - forced, shown after 2-min free time
+    //
+    // Problem: Without coordination, returning users who exceeded free time would see BOTH:
+    // - First 'night_sky_view' (from this flow)
+    // - Then 'non_skippable_paywall' (from HomeScreen._checkAndShowPaywallIfNeeded)
+    //
+    // Solution: If engagementPaywallTriggered is true, skip SubscriptionScreen here.
+    // HomeScreen will handle showing the forced paywall via _checkAndShowPaywallIfNeeded.
     setState(() {
-      if (!kIsWeb && !subscriptionShown) {
+      if (!kIsWeb && !subscriptionShown && !engagementPaywallTriggered) {
         _currentScreen = AppScreen.subscription;
       } else {
-        // On web or if already subscribed, go directly to home
         _currentScreen = AppScreen.home;
       }
     });

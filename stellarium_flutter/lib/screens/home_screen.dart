@@ -77,6 +77,50 @@ class _HomeScreenState extends State<HomeScreen>
     // Set up paywall callback
     EngagementTrackingService.instance.onPaywallTrigger = _showEngagementPaywall;
     // Tracking starts when engine is ready (in _onEngineReady)
+
+    // If paywall was previously triggered, check if user still needs to see it
+    // (they may have closed the app without subscribing)
+    if (EngagementTrackingService.instance.paywallTriggered) {
+      _checkAndShowPaywallIfNeeded();
+    }
+  }
+
+  /// Check if unsubscribed user needs to see the paywall on app restart
+  Future<void> _checkAndShowPaywallIfNeeded() async {
+    if (kIsWeb) return;
+
+    // Wait for SavedStarsService to load
+    await SavedStarsService.instance.load();
+
+    // Check 1: User has valid registration → FREE forever
+    if (SavedStarsService.instance.hasValidRegistration()) {
+      debugPrint('EngagementPaywall: User has valid registration, no paywall needed');
+      return;
+    }
+
+    // Check 2: User is already subscribed
+    final isSubscribed = await _isUserSubscribed();
+    if (isSubscribed) {
+      debugPrint('EngagementPaywall: User is subscribed, no paywall needed');
+      return;
+    }
+
+    // User has exceeded free time and is not subscribed - show paywall
+    debugPrint('EngagementPaywall: User exceeded free time, showing paywall on restart');
+
+    // Small delay to ensure UI is ready
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SubscriptionRequiredScreen(
+          onComplete: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
   }
 
   /// Check if user has an active Adapty subscription

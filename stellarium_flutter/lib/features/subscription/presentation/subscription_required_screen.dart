@@ -95,12 +95,9 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
   }
 
   void _onStarRegistrationContinue({bool starFound = false}) {
-    if (starFound) {
-      // User found a valid star
-      EngagementTrackingService.instance.markPaywallHandled();
-      widget.onComplete();
-    }
-    // If no star found, user stays on this screen
+    // Note: When starFound is true, _onStarFound has already been called
+    // and handled the completion, so we don't need to do anything here.
+    // If no star found, user stays on this screen.
   }
 
   void _onStarRegistrationSkip() {
