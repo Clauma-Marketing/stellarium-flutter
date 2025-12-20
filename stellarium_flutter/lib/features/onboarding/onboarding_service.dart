@@ -102,6 +102,13 @@ class OnboardingService {
     }
   }
 
+  /// Save a registration number from a push notification deep link.
+  /// This allows HomeScreen to pick it up and search for the star.
+  static Future<void> saveFoundStarFromNotification(String registrationNumber) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_foundStarRegistrationKey, registrationNumber);
+  }
+
   /// Get saved found star info
   static Future<({String? registrationNumber, String? name, String? identifier})> getFoundStar() async {
     final prefs = await SharedPreferences.getInstance();

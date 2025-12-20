@@ -15,6 +15,7 @@ import '../services/analytics_service.dart';
 import '../services/app_review_service.dart';
 import '../services/engagement_tracking_service.dart';
 import '../services/locale_service.dart';
+import '../services/subscription_availability_service.dart';
 import '../services/saved_stars_service.dart';
 import '../services/search_history_service.dart';
 import '../stellarium/stellarium.dart';
@@ -126,8 +127,17 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  /// Check if user has an active Adapty subscription
+  /// Check if user has an active Adapty subscription.
+  /// Returns true if subscribed OR if subscription services are unavailable
+  /// (e.g., in China where Google Play is blocked).
   Future<bool> _isUserSubscribed() async {
+    // If subscription services are unavailable, treat user as "subscribed"
+    // so they can use the app without being blocked by paywalls
+    if (!SubscriptionAvailabilityService.instance.isAvailable) {
+      debugPrint('Subscription services unavailable - bypassing paywall');
+      return true;
+    }
+
     try {
       final profile = await Adapty().getProfile();
       return profile.accessLevels.values.any((level) => level.isActive);

@@ -8,6 +8,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'features/onboarding/onboarding_service.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
@@ -23,6 +24,7 @@ import 'services/klaviyo_service.dart';
 import 'services/locale_service.dart';
 import 'services/saved_stars_service.dart';
 import 'services/star_notification_service.dart';
+import 'services/subscription_availability_service.dart';
 import 'web_utils.dart';
 
 /// Background message handler for Firebase Messaging.
@@ -32,6 +34,64 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   // Handle push notification for Klaviyo tracking
   await KlaviyoService.instance.handlePush(message.data);
+}
+
+/// Global navigator key for handling deep links from notifications
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+/// Handle notification tap - extracts and opens links from notification data.
+/// Supports both external URLs and in-app deep links.
+///
+/// Expected data format from push notification:
+/// - "link": "https://www.star-registration.com" (external URL)
+/// - "url": "https://..." (alternative key for external URL)
+/// - "registration_number": "OSR-123456" (in-app: navigate to star)
+/// - "screen": "subscription" (in-app: navigate to screen)
+Future<void> _handleNotificationTap(RemoteMessage message) async {
+  final data = message.data;
+  debugPrint('Notification tapped with data: $data');
+
+  // Track Klaviyo push open
+  await KlaviyoService.instance.handlePush(data);
+
+  // Check for external URL (supports multiple key names)
+  final link = data['link'] ?? data['url'] ?? data['deep_link'];
+  if (link != null && link.isNotEmpty) {
+    try {
+      final uri = Uri.parse(link);
+      debugPrint('Opening URL from notification: $uri');
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    } catch (e) {
+      debugPrint('Error opening URL from notification: $e');
+    }
+  }
+
+  // Check for in-app deep links
+  final registrationNumber = data['registration_number'] ?? data['star'];
+  if (registrationNumber != null && registrationNumber.isNotEmpty) {
+    debugPrint('Deep link to star: $registrationNumber');
+    // Store for HomeScreen to pick up and search
+    await OnboardingService.saveFoundStarFromNotification(registrationNumber);
+    return;
+  }
+
+  // Check for screen navigation
+  final screen = data['screen'];
+  if (screen != null && navigatorKey.currentState != null) {
+    switch (screen) {
+      case 'subscription':
+        navigatorKey.currentState!.push(
+          MaterialPageRoute(
+            builder: (_) => SubscriptionScreen(
+              onComplete: () => navigatorKey.currentState?.pop(),
+            ),
+          ),
+        );
+        break;
+      // Add more screens as needed
+    }
+  }
 }
 
 /// Initialize star visibility notification services
@@ -117,8 +177,15 @@ void main() async {
             ..withLogLevel(AdaptyLogLevel.verbose)
             ..withActivateUI(true),
         );
+
+        // Check if subscription services are available (async, non-blocking)
+        // This allows users in China (no Google Play) to use the app without paywalls
+        unawaited(SubscriptionAvailabilityService.instance.checkAvailability());
       } catch (e) {
         debugPrint('Adapty initialization error: $e');
+        // Mark subscription services as unavailable if Adapty fails to initialize
+        // This bypasses paywalls for users who can't access the service
+        SubscriptionAvailabilityService.instance.markUnavailable();
       }
     }
 
@@ -137,6 +204,18 @@ void main() async {
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
           KlaviyoService.instance.handlePush(message.data);
         });
+
+        // Handle notification tap when app is in background
+        FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+        // Handle notification tap that launched the app from terminated state
+        final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+        if (initialMessage != null) {
+          // Delay slightly to ensure app is ready
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _handleNotificationTap(initialMessage);
+          });
+        }
 
         // Initialize Klaviyo for returning users
         final locale = LocaleService.instance.locale;
@@ -189,6 +268,7 @@ class _StellariumAppState extends State<StellariumApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Stellarium',
       debugShowCheckedModeBanner: false,
       // Localization support
