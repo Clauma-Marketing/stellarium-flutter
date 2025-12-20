@@ -10,11 +10,19 @@ import 'star_viewer_screen_stub.dart'
 class StarViewerScreen extends StatefulWidget {
   final String starName;
   final String? spectralType;
+  final double? vMagnitude;
+  final double? bMagnitude;
+  final bool isDoubleOrMultiple;
+  final double? distanceLightYears;
 
   const StarViewerScreen({
     super.key,
     required this.starName,
     this.spectralType,
+    this.vMagnitude,
+    this.bMagnitude,
+    this.isDoubleOrMultiple = false,
+    this.distanceLightYears,
   });
 
   @override
@@ -51,6 +59,18 @@ class _StarViewerScreenState extends State<StarViewerScreen> {
       };
       if (widget.spectralType != null && widget.spectralType!.isNotEmpty) {
         params['spectralType'] = widget.spectralType!;
+      }
+      if (widget.vMagnitude != null) {
+        params['vMagnitude'] = widget.vMagnitude!.toString();
+      }
+      if (widget.bMagnitude != null) {
+        params['bMagnitude'] = widget.bMagnitude!.toString();
+      }
+      if (widget.isDoubleOrMultiple) {
+        params['isDouble'] = 'true';
+      }
+      if (widget.distanceLightYears != null) {
+        params['distance'] = widget.distanceLightYears!.toStringAsFixed(1);
       }
 
       final viewerWidget = await platform_impl.createViewer(

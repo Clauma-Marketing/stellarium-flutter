@@ -599,6 +599,10 @@ class _HomeScreenState extends State<HomeScreen>
             builder: (context) => StarViewerScreen(
               starName: effectiveName,
               spectralType: starInfo.modelData?.spectralType,
+              vMagnitude: starInfo.modelData?.vMagnitude,
+              bMagnitude: starInfo.modelData?.bMagnitude,
+              isDoubleOrMultiple: starInfo.modelData?.isDoubleOrMultiple ?? false,
+              distanceLightYears: starInfo.modelData?.distanceLightYears,
             ),
           ),
         ).then((_) {

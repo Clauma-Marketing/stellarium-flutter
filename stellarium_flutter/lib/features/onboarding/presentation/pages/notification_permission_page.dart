@@ -30,6 +30,20 @@ class _NotificationPermissionPageState
     extends State<NotificationPermissionPage> {
   bool _isLoading = false;
 
+  /// Initialize Klaviyo in the background without blocking the user flow.
+  /// This prevents the app from getting stuck if Firebase is unreachable (e.g., in China).
+  void _initializeKlaviyoAsync(String languageCode) {
+    Future(() async {
+      try {
+        await KlaviyoService.instance.initialize(languageCode);
+        KlaviyoService.instance.setupTokenRefreshListener();
+        await KlaviyoService.instance.registerPushToken();
+        debugPrint('Klaviyo initialized successfully in background');
+      } catch (e) {
+        debugPrint('Klaviyo background initialization error: $e');
+      }
+    });
+  }
 
   Future<void> _requestNotificationPermission() async {
     setState(() {
@@ -46,13 +60,12 @@ class _NotificationPermissionPageState
         if (status.isGranted) {
           // Track permission granted
           AnalyticsService.instance.logPermissionGranted(permission: 'notification');
-          // Initialize Klaviyo now that we have permission
+          // Initialize Klaviyo asynchronously (don't block user flow)
+          // This prevents hanging if Firebase/Google services are blocked (e.g., in China)
           final locale = LocaleService.instance.locale;
           final languageCode = locale?.languageCode ??
               WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-          await KlaviyoService.instance.initialize(languageCode);
-          KlaviyoService.instance.setupTokenRefreshListener();
-          await KlaviyoService.instance.registerPushToken();
+          _initializeKlaviyoAsync(languageCode);
         }
       }
     } catch (e) {
