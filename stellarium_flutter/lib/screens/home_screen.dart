@@ -489,13 +489,13 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
-          // Star info panel overlay (only when engine is ready)
+          // Star info panel overlay with toggle buttons (only when engine is ready)
           if (_isEngineReady && hasStarInfo)
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: _buildStarInfoPanel(),
+              child: _buildStarInfoPanelWithToggles(),
             ),
         ],
         ),
@@ -503,132 +503,157 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildStarInfoPanel() {
+  Widget _buildStarInfoPanelWithToggles() {
     final maxHeight = MediaQuery.of(context).size.height * 0.4;
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: StarInfoBottomSheet(
-        // Key ensures widget rebuilds when star changes
-        key: ValueKey(_selectedStarInfo!.shortName),
-        starInfo: _selectedStarInfo!,
-      registryFuture: _registryFuture,
-      onClose: _closeStarInfo,
-      onPointAt: () {
-        // Track point at action
-        AnalyticsService.instance.logStarPointAt(starName: _selectedStarInfo!.shortName);
-        // Use searchQuery which returns registration number for registered stars
-        final query = _selectedStarInfo!.searchQuery;
-        if (query.isNotEmpty) {
-          _pointAtOrSelect(query);
-        }
-      },
-      onNameStar: () async {
-        // Track name star click
-        AnalyticsService.instance.logNameStarClicked();
-        final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
-        final languageCode = locale.languageCode;
-
-        // Get the HIP number from multiple sources
-        String? hipNumber;
-        final modelData = _selectedStarInfo?.modelData;
-
-        // Try from modelData.identifier first
-        if (modelData != null && modelData.identifier.isNotEmpty) {
-          debugPrint('onNameStar: modelData.identifier = ${modelData.identifier}');
-          final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(modelData.identifier);
-          if (hipMatch != null) {
-            hipNumber = hipMatch.group(1);
-            debugPrint('onNameStar: Found HIP from identifier: $hipNumber');
-          }
-        }
-
-        // If not found, try from _selectedObjectInfo.names
-        if (hipNumber == null && _selectedObjectInfo != null) {
-          debugPrint('onNameStar: _selectedObjectInfo.names = ${_selectedObjectInfo!.names}');
-          for (final name in _selectedObjectInfo!.names) {
-            final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(name);
-            if (hipMatch != null) {
-              hipNumber = hipMatch.group(1);
-              debugPrint('onNameStar: Found HIP from names list: $hipNumber');
-              break;
-            }
-          }
-        }
-
-        // Also try _selectedObjectInfo.name as fallback
-        if (hipNumber == null && _selectedObjectInfo != null) {
-          debugPrint('onNameStar: _selectedObjectInfo.name = ${_selectedObjectInfo!.name}');
-          final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(_selectedObjectInfo!.name);
-          if (hipMatch != null) {
-            hipNumber = hipMatch.group(1);
-            debugPrint('onNameStar: Found HIP from name: $hipNumber');
-          }
-        }
-
-        // Build URL based on language
-        final baseUrl = languageCode == 'de'
-            ? 'https://www.sterntaufe-deutschland.de/products/sterntaufe'
-            : 'https://www.star-registration.com/products/standard';
-
-        // Add HIP number as query parameter if available
-        final uri = hipNumber != null
-            ? Uri.parse('$baseUrl?hip=$hipNumber')
-            : Uri.parse(baseUrl);
-
-        debugPrint('onNameStar: Opening URL: $uri');
-
-        // Launch URL first, then close the info panel
-        try {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } catch (e) {
-          debugPrint('onNameStar: Failed to launch URL: $e');
-        }
-
-        _closeStarInfo();
-      },
-      onViewIn3D: (effectiveName) {
-        // Track 3D view action
-        AnalyticsService.instance.logStarView3D(starName: effectiveName);
-        final starInfo = _selectedStarInfo!;
-        final selectionInfo = _selectedObjectInfo;
-        _closeStarInfo();
-
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => StarViewerScreen(
-              starName: effectiveName,
-              spectralType: starInfo.modelData?.spectralType,
-              vMagnitude: starInfo.modelData?.vMagnitude,
-              bMagnitude: starInfo.modelData?.bMagnitude,
-              isDoubleOrMultiple: starInfo.modelData?.isDoubleOrMultiple ?? false,
-              distanceLightYears: starInfo.modelData?.distanceLightYears,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Toggle buttons row (atmosphere & movement)
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.0),
+                Colors.black.withValues(alpha: 0.5),
+              ],
             ),
           ),
-        ).then((_) {
-          // Reopen the info panel when returning from 3D viewer
-          if (selectionInfo != null) {
-            setState(() {
-              _selectedStarInfo = starInfo;
-              _registryFuture = _fetchRegistryInfo(selectionInfo);
-              _selectedObjectInfo = selectionInfo;
-            });
-          }
-        });
-      },
-      starTrackEnabled: _starTrackEnabled,
-      onToggleStarTrack: (enabled) {
-        // Track star path toggle
-        AnalyticsService.instance.logStarPathToggle(
-          starName: _selectedStarInfo!.shortName,
-          enabled: enabled,
-        );
-        setState(() {
-          _starTrackEnabled = enabled;
-        });
-        _skyViewKey.currentState?.webView?.setStarTrackVisible(enabled);
-      },
-      ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: MainButtonsRow(
+            atmosphereEnabled: _settings.atmosphere,
+            gyroscopeEnabled: _gyroscopeEnabled,
+            gyroscopeAvailable: _gyroscopeAvailable,
+            onAtmosphereTap: () {
+              final newValue = !_settings.atmosphere;
+              AnalyticsService.instance.logAtmosphereToggle(enabled: newValue);
+              _onSettingChanged('atmosphere', newValue);
+            },
+            onGyroscopeTap: () async {
+              if (kIsWeb && !_gyroscopeEnabled) {
+                final granted = await _skyViewKey.currentState?.requestMotionPermission() ?? false;
+                if (!granted) return;
+              }
+              setState(() {
+                _gyroscopeEnabled = !_gyroscopeEnabled;
+                AnalyticsService.instance.logGyroscopeToggle(enabled: _gyroscopeEnabled);
+              });
+            },
+          ),
+        ),
+        // Star info panel
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: StarInfoBottomSheet(
+            key: ValueKey(_selectedStarInfo!.shortName),
+            starInfo: _selectedStarInfo!,
+            registryFuture: _registryFuture,
+            onClose: _closeStarInfo,
+            onPointAt: () {
+              AnalyticsService.instance.logStarPointAt(starName: _selectedStarInfo!.shortName);
+              final query = _selectedStarInfo!.searchQuery;
+              if (query.isNotEmpty) {
+                // Disable gyroscope and point directly to the star
+                if (_gyroscopeEnabled) {
+                  setState(() {
+                    _gyroscopeEnabled = false;
+                  });
+                  _skyViewKey.currentState?.webView?.setGyroscopeEnabled(false);
+                }
+                _pointToStar(query);
+              }
+            },
+            onNameStar: () async {
+              AnalyticsService.instance.logNameStarClicked();
+              final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
+              final languageCode = locale.languageCode;
+
+              String? hipNumber;
+              final modelData = _selectedStarInfo?.modelData;
+
+              if (modelData != null && modelData.identifier.isNotEmpty) {
+                final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(modelData.identifier);
+                if (hipMatch != null) {
+                  hipNumber = hipMatch.group(1);
+                }
+              }
+
+              if (hipNumber == null && _selectedObjectInfo != null) {
+                for (final name in _selectedObjectInfo!.names) {
+                  final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(name);
+                  if (hipMatch != null) {
+                    hipNumber = hipMatch.group(1);
+                    break;
+                  }
+                }
+              }
+
+              if (hipNumber == null && _selectedObjectInfo != null) {
+                final hipMatch = RegExp(r'HIP\s*(\d+)', caseSensitive: false).firstMatch(_selectedObjectInfo!.name);
+                if (hipMatch != null) {
+                  hipNumber = hipMatch.group(1);
+                }
+              }
+
+              final baseUrl = languageCode == 'de'
+                  ? 'https://www.sterntaufe-deutschland.de/products/sterntaufe'
+                  : 'https://www.star-registration.com/products/standard';
+
+              final uri = hipNumber != null
+                  ? Uri.parse('$baseUrl?hip=$hipNumber')
+                  : Uri.parse(baseUrl);
+
+              try {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (e) {
+                debugPrint('onNameStar: Failed to launch URL: $e');
+              }
+
+              _closeStarInfo();
+            },
+            onViewIn3D: (effectiveName) {
+              AnalyticsService.instance.logStarView3D(starName: effectiveName);
+              final starInfo = _selectedStarInfo!;
+              final selectionInfo = _selectedObjectInfo;
+              _closeStarInfo();
+
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => StarViewerScreen(
+                    starName: effectiveName,
+                    spectralType: starInfo.modelData?.spectralType,
+                    vMagnitude: starInfo.modelData?.vMagnitude,
+                    bMagnitude: starInfo.modelData?.bMagnitude,
+                    isDoubleOrMultiple: starInfo.modelData?.isDoubleOrMultiple ?? false,
+                    distanceLightYears: starInfo.modelData?.distanceLightYears,
+                  ),
+                ),
+              ).then((_) {
+                if (selectionInfo != null) {
+                  setState(() {
+                    _selectedStarInfo = starInfo;
+                    _registryFuture = _fetchRegistryInfo(selectionInfo);
+                    _selectedObjectInfo = selectionInfo;
+                  });
+                }
+              });
+            },
+            starTrackEnabled: _starTrackEnabled,
+            onToggleStarTrack: (enabled) {
+              AnalyticsService.instance.logStarPathToggle(
+                starName: _selectedStarInfo!.shortName,
+                enabled: enabled,
+              );
+              setState(() {
+                _starTrackEnabled = enabled;
+              });
+              _skyViewKey.currentState?.webView?.setStarTrackVisible(enabled);
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -643,6 +668,23 @@ class _HomeScreenState extends State<HomeScreen>
     _skyViewKey.currentState?.webView?.clearCustomLabel();
     _skyViewKey.currentState?.webView?.stopGuidance();
     _skyViewKey.currentState?.webView?.setStarTrackVisible(false);
+  }
+
+  /// Point the camera directly at a star (no gyroscope guidance).
+  void _pointToStar(String searchId) {
+    _skyViewKey.currentState?.webView?.pointAt(searchId);
+    if (kIsWeb) {
+      final engine = _skyViewKey.currentState?.engine;
+      if (engine != null) {
+        (engine as dynamic).pointAtByName(searchId);
+      }
+    } else {
+      _skyViewKey.currentState?.engine?.search(searchId).then((obj) {
+        if (obj != null) {
+          _skyViewKey.currentState?.engine?.pointAt(obj);
+        }
+      });
+    }
   }
 
   /// Helper to point at or select a star based on gyroscope mode.
