@@ -53,6 +53,95 @@
           data: data
         }));
       }
+      // Play triangle sound when an object is selected
+      if (type === 'objectSelected') {
+        playTriangleSound();
+      }
+    }
+
+    // Triangle/bell sound effect for star selection
+    let audioContext = null;
+    function getAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      // Resume if suspended (browser autoplay policy)
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      return audioContext;
+    }
+
+    function playTriangleSound() {
+      try {
+        const ctx = getAudioContext();
+
+        // Randomize base frequencies slightly for each hit
+        const baseFreqs = [2637, 4186, 5274, 6645, 8372, 10548];
+        const randomOffset = 1 + (Math.random() - 0.5) * 0.15; // ±7.5% pitch variation
+        const frequencies = baseFreqs.map(f => f * randomOffset);
+
+        const now = ctx.currentTime;
+
+        // Randomize decay time
+        const decayTime = 0.7 + Math.random() * 0.6; // 0.7 to 1.3 seconds
+
+        frequencies.forEach((freq, i) => {
+          const oscillator = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          const filterNode = ctx.createBiquadFilter();
+
+          // Randomize filter slightly
+          filterNode.type = 'highpass';
+          filterNode.frequency.value = 3500 + Math.random() * 1500;
+          filterNode.Q.value = 0.8 + Math.random() * 0.6;
+
+          oscillator.type = 'sine';
+          // Add slight individual detuning for shimmer
+          oscillator.frequency.value = freq * (1 + (Math.random() - 0.5) * 0.02);
+
+          // Randomize amplitude slightly (reduced by 40%)
+          const amplitude = (0.06 + Math.random() * 0.024) / (i + 1);
+          gainNode.gain.setValueAtTime(0, now);
+          gainNode.gain.linearRampToValueAtTime(amplitude, now + 0.0005);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, now + decayTime);
+
+          oscillator.connect(filterNode);
+          filterNode.connect(gainNode);
+          gainNode.connect(ctx.destination);
+
+          oscillator.start(now);
+          oscillator.stop(now + decayTime + 0.1);
+        });
+
+        // Add bright noise burst for the "ting" attack
+        const noiseDuration = 0.02 + Math.random() * 0.02;
+        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * noiseDuration, ctx.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseData.length; i++) {
+          noiseData[i] = (Math.random() * 2 - 1) * 0.2;
+        }
+
+        const noiseSource = ctx.createBufferSource();
+        const noiseGain = ctx.createGain();
+        const noiseFilter = ctx.createBiquadFilter();
+
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.value = 8000 + Math.random() * 4000;
+        noiseFilter.Q.value = 2 + Math.random() * 2;
+
+        noiseSource.buffer = noiseBuffer;
+        noiseGain.gain.setValueAtTime(0.072 + Math.random() * 0.036, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDuration);
+
+        noiseSource.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+
+        noiseSource.start(now);
+      } catch (e) {
+        console.log('Triangle sound error:', e);
+      }
     }
 
     // Network request debugging (enabled when loaded with ?debugNet=1)
