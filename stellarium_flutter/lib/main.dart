@@ -25,6 +25,7 @@ import 'services/locale_service.dart';
 import 'services/saved_stars_service.dart';
 import 'services/star_notification_service.dart';
 import 'services/subscription_availability_service.dart';
+import 'services/background_music_service.dart';
 import 'web_utils.dart';
 
 /// Background message handler for Firebase Messaging.
@@ -143,6 +144,9 @@ void main() async {
 
     // Load locale preference
     await LocaleService.instance.load();
+
+    // Start background music
+    await BackgroundMusicService.instance.initialize();
 
     // Initialize Firebase (only on mobile platforms)
     if (!kIsWeb) {

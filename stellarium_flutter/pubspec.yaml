@@ -109,6 +109,9 @@ dependencies:
   # In-app review for app store ratings
   in_app_review: ^2.0.10
 
+  # Audio player for background music
+  just_audio: ^0.9.40
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -145,6 +148,7 @@ flutter:
   # Stellarium web engine assets for WebView
   assets:
     - assets/stellarium/
+    - assets/meditation-music-322801.mp3
     # Generated list of Stellarium data files under assets/stellarium/data/.
     # Run `bash tool/dart run tool/generate_stellarium_data_assets.dart` after adding/removing data.
     # BEGIN STELLARIUM DATA ASSETS
