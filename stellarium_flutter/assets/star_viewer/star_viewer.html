@@ -144,40 +144,203 @@
     const customCoreColor = params.get('coreColor');
     const customSurfaceColor = params.get('surfaceColor');
     const backText = params.get('backText') || 'Back';
+    const vMagnitude = parseFloat(params.get('vMagnitude')) || null;
+    const bMagnitude = parseFloat(params.get('bMagnitude')) || null;
+    const isDouble = params.get('isDouble') === 'true';
+    const distance = parseFloat(params.get('distance')) || null;
 
-    // Display star name and back button text
-    document.getElementById('star-name').textContent = starName;
-    document.getElementById('spectral-type').textContent = 'Spectral Type: ' + spectralType;
-    document.getElementById('back-text').textContent = backText;
-
-    // Spectral type to color mapping (matching your SunConfig)
-    function getStarColors(spectral) {
-      const type = (spectral || 'G').charAt(0).toUpperCase();
-      const colors = {
-        'O': { core: '#9bb0ff', surface: '#aac0ff' },
-        'B': { core: '#aabfff', surface: '#bbccff' },
-        'A': { core: '#cad7ff', surface: '#dde5ff' },
-        'F': { core: '#f8f7ff', surface: '#fffef8' },
-        'G': { core: '#fff4ea', surface: '#ffcc66' },  // Sun-like
-        'K': { core: '#ffd2a1', surface: '#ff9933' },
-        'M': { core: '#ffcc6f', surface: '#ff6633' },
-        'L': { core: '#ff6633', surface: '#cc3300' },
-        'T': { core: '#cc3300', surface: '#990000' },
+    // Parse spectral type into components: type (O-T), subclass (0-9), luminosity class (I-VII)
+    function parseSpectralType(spectral) {
+      const result = {
+        type: 'G',
+        subclass: 2,
+        luminosityClass: 'V',
+        luminosityNumeric: 5, // V = main sequence = 5
+        fullType: spectral || 'G2V'
       };
-      return colors[type] || colors['G'];
+
+      if (!spectral) return result;
+
+      // Match pattern: letter + optional digit(s) + optional roman numeral
+      const match = spectral.match(/^([OBAFGKMLTY])(\d)?\.?(\d)?\s*(I{1,3}|IV|V|VI|VII)?/i);
+      if (match) {
+        result.type = match[1].toUpperCase();
+        result.subclass = match[2] ? parseInt(match[2]) : 5;
+        if (match[4]) {
+          result.luminosityClass = match[4].toUpperCase();
+          // Convert luminosity class to numeric (lower = larger star)
+          const lumMap = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7 };
+          result.luminosityNumeric = lumMap[result.luminosityClass] || 5;
+        }
+      }
+      return result;
     }
 
-    const starColors = getStarColors(spectralType);
+    const spectralData = parseSpectralType(spectralType);
 
-    // Config object matching your SunConfig interface
+    // Calculate B-V color index for more accurate colors
+    const bvIndex = (bMagnitude !== null && vMagnitude !== null) ? bMagnitude - vMagnitude : null;
+
+    // Spectral type to color mapping with B-V index refinement
+    function getStarColors(spectral, bv) {
+      const type = spectral.type;
+
+      // Base colors by spectral type
+      const colors = {
+        'O': { core: '#9bb0ff', surface: '#aac0ff', temp: 30000 },  // Blue
+        'B': { core: '#aabfff', surface: '#bbccff', temp: 20000 },  // Blue-white
+        'A': { core: '#cad7ff', surface: '#dde5ff', temp: 9000 },   // White
+        'F': { core: '#f8f7ff', surface: '#fffef8', temp: 7000 },   // Yellow-white
+        'G': { core: '#fff4ea', surface: '#ffcc66', temp: 5500 },   // Yellow (Sun-like)
+        'K': { core: '#ffd2a1', surface: '#ff9933', temp: 4500 },   // Orange
+        'M': { core: '#ffcc6f', surface: '#ff6633', temp: 3500 },   // Red
+        'L': { core: '#ff6633', surface: '#cc3300', temp: 2000 },   // Deep red
+        'T': { core: '#cc3300', surface: '#990000', temp: 1000 },   // Brown dwarf
+        'Y': { core: '#990000', surface: '#660000', temp: 500 },    // Coolest brown dwarfs
+      };
+
+      let baseColors = colors[type] || colors['G'];
+
+      // Refine colors using B-V index if available
+      if (bv !== null) {
+        // B-V ranges from about -0.3 (hot blue) to +2.0 (cool red)
+        // Interpolate to adjust colors
+        if (bv < -0.1) {
+          // Very blue stars
+          baseColors = { ...baseColors, core: '#8eaaff', surface: '#9ab8ff' };
+        } else if (bv > 1.5) {
+          // Very red stars
+          baseColors = { ...baseColors, core: '#ff8844', surface: '#ff5522' };
+        }
+      }
+
+      return baseColors;
+    }
+
+    // Calculate star radius based on luminosity class
+    function getStarRadius(lumClass) {
+      // Luminosity class affects apparent size
+      // I = Supergiant (huge), V = Main sequence (normal), VII = White dwarf (tiny)
+      const radiusMap = {
+        1: 2.5,   // I - Supergiant
+        2: 2.0,   // II - Bright giant
+        3: 1.6,   // III - Giant
+        4: 1.3,   // IV - Subgiant
+        5: 1.2,   // V - Main sequence (default)
+        6: 0.9,   // VI - Subdwarf
+        7: 0.5,   // VII - White dwarf
+      };
+      return radiusMap[lumClass] || 1.2;
+    }
+
+    // Calculate bloom intensity based on magnitude (brighter = lower magnitude = more bloom)
+    function getBloomFromMagnitude(vMag) {
+      if (vMag === null) return 1.2; // default
+      // Magnitude ranges roughly from -1.5 (Sirius) to +6 (barely visible)
+      // Map to bloom: brighter stars get more bloom
+      const normalized = Math.max(0, Math.min(1, (6 - vMag) / 7.5));
+      return 0.8 + normalized * 1.2; // Range: 0.8 to 2.0
+    }
+
+    // Calculate turbulence based on spectral type
+    // Cooler stars (K, M) have more convective turbulence
+    function getTurbulence(spectral) {
+      const turbMap = {
+        'O': 0.8,   // Hot, radiative - smooth
+        'B': 0.9,
+        'A': 1.0,
+        'F': 1.2,
+        'G': 1.5,   // Sun-like
+        'K': 1.8,   // More convective
+        'M': 2.2,   // Very convective, granulation
+        'L': 2.5,
+        'T': 2.8,
+      };
+      return turbMap[spectral.type] || 1.5;
+    }
+
+    // Calculate rotation speed based on spectral type
+    // Hotter stars rotate faster, cooler stars slower (magnetic braking)
+    function getRotationSpeed(spectral) {
+      const rotMap = {
+        'O': 0.25,  // Fast rotators
+        'B': 0.20,
+        'A': 0.15,
+        'F': 0.12,
+        'G': 0.10,  // Sun-like
+        'K': 0.07,
+        'M': 0.05,  // Slow rotators
+        'L': 0.03,
+        'T': 0.02,
+      };
+      return rotMap[spectral.type] || 0.1;
+    }
+
+    // Calculate pulse speed (surface activity)
+    function getPulseSpeed(spectral) {
+      const pulseMap = {
+        'O': 0.15,
+        'B': 0.20,
+        'A': 0.25,
+        'F': 0.28,
+        'G': 0.30,
+        'K': 0.35,
+        'M': 0.45,  // More active surface
+        'L': 0.50,
+        'T': 0.55,
+      };
+      return pulseMap[spectral.type] || 0.3;
+    }
+
+    // Get ray intensity based on star properties
+    function getRayIntensity(vMag, spectral) {
+      let base = 0.25;
+      // Brighter stars have more prominent rays
+      if (vMag !== null) {
+        const normalized = Math.max(0, Math.min(1, (6 - vMag) / 7.5));
+        base = 0.15 + normalized * 0.25;
+      }
+      // Hot stars have sharper, more defined rays
+      if (['O', 'B', 'A'].includes(spectral.type)) {
+        base *= 1.2;
+      }
+      return base;
+    }
+
+    const starColors = getStarColors(spectralData, bvIndex);
+    const starRadius = getStarRadius(spectralData.luminosityNumeric);
+
+    // Build info display text
+    let infoText = 'Spectral Type: ' + spectralType;
+    if (vMagnitude !== null) {
+      infoText += ' | Mag: ' + vMagnitude.toFixed(2);
+    }
+    if (distance !== null) {
+      infoText += ' | ' + distance.toFixed(1) + ' ly';
+    }
+    if (isDouble) {
+      infoText += ' | Binary';
+    }
+
+    // Display star name and info
+    document.getElementById('star-name').textContent = starName;
+    document.getElementById('spectral-type').textContent = infoText;
+    document.getElementById('back-text').textContent = backText;
+
+    // Config object with all calculated values
     const config = {
       coreColor: customCoreColor || starColors.core,
       surfaceColor: customSurfaceColor || starColors.surface,
-      turbulence: 1.5,
-      pulseSpeed: 0.3,
-      rotationSpeed: 0.1,
-      bloomIntensity: 1.2,
-      rayIntensity: 0.25
+      turbulence: getTurbulence(spectralData),
+      pulseSpeed: getPulseSpeed(spectralData),
+      rotationSpeed: getRotationSpeed(spectralData),
+      bloomIntensity: getBloomFromMagnitude(vMagnitude),
+      rayIntensity: getRayIntensity(vMagnitude, spectralData),
+      starRadius: starRadius,
+      isDouble: isDouble,
+      luminosityClass: spectralData.luminosityNumeric,
+      spectralType: spectralData.type,
+      temperature: starColors.temp || 5500,
     };
 
     // ============ SHADERS (exact from your code) ============
@@ -440,9 +603,10 @@ void main() {
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x000000);
 
-      // Camera - positioned further back for better view
+      // Camera - positioned based on star size for optimal viewing
       camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 0, 8);
+      const cameraDistance = 5 + config.starRadius * 2.5;
+      camera.position.set(0, 0, cameraDistance);
 
       // Renderer with Reinhard tone mapping
       renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -451,11 +615,11 @@ void main() {
       renderer.toneMapping = THREE.ReinhardToneMapping;
       container.appendChild(renderer.domElement);
 
-      // OrbitControls
+      // OrbitControls - scale distances with star size
       controls = new OrbitControls(camera, renderer.domElement);
       controls.enablePan = false;
-      controls.minDistance = 4;
-      controls.maxDistance = 15;
+      controls.minDistance = 2 + config.starRadius * 1.5;
+      controls.maxDistance = 8 + config.starRadius * 6;
       controls.zoomSpeed = 0.5;
       controls.rotateSpeed = 0.5;
       controls.enableDamping = true;
@@ -537,7 +701,8 @@ void main() {
     }
 
     function createSun() {
-      const geometry = new THREE.SphereGeometry(1.2, 64, 64);
+      // Use dynamic radius based on luminosity class
+      const geometry = new THREE.SphereGeometry(config.starRadius, 64, 64);
 
       const material = new THREE.ShaderMaterial({
         uniforms: {
@@ -554,11 +719,68 @@ void main() {
 
       sun = new THREE.Mesh(geometry, material);
       scene.add(sun);
+
+      // Create binary companion if this is a double star
+      if (config.isDouble) {
+        createCompanionStar();
+      }
+    }
+
+    let companionStar = null;
+    let companionOrbitAngle = 0;
+
+    function createCompanionStar() {
+      // Companion star is typically smaller and dimmer
+      // Random variation in size (50-80% of primary)
+      const companionRadius = config.starRadius * (0.5 + Math.random() * 0.3);
+
+      // Slightly different color (could be cooler or hotter)
+      const colorVariation = Math.random() > 0.5 ? 1 : -1;
+      const spectralTypes = ['O', 'B', 'A', 'F', 'G', 'K', 'M'];
+      const currentIdx = spectralTypes.indexOf(config.spectralType);
+      const companionIdx = Math.max(0, Math.min(6, currentIdx + colorVariation));
+      const companionType = spectralTypes[companionIdx];
+
+      const companionColors = {
+        'O': { core: '#9bb0ff', surface: '#aac0ff' },
+        'B': { core: '#aabfff', surface: '#bbccff' },
+        'A': { core: '#cad7ff', surface: '#dde5ff' },
+        'F': { core: '#f8f7ff', surface: '#fffef8' },
+        'G': { core: '#fff4ea', surface: '#ffcc66' },
+        'K': { core: '#ffd2a1', surface: '#ff9933' },
+        'M': { core: '#ffcc6f', surface: '#ff6633' },
+      };
+
+      const colors = companionColors[companionType] || companionColors['K'];
+
+      const geometry = new THREE.SphereGeometry(companionRadius, 48, 48);
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uTurbulence: { value: config.turbulence * 0.8 },
+          uPulseSpeed: { value: config.pulseSpeed * 1.2 },
+          uCoreColor: { value: new THREE.Color(colors.core) },
+          uSurfaceColor: { value: new THREE.Color(colors.surface) }
+        },
+        vertexShader: sunVertexShader,
+        fragmentShader: sunFragmentShader,
+        side: THREE.DoubleSide
+      });
+
+      companionStar = new THREE.Mesh(geometry, material);
+
+      // Position companion at orbital distance
+      const orbitRadius = config.starRadius * 3 + companionRadius * 2;
+      companionStar.position.x = orbitRadius;
+
+      scene.add(companionStar);
     }
 
     function createSunRays() {
-      // Billboard plane for sun rays
-      const geometry = new THREE.PlaneGeometry(6, 6);
+      // Billboard plane for sun rays - scale with star size
+      const raySize = 5 * config.starRadius;
+      const geometry = new THREE.PlaneGeometry(raySize, raySize);
 
       const material = new THREE.ShaderMaterial({
         uniforms: {
@@ -614,6 +836,20 @@ void main() {
       if (sun && sun.material.uniforms) {
         sun.material.uniforms.uTime.value = elapsed;
         sun.rotation.y += delta * config.rotationSpeed;
+      }
+
+      // Update companion star (binary system animation)
+      if (companionStar && companionStar.material.uniforms) {
+        companionStar.material.uniforms.uTime.value = elapsed;
+        companionStar.rotation.y += delta * config.rotationSpeed * 1.3;
+
+        // Orbit around primary star
+        companionOrbitAngle += delta * 0.15; // Slow orbit
+        const orbitRadius = config.starRadius * 3 + 1;
+        companionStar.position.x = Math.cos(companionOrbitAngle) * orbitRadius;
+        companionStar.position.z = Math.sin(companionOrbitAngle) * orbitRadius;
+        // Slight vertical oscillation for 3D effect
+        companionStar.position.y = Math.sin(companionOrbitAngle * 2) * 0.3;
       }
 
       // Update sun rays - billboard to face camera
