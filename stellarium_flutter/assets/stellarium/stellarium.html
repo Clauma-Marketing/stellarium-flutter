@@ -61,6 +61,8 @@
 
     // Triangle/bell sound effect for star selection
     let audioContext = null;
+    let audioUnlocked = false;
+
     function getAudioContext() {
       if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -71,6 +73,30 @@
       }
       return audioContext;
     }
+
+    // iOS WebKit requires AudioContext to be created/resumed during a user gesture
+    // Initialize on first touch to "unlock" audio playback
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      try {
+        const ctx = getAudioContext();
+        // Play a silent buffer to fully unlock audio on iOS
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+        audioUnlocked = true;
+        console.log('Audio unlocked');
+      } catch (e) {
+        console.log('Audio unlock error:', e);
+      }
+    }
+
+    // Unlock audio on first user interaction
+    document.addEventListener('touchstart', unlockAudio, { once: true });
+    document.addEventListener('touchend', unlockAudio, { once: true });
+    document.addEventListener('click', unlockAudio, { once: true });
 
     function playTriangleSound() {
       try {
