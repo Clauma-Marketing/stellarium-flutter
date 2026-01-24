@@ -294,7 +294,8 @@ class _HomeScreenState extends State<HomeScreen>
     // Update every 500ms to keep time display in sync (fallback for web)
     _timeUpdateTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       if (!mounted) return;
-      final currentTime = _currentTime;
+      // Convert UTC to local for display
+      final currentTime = _currentTime.toLocal();
       final timeStr = '${currentTime.hour.toString().padLeft(2, '0')}:${currentTime.minute.toString().padLeft(2, '0')}';
       // Only rebuild if displayed time has changed
       if (timeStr != _lastDisplayedTime) {
@@ -308,9 +309,11 @@ class _HomeScreenState extends State<HomeScreen>
   /// Called when the engine's time changes (from WebView listener)
   void _onEngineTimeChanged(double utc) {
     if (!mounted) return;
-    final currentTime = Observer.mjdToDateTime(utc);
-    final timeStr = '${currentTime.hour.toString().padLeft(2, '0')}:${currentTime.minute.toString().padLeft(2, '0')}';
-    final newDate = DateTime(currentTime.year, currentTime.month, currentTime.day);
+    // Convert UTC to local for display
+    final currentTimeUtc = Observer.mjdToDateTime(utc);
+    final currentTimeLocal = currentTimeUtc.toLocal();
+    final timeStr = '${currentTimeLocal.hour.toString().padLeft(2, '0')}:${currentTimeLocal.minute.toString().padLeft(2, '0')}';
+    final newDate = DateTime(currentTimeLocal.year, currentTimeLocal.month, currentTimeLocal.day);
 
     // Check if we need to rebuild
     final needsRebuild = timeStr != _lastDisplayedTime ||
@@ -740,7 +743,8 @@ class _HomeScreenState extends State<HomeScreen>
         ? _locationName!
         : _formatCoordinates();
 
-    final currentTime = _currentTime;
+    // Convert UTC to local for display
+    final currentTime = _currentTime.toLocal();
     final timeText = '${currentTime.hour.toString().padLeft(2, '0')}:${currentTime.minute.toString().padLeft(2, '0')}';
 
     // No Listener wrapper needed - event blocking is handled at HomeScreen level
@@ -842,20 +846,21 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildTimeSlider(BuildContext context) {
-    // Get time from the engine
-    final engineTime = _currentTime;
+    // Get time from the engine (UTC) and convert to local for display
+    final engineTimeUtc = _currentTime;
+    final engineTimeLocal = engineTimeUtc.toLocal();
 
-    // Initialize slider date if not set
-    _sliderDate ??= DateTime(engineTime.year, engineTime.month, engineTime.day);
+    // Initialize slider date if not set (use local date)
+    _sliderDate ??= DateTime(engineTimeLocal.year, engineTimeLocal.month, engineTimeLocal.day);
 
-    // Use stable date for display, but get hour/minute from engine
+    // Use stable date for display
     final displayDateTime = _sliderDate!;
 
-    // Slider value: minutes since midnight (0 = 00:00, 1439 = 23:59)
-    final sliderValue = (engineTime.hour * 60 + engineTime.minute).clamp(0, 1439);
+    // Slider value: minutes since midnight in local time (0 = 00:00, 1439 = 23:59)
+    final sliderValue = (engineTimeLocal.hour * 60 + engineTimeLocal.minute).clamp(0, 1439);
 
-    // Display time from engine
-    final timeStr = '${engineTime.hour.toString().padLeft(2, '0')}:${engineTime.minute.toString().padLeft(2, '0')}';
+    // Display time in local timezone
+    final timeStr = '${engineTimeLocal.hour.toString().padLeft(2, '0')}:${engineTimeLocal.minute.toString().padLeft(2, '0')}';
 
     // Sun times for gradient (based on observer location)
     final sunTimes = SunTimes(
@@ -950,15 +955,16 @@ class _HomeScreenState extends State<HomeScreen>
             value: sliderValue,
             sunTimes: sunTimes,
             onChanged: (value) {
-              // Create new DateTime with the slider value
-              final newDateTime = DateTime(
+              // Create new local DateTime with the slider value
+              final localDateTime = DateTime(
                 displayDateTime.year,
                 displayDateTime.month,
                 displayDateTime.day,
-                value ~/ 60,  // hours
+                value ~/ 60,  // hours (local)
                 value % 60,   // minutes
               );
-              final newMjd = Observer.dateTimeToMjd(newDateTime);
+              // Convert to UTC for the engine
+              final newMjd = Observer.dateTimeToMjd(localDateTime.toUtc());
               _onTimeChanged(newMjd);
             },
             onChangeStart: (_) {
@@ -1008,9 +1014,11 @@ class _HomeScreenState extends State<HomeScreen>
                   IconButton(
                     onPressed: () {
                       final now = DateTime.now();
-                      final nowMjd = Observer.dateTimeToMjd(now);
+                      // Convert local to UTC for the engine
+                      final nowMjd = Observer.dateTimeToMjd(now.toUtc());
                       _onTimeChanged(nowMjd);
                       setState(() {
+                        // Keep slider date in local time
                         _sliderDate = DateTime(now.year, now.month, now.day);
                         _isTimePaused = false;
                       });
@@ -1074,9 +1082,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _changeSliderDate(int days) {
     final currentDate = _sliderDate ?? DateTime.now();
-    final engineTime = _currentTime;
+    // Get engine time (UTC) and convert to local
+    final engineTimeLocal = _currentTime.toLocal();
 
-    // Update the slider date
+    // Update the slider date (local)
     final newDate = DateTime(
       currentDate.year,
       currentDate.month,
@@ -1087,16 +1096,17 @@ class _HomeScreenState extends State<HomeScreen>
       _sliderDate = newDate;
     });
 
-    // Create new time with new date but same hour/minute from engine
-    final newDateTime = DateTime(
+    // Create new local time with new date but same local hour/minute
+    final newLocalDateTime = DateTime(
       newDate.year,
       newDate.month,
       newDate.day,
-      engineTime.hour,
-      engineTime.minute,
+      engineTimeLocal.hour,
+      engineTimeLocal.minute,
     );
 
-    final newMjd = Observer.dateTimeToMjd(newDateTime);
+    // Convert to UTC for the engine
+    final newMjd = Observer.dateTimeToMjd(newLocalDateTime.toUtc());
     _onTimeChanged(newMjd);
   }
 
@@ -1122,6 +1132,9 @@ class _HomeScreenState extends State<HomeScreen>
     // Start timer to keep time display in sync with engine
     _startTimeUpdateTimer();
 
+    // Set the correct current time (the engine may initialize with local time as UTC)
+    _setCurrentTimeToEngine();
+
     // Apply saved location to the engine
     _applySavedLocation();
 
@@ -1140,6 +1153,17 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Check if there's a star found during onboarding to show
     _checkOnboardingFoundStar();
+  }
+
+  /// Set the correct current time to the engine
+  /// The engine may initialize with local time stored as UTC, so we correct it here
+  void _setCurrentTimeToEngine() {
+    final now = DateTime.now();
+    // For WebView: calculate MJD from UTC time
+    final nowUtcMjd = Observer.dateTimeToMjd(now.toUtc());
+    _skyViewKey.currentState?.webView?.setTime(nowUtcMjd);
+    // For web engine: setTime internally converts to UTC
+    _skyViewKey.currentState?.engine?.setTime(now);
   }
 
   Future<void> _applySavedLocation() async {
@@ -1313,7 +1337,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onTimeChanged(double mjd) {
-    final dateTime = Observer.mjdToDateTime(mjd);
+    final dateTimeUtc = Observer.mjdToDateTime(mjd);
+    // Convert to local for slider date
+    final dateTimeLocal = dateTimeUtc.toLocal();
 
     setState(() {
       _observer = Observer(
@@ -1325,15 +1351,15 @@ class _HomeScreenState extends State<HomeScreen>
         elevation: _observer.elevation,
         fov: _observer.fov,
       );
-      // Also update slider date to reflect the new date
-      _sliderDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+      // Also update slider date to reflect the new date (in local time)
+      _sliderDate = DateTime(dateTimeLocal.year, dateTimeLocal.month, dateTimeLocal.day);
     });
 
     // Apply to WebView (mobile)
     _skyViewKey.currentState?.webView?.setTime(mjd);
 
-    // Apply to engine (web)
-    _skyViewKey.currentState?.engine?.setTime(dateTime);
+    // Apply to engine (web) - pass UTC DateTime
+    _skyViewKey.currentState?.engine?.setTime(dateTimeUtc);
   }
 
   void _setTimeSpeed(double speed) {
