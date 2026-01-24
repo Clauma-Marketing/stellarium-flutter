@@ -536,6 +536,8 @@ class StellariumWebViewState extends State<StellariumWebView>
           final info = SelectedObjectInfo.fromJson(data);
           debugPrint(
               'WebView: calling onObjectSelected with name: ${info.name}');
+          // Haptic feedback for star selection
+          HapticFeedback.lightImpact();
           widget.onObjectSelected?.call(info);
         }
         break;

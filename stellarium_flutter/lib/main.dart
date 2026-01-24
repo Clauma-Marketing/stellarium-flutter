@@ -145,9 +145,6 @@ void main() async {
     // Load locale preference
     await LocaleService.instance.load();
 
-    // Start background music
-    await BackgroundMusicService.instance.initialize();
-
     // Initialize Firebase (only on mobile platforms)
     if (!kIsWeb) {
       try {
@@ -257,6 +254,8 @@ class _StellariumAppState extends State<StellariumApp> {
   void initState() {
     super.initState();
     LocaleService.instance.addListener(_onLocaleChanged);
+    // Start background music after app is loaded
+    BackgroundMusicService.instance.initialize();
   }
 
   @override

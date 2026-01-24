@@ -19,25 +19,37 @@ class BackgroundMusicService {
     // Skip audio on web platform (not well supported)
     if (kIsWeb) return;
 
+    debugPrint('BackgroundMusicService: Starting initialization...');
+
     try {
       _player = AudioPlayer();
 
-      // Load the music from assets
-      await _player!.setAsset('assets/meditation-music-322801.mp3');
+      debugPrint('BackgroundMusicService: Loading asset...');
+      // Load the music from assets with timeout to prevent blocking
+      await _player!
+          .setAsset('assets/meditation-music-322801.mp3')
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint('BackgroundMusicService: Asset loaded, configuring...');
 
       // Set to loop continuously
       await _player!.setLoopMode(LoopMode.one);
 
-      // Set a comfortable background volume
-      await _player!.setVolume(0.3);
+      // Set to maximum volume
+      await _player!.setVolume(1.0);
 
+      debugPrint('BackgroundMusicService: Starting playback...');
       // Start playing
       await _player!.play();
 
       _isInitialized = true;
-      debugPrint('Background music started');
-    } catch (e) {
-      debugPrint('Error initializing background music: $e');
+      debugPrint('BackgroundMusicService: Music playing successfully');
+    } catch (e, stack) {
+      debugPrint('BackgroundMusicService ERROR: $e');
+      debugPrint('BackgroundMusicService STACK: $stack');
+      // Clean up on failure
+      _player?.dispose();
+      _player = null;
     }
   }
 

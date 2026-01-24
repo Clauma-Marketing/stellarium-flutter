@@ -38,6 +38,8 @@
 	<string>Stellarium needs your location to show you the sky exactly as it appears from where you are, including accurate star positions, rise and set times.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Stellarium needs your location to show you the sky exactly as it appears from where you are, including accurate star positions, rise and set times.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app does not use the microphone.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Motion sensors are used for the AR sky view feature, allowing you to point your device at the sky to see stars in that direction.</string>
 	<key>NSUserTrackingUsageDescription</key>
