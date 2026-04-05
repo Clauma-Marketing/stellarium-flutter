@@ -5,7 +5,7 @@ import '../../widgets/star_info_sheet.dart';
 /// Service to manage onboarding state
 class OnboardingService {
   /// Set to true to always show onboarding (for testing)
-  static const bool forceShowOnboarding = false;
+  static const bool forceShowOnboarding = true;
 
   static const String _onboardingCompleteKey = 'onboarding_complete';
   static const String _subscriptionShownKey = 'subscription_shown';

@@ -337,6 +337,14 @@ class AnalyticsService {
     );
   }
 
+  /// Log sky preview star tap during onboarding
+  Future<void> logSkyPreviewStarTap({required String starName}) async {
+    await logEvent(
+      name: 'onboarding_sky_preview_star_tap',
+      parameters: {'star_name': starName},
+    );
+  }
+
   // ==================== Engagement Tracking ====================
 
   /// Log sky view milestone for Firebase In-App Messaging triggers.

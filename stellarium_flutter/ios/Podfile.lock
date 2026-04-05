@@ -1202,6 +1202,16 @@ PODS:
   - AnyCodable-FlightSchool (0.6.7)
   - app_tracking_transparency (0.0.1):
     - Flutter
+  - AppAuth (1.7.6):
+    - AppAuth/Core (= 1.7.6)
+    - AppAuth/ExternalUserAgent (= 1.7.6)
+  - AppAuth/Core (1.7.6)
+  - AppAuth/ExternalUserAgent (1.7.6):
+    - AppAuth/Core
+  - AppCheckCore (11.2.0):
+    - GoogleUtilities/Environment (~> 8.0)
+    - GoogleUtilities/UserDefaults (~> 8.0)
+    - PromisesObjC (~> 2.4)
   - audio_session (0.0.1):
     - Flutter
   - BoringSSL-GRPC (0.0.37):
@@ -1218,6 +1228,9 @@ PODS:
     - Flutter
   - Firebase/Analytics (11.15.0):
     - Firebase/Core
+  - Firebase/Auth (11.15.0):
+    - Firebase/CoreOnly
+    - FirebaseAuth (~> 11.15.0)
   - Firebase/Core (11.15.0):
     - Firebase/CoreOnly
     - FirebaseAnalytics (~> 11.15.0)
@@ -1237,6 +1250,10 @@ PODS:
     - FirebaseMessaging (~> 11.15.0)
   - firebase_analytics (11.6.0):
     - Firebase/Analytics (= 11.15.0)
+    - firebase_core
+    - Flutter
+  - firebase_auth (5.7.0):
+    - Firebase/Auth (= 11.15.0)
     - firebase_core
     - Flutter
   - firebase_core (3.15.2):
@@ -1275,6 +1292,16 @@ PODS:
     - "GoogleUtilities/NSData+zlib (~> 8.1)"
     - nanopb (~> 3.30910.0)
   - FirebaseAppCheckInterop (11.15.0)
+  - FirebaseAuth (11.15.0):
+    - FirebaseAppCheckInterop (~> 11.0)
+    - FirebaseAuthInterop (~> 11.0)
+    - FirebaseCore (~> 11.15.0)
+    - FirebaseCoreExtension (~> 11.15.0)
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GTMSessionFetcher/Core (< 5.0, >= 3.4)
+    - RecaptchaInterop (~> 101.0)
+  - FirebaseAuthInterop (11.15.0)
   - FirebaseCore (11.15.0):
     - FirebaseCoreInternal (~> 11.15.0)
     - GoogleUtilities/Environment (~> 8.1)
@@ -1356,13 +1383,19 @@ PODS:
     - Flutter
     - Google-Maps-iOS-Utils (< 7.0, >= 5.0)
     - GoogleMaps (< 10.0, >= 8.4)
-  - google_mlkit_commons (0.9.0):
+  - google_mlkit_commons (0.11.1):
     - Flutter
-    - MLKitVision
-  - google_mlkit_text_recognition (0.14.0):
+    - MLKitVision (~> 10.0.0)
+  - google_mlkit_text_recognition (0.15.1):
     - Flutter
     - google_mlkit_commons
-    - GoogleMLKit/TextRecognition (~> 7.0.0)
+    - GoogleMLKit/TextRecognition (~> 9.0.0)
+  - google_sign_in_ios (0.0.1):
+    - AppAuth (>= 1.7.4)
+    - Flutter
+    - FlutterMacOS
+    - GoogleSignIn (~> 8.0)
+    - GTMSessionFetcher (>= 3.4.0)
   - GoogleAdsOnDeviceConversion (2.1.0):
     - GoogleUtilities/Logger (~> 8.1)
     - GoogleUtilities/Network (~> 8.1)
@@ -1395,11 +1428,16 @@ PODS:
   - GoogleMaps (9.4.0):
     - GoogleMaps/Maps (= 9.4.0)
   - GoogleMaps/Maps (9.4.0)
-  - GoogleMLKit/MLKitCore (7.0.0):
-    - MLKitCommon (~> 12.0.0)
-  - GoogleMLKit/TextRecognition (7.0.0):
+  - GoogleMLKit/MLKitCore (9.0.0):
+    - MLKitCommon (~> 14.0.0)
+  - GoogleMLKit/TextRecognition (9.0.0):
     - GoogleMLKit/MLKitCore
-    - MLKitTextRecognition (~> 5.0.0)
+    - MLKitTextRecognition (~> 7.0.0)
+  - GoogleSignIn (8.0.0):
+    - AppAuth (< 2.0, >= 1.7.3)
+    - AppCheckCore (~> 11.0)
+    - GTMAppAuth (< 5.0, >= 4.1.1)
+    - GTMSessionFetcher/Core (~> 3.3)
   - GoogleToolboxForMac/Defines (4.2.1)
   - GoogleToolboxForMac/Logger (4.2.1):
     - GoogleToolboxForMac/Defines (= 4.2.1)
@@ -1524,7 +1562,14 @@ PODS:
     - gRPC-Core/Privacy (= 1.69.0)
   - gRPC-Core/Interface (1.69.0)
   - gRPC-Core/Privacy (1.69.0)
+  - GTMAppAuth (4.1.1):
+    - AppAuth/Core (~> 1.7)
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3)
+  - GTMSessionFetcher (3.5.0):
+    - GTMSessionFetcher/Full (= 3.5.0)
   - GTMSessionFetcher/Core (3.5.0)
+  - GTMSessionFetcher/Full (3.5.0):
+    - GTMSessionFetcher/Core
   - in_app_review (2.0.0):
     - Flutter
   - just_audio (0.0.1):
@@ -1539,27 +1584,27 @@ PODS:
     - AnyCodable-FlightSchool
     - KlaviyoCore (~> 4.2.2)
   - leveldb-library (1.22.6)
-  - MLImage (1.0.0-beta6)
-  - MLKitCommon (12.0.0):
+  - MLImage (1.0.0-beta8)
+  - MLKitCommon (14.0.0):
     - GoogleDataTransport (~> 10.0)
     - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
     - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
     - GoogleUtilities/Logger (~> 8.0)
     - GoogleUtilities/UserDefaults (~> 8.0)
     - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
-  - MLKitTextRecognition (5.0.0):
-    - MLKitCommon (~> 12.0)
-    - MLKitTextRecognitionCommon (= 4.0.0)
-    - MLKitVision (~> 8.0)
-  - MLKitTextRecognitionCommon (4.0.0):
-    - MLKitCommon (~> 12.0)
-    - MLKitVision (~> 8.0)
-  - MLKitVision (8.0.0):
+  - MLKitTextRecognition (7.0.0):
+    - MLKitCommon (~> 14.0)
+    - MLKitTextRecognitionCommon (= 6.0.0)
+    - MLKitVision (~> 10.0)
+  - MLKitTextRecognitionCommon (6.0.0):
+    - MLKitCommon (~> 14.0)
+    - MLKitVision (~> 10.0)
+  - MLKitVision (10.0.0):
     - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
     - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
     - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
-    - MLImage (= 1.0.0-beta6)
-    - MLKitCommon (~> 12.0)
+    - MLImage (= 1.0.0-beta8)
+    - MLKitCommon (~> 14.0)
   - motion_core (0.0.1):
     - Flutter
   - nanopb (3.30910.0):
@@ -1577,9 +1622,12 @@ PODS:
   - PromisesObjC (2.4.0)
   - PromisesSwift (2.4.0):
     - PromisesObjC (= 2.4.0)
+  - RecaptchaInterop (101.0.0)
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - sign_in_with_apple (0.0.1):
+    - Flutter
   - url_launcher_ios (0.0.1):
     - Flutter
   - webview_flutter_wkwebview (0.0.1):
@@ -1593,6 +1641,7 @@ DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
   - firebase_analytics (from `.symlinks/plugins/firebase_analytics/ios`)
+  - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - firebase_crashlytics (from `.symlinks/plugins/firebase_crashlytics/ios`)
   - firebase_in_app_messaging (from `.symlinks/plugins/firebase_in_app_messaging/ios`)
@@ -1603,6 +1652,7 @@ DEPENDENCIES:
   - google_maps_flutter_ios (from `.symlinks/plugins/google_maps_flutter_ios/ios`)
   - google_mlkit_commons (from `.symlinks/plugins/google_mlkit_commons/ios`)
   - google_mlkit_text_recognition (from `.symlinks/plugins/google_mlkit_text_recognition/ios`)
+  - google_sign_in_ios (from `.symlinks/plugins/google_sign_in_ios/darwin`)
   - in_app_review (from `.symlinks/plugins/in_app_review/ios`)
   - just_audio (from `.symlinks/plugins/just_audio/darwin`)
   - klaviyo_flutter (from `.symlinks/plugins/klaviyo_flutter/ios`)
@@ -1611,6 +1661,7 @@ DEPENDENCIES:
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - sign_in_with_apple (from `.symlinks/plugins/sign_in_with_apple/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
   - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
@@ -1621,11 +1672,15 @@ SPEC REPOS:
     - AdaptyPlugin
     - AdaptyUI
     - AnyCodable-FlightSchool
+    - AppAuth
+    - AppCheckCore
     - BoringSSL-GRPC
     - Firebase
     - FirebaseABTesting
     - FirebaseAnalytics
     - FirebaseAppCheckInterop
+    - FirebaseAuth
+    - FirebaseAuthInterop
     - FirebaseCore
     - FirebaseCoreExtension
     - FirebaseCoreInternal
@@ -1644,10 +1699,12 @@ SPEC REPOS:
     - GoogleDataTransport
     - GoogleMaps
     - GoogleMLKit
+    - GoogleSignIn
     - GoogleToolboxForMac
     - GoogleUtilities
     - "gRPC-C++"
     - gRPC-Core
+    - GTMAppAuth
     - GTMSessionFetcher
     - KlaviyoCore
     - KlaviyoSwift
@@ -1660,6 +1717,7 @@ SPEC REPOS:
     - nanopb
     - PromisesObjC
     - PromisesSwift
+    - RecaptchaInterop
 
 EXTERNAL SOURCES:
   adapty_flutter:
@@ -1674,6 +1732,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/cloud_firestore/ios"
   firebase_analytics:
     :path: ".symlinks/plugins/firebase_analytics/ios"
+  firebase_auth:
+    :path: ".symlinks/plugins/firebase_auth/ios"
   firebase_core:
     :path: ".symlinks/plugins/firebase_core/ios"
   firebase_crashlytics:
@@ -1694,6 +1754,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/google_mlkit_commons/ios"
   google_mlkit_text_recognition:
     :path: ".symlinks/plugins/google_mlkit_text_recognition/ios"
+  google_sign_in_ios:
+    :path: ".symlinks/plugins/google_sign_in_ios/darwin"
   in_app_review:
     :path: ".symlinks/plugins/in_app_review/ios"
   just_audio:
@@ -1710,6 +1772,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  sign_in_with_apple:
+    :path: ".symlinks/plugins/sign_in_with_apple/ios"
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
   webview_flutter_wkwebview:
@@ -1723,12 +1787,15 @@ SPEC CHECKSUMS:
   AdaptyUI: 8dc77880549ff2be797bc7ecfd60c4ad3633bf4b
   AnyCodable-FlightSchool: 261cbe76757802b17d471b9059b21e6fa5edf57b
   app_tracking_transparency: 3d84f147f67ca82d3c15355c36b1fa6b66ca7c92
+  AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
+  AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
   audio_session: 9bb7f6c970f21241b19f5a3658097ae459681ba0
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
   camera_avfoundation: 5675ca25298b6f81fa0a325188e7df62cc217741
   cloud_firestore: fdcc87898326e396d6ef6df543acf9b5c2034b95
   Firebase: d99ac19b909cd2c548339c2241ecd0d1599ab02e
   firebase_analytics: 0e25ca1d4001ccedd40b4e5b74c0ec34e18f6425
+  firebase_auth: 50af8366c87bb88c80ebeae62eb60189c7246b9b
   firebase_core: 995454a784ff288be5689b796deb9e9fa3601818
   firebase_crashlytics: 30dcd6dfd2fe895c0848af46722a4227346c19aa
   firebase_in_app_messaging: 903a0e11af637c36216b4ab12fbef2af94ead656
@@ -1736,6 +1803,8 @@ SPEC CHECKSUMS:
   FirebaseABTesting: 5e9d432834aebf27ab72100d37af44dfbe8d82f7
   FirebaseAnalytics: 6433dfd311ba78084fc93bdfc145e8cb75740eae
   FirebaseAppCheckInterop: 06fe5a3799278ae4667e6c432edd86b1030fa3df
+  FirebaseAuth: a6575e5fbf46b046c58dc211a28a5fbdd8d4c83b
+  FirebaseAuthInterop: 7087d7a4ee4bc4de019b2d0c240974ed5d89e2fd
   FirebaseCore: efb3893e5b94f32b86e331e3bd6dadf18b66568e
   FirebaseCoreExtension: edbd30474b5ccf04e5f001470bdf6ea616af2435
   FirebaseCoreInternal: 9afa45b1159304c963da48addb78275ef701c6b4
@@ -1753,17 +1822,20 @@ SPEC CHECKSUMS:
   geolocator_apple: ab36aa0e8b7d7a2d7639b3b4e48308394e8cef5e
   Google-Maps-iOS-Utils: 0a484b05ed21d88c9f9ebbacb007956edd508a96
   google_maps_flutter_ios: 0291eb2aa252298a769b04d075e4a9d747ff7264
-  google_mlkit_commons: 92c769cc2e0a2bfdeb3c38091a36e8a9cc8c63d4
-  google_mlkit_text_recognition: d70cc1ed5064db39fce44d77b2c5449adc39a13d
+  google_mlkit_commons: a5e4ffae5bc59ea4c7b9025dc72cb6cb79dc1166
+  google_mlkit_text_recognition: b3de5adb786ad7a0fe8e13618387b8d2df0f3c70
+  google_sign_in_ios: b48bb9af78576358a168361173155596c845f0b9
   GoogleAdsOnDeviceConversion: 2be6297a4f048459e0ae17fad9bfd2844e10cf64
   GoogleAppMeasurement: 700dce7541804bec33db590a5c496b663fbe2539
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleMaps: 0608099d4870cac8754bdba9b6953db543432438
-  GoogleMLKit: eff9e23ec1d90ea4157a1ee2e32a4f610c5b3318
+  GoogleMLKit: b1eee21a41c57704fe72483b15c85cb2c0cd7444
+  GoogleSignIn: ce8c89bb9b37fb624b92e7514cc67335d1e277e4
   GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   "gRPC-C++": cc207623316fb041a7a3e774c252cf68a058b9e8
   gRPC-Core: 860978b7db482de8b4f5e10677216309b5ff6330
+  GTMAppAuth: f69bd07d68cd3b766125f7e072c45d7340dea0de
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   in_app_review: 7dd1ea365263f834b8464673f9df72c80c17c937
   just_audio: 4e391f57b79cad2b0674030a00453ca5ce817eed
@@ -1771,11 +1843,11 @@ SPEC CHECKSUMS:
   KlaviyoCore: 5473d07cbde48e6e83f778f6e62d38fd960ea7c5
   KlaviyoSwift: 462d1e89b46f1077f62da5b62ff7513a9fd5f093
   leveldb-library: cc8b8f8e013647a295ad3f8cd2ddf49a6f19be19
-  MLImage: 0ad1c5f50edd027672d8b26b0fee78a8b4a0fc56
-  MLKitCommon: 07c2c33ae5640e5380beaaa6e4b9c249a205542d
-  MLKitTextRecognition: 3b41f3ff084a79afb214408d25d2068d77ab322c
-  MLKitTextRecognitionCommon: cd44577a8c506fc6bba065096de03bec0d01a213
-  MLKitVision: 45e79d68845a2de77e2dd4d7f07947f0ed157b0e
+  MLImage: 0de5c6c2bf9e93b80ef752e2797f0836f03b58c0
+  MLKitCommon: 47d47b50a031d00db62f1b0efe5a1d8b09a3b2e6
+  MLKitTextRecognition: c0ad24510481dfc8893ad15dfcb8a5f05ed9e826
+  MLKitTextRecognitionCommon: 234ceb1cfdfb5fceb4fd664943046609a2961cc2
+  MLKitVision: 39a5a812db83c4a0794445088e567f3631c11961
   motion_core: e71743c521baff1e9214005ad875ad71cb8f8531
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
@@ -1783,10 +1855,12 @@ SPEC CHECKSUMS:
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   PromisesSwift: 9d77319bbe72ebf6d872900551f7eeba9bce2851
+  RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+  sign_in_with_apple: c5dcc141574c8c54d5ac99dd2163c0c72ad22418
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
 
-PODFILE CHECKSUM: ab1d189f06517c17b82278223b03b47363224da8
+PODFILE CHECKSUM: 409dde92c7be339851c10076177465f1b9c664f1
 
 COCOAPODS: 1.16.2

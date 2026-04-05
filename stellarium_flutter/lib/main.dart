@@ -10,10 +10,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'features/auth/presentation/sign_in_screen.dart';
 import 'features/onboarding/onboarding_service.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/onboarding/presentation/pages/star_registration_page.dart';
 import 'features/subscription/presentation/subscription_screen.dart';
+import 'services/auth_service.dart';
 import 'widgets/star_info_sheet.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
@@ -308,7 +310,7 @@ class AppEntryPoint extends StatefulWidget {
   State<AppEntryPoint> createState() => _AppEntryPointState();
 }
 
-enum AppScreen { loading, onboarding, starRegistration, subscription, home }
+enum AppScreen { loading, onboarding, signIn, starRegistration, subscription, home }
 
 class _AppEntryPointState extends State<AppEntryPoint> {
   AppScreen _currentScreen = AppScreen.loading;
@@ -333,7 +335,19 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   }
 
   void _onOnboardingComplete() {
-    // After onboarding, show star registration
+    // After onboarding, show sign-in (skippable)
+    if (!AuthService.instance.isSignedIn) {
+      setState(() {
+        _currentScreen = AppScreen.signIn;
+      });
+    } else {
+      setState(() {
+        _currentScreen = AppScreen.starRegistration;
+      });
+    }
+  }
+
+  void _onSignInComplete() {
     setState(() {
       _currentScreen = AppScreen.starRegistration;
     });
@@ -403,6 +417,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
       case AppScreen.onboarding:
         return OnboardingScreen(
           onComplete: _onOnboardingComplete,
+        );
+
+      case AppScreen.signIn:
+        return SignInScreen(
+          onSignedIn: _onSignInComplete,
+          onSkip: _onSignInComplete,
         );
 
       case AppScreen.subscription:

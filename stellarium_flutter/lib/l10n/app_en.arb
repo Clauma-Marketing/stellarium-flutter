@@ -347,5 +347,44 @@
 
   "ok": "OK",
   "scannerNotAvailable": "Scanner Not Available",
-  "scannerNotAvailableOnWeb": "The certificate scanner requires a camera and is only available on the mobile app. Please enter your registration number manually."
+  "scannerNotAvailableOnWeb": "The certificate scanner requires a camera and is only available on the mobile app. Please enter your registration number manually.",
+
+  "skyPreviewTitle": "The Night Sky above You",
+  "skyPreviewTitleWithLocation": "The Night Sky above {locationName}",
+  "@skyPreviewTitleWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "calculateNightSky": "Calculate Night Sky",
+  "skyPreviewCalculating": "Calculating your Night Sky",
+  "skyPreviewCalculatingWithLocation": "Calculating the Night Sky above {locationName}",
+  "@skyPreviewCalculatingWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "skyPreviewHint": "Tap on a star to discover it",
+  "skyPreviewContinue": "Continue",
+
+  "signInTitle": "Sign In",
+  "signInSubtitle": "Save your stars across devices",
+  "signInCreateAccount": "Create Account",
+  "signInWelcomeBack": "Welcome Back",
+  "signInWithGoogle": "Continue with Google",
+  "signInWithApple": "Continue with Apple",
+  "signInWithEmail": "Continue with Email",
+  "signInOr": "or",
+  "signInEmail": "Email",
+  "signInPassword": "Password",
+  "signInForgotPassword": "Forgot password?",
+  "signInSignIn": "Sign In",
+  "signInAlreadyHaveAccount": "Already have an account?",
+  "signInNoAccount": "Don't have an account?",
+  "signInBackToOptions": "All sign-in options",
+  "signInSkip": "Continue without account"
 }

@@ -80,6 +80,7 @@ class StellariumWebView extends StatefulWidget {
   final void Function(SelectedObjectInfo info)? onObjectSelected;
   final void Function(double utc)? onTimeChanged;
   final void Function(double fovDeg)? onFovChanged;
+  final bool showLoadingOverlay;
 
   const StellariumWebView({
     super.key,
@@ -91,6 +92,7 @@ class StellariumWebView extends StatefulWidget {
     this.onObjectSelected,
     this.onTimeChanged,
     this.onFovChanged,
+    this.showLoadingOverlay = true,
   });
 
   @override
@@ -315,7 +317,8 @@ class StellariumWebViewState extends State<StellariumWebView>
     });
   }
 
-  bool get _shouldHideLoader => _isReady && _minLoadTimeElapsed;
+  bool get _shouldHideLoader =>
+      _isReady && (widget.showLoadingOverlay ? _minLoadTimeElapsed : true);
 
   @override
   void dispose() {
@@ -516,9 +519,9 @@ class StellariumWebViewState extends State<StellariumWebView>
         setState(() {
           _isReady = true;
         });
-        // Only call onReady if minimum load time has elapsed
-        // Otherwise, the timer callback will call it when time is up
-        if (_minLoadTimeElapsed) {
+        // If no loading overlay, fire onReady immediately.
+        // Otherwise wait for the minimum load time to elapse.
+        if (!widget.showLoadingOverlay || _minLoadTimeElapsed) {
           widget.onReady?.call(true);
         }
         _applyInitialSettings();
@@ -758,7 +761,9 @@ class StellariumWebViewState extends State<StellariumWebView>
 
     if (showLoader && _webViewController == null) {
       // Still setting up the server
-      return _buildLoadingWidget();
+      return widget.showLoadingOverlay
+          ? _buildLoadingWidget()
+          : const SizedBox.shrink();
     }
 
     // Stack the WebView with the loader overlay
@@ -776,7 +781,7 @@ class StellariumWebViewState extends State<StellariumWebView>
           ),
 
         // Loading overlay (fades out when ready)
-        if (showLoader)
+        if (showLoader && widget.showLoadingOverlay)
           AnimatedOpacity(
             opacity: _shouldHideLoader ? 0.0 : 1.0,
             duration: const Duration(milliseconds: 500),

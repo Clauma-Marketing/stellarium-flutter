@@ -7,6 +7,8 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
+import 'app_localizations_fr.dart';
 import 'app_localizations_zh.dart';
 
 // ignore_for_file: type=lint
@@ -97,6 +99,8 @@ abstract class AppLocalizations {
   static const List<Locale> supportedLocales = <Locale>[
     Locale('de'),
     Locale('en'),
+    Locale('es'),
+    Locale('fr'),
     Locale('zh'),
   ];
 
@@ -1545,6 +1549,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The certificate scanner requires a camera and is only available on the mobile app. Please enter your registration number manually.'**
   String get scannerNotAvailableOnWeb;
+
+  /// No description provided for @skyPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The Night Sky above You'**
+  String get skyPreviewTitle;
+
+  /// No description provided for @skyPreviewTitleWithLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'The Night Sky above {locationName}'**
+  String skyPreviewTitleWithLocation(String locationName);
+
+  /// No description provided for @calculateNightSky.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculate Night Sky'**
+  String get calculateNightSky;
+
+  /// No description provided for @skyPreviewCalculating.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating your Night Sky'**
+  String get skyPreviewCalculating;
+
+  /// No description provided for @skyPreviewCalculatingWithLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating the Night Sky above {locationName}'**
+  String skyPreviewCalculatingWithLocation(String locationName);
+
+  /// No description provided for @skyPreviewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap on a star to discover it'**
+  String get skyPreviewHint;
+
+  /// No description provided for @skyPreviewContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get skyPreviewContinue;
+
+  /// No description provided for @signInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In'**
+  String get signInTitle;
+
+  /// No description provided for @signInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your stars across devices'**
+  String get signInSubtitle;
+
+  /// No description provided for @signInCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Account'**
+  String get signInCreateAccount;
+
+  /// No description provided for @signInWelcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome Back'**
+  String get signInWelcomeBack;
+
+  /// No description provided for @signInWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get signInWithGoogle;
+
+  /// No description provided for @signInWithApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Apple'**
+  String get signInWithApple;
+
+  /// No description provided for @signInWithEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Email'**
+  String get signInWithEmail;
+
+  /// No description provided for @signInOr.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get signInOr;
+
+  /// No description provided for @signInEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get signInEmail;
+
+  /// No description provided for @signInPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get signInPassword;
+
+  /// No description provided for @signInForgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get signInForgotPassword;
+
+  /// No description provided for @signInSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In'**
+  String get signInSignIn;
+
+  /// No description provided for @signInAlreadyHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account?'**
+  String get signInAlreadyHaveAccount;
+
+  /// No description provided for @signInNoAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account?'**
+  String get signInNoAccount;
+
+  /// No description provided for @signInBackToOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'All sign-in options'**
+  String get signInBackToOptions;
+
+  /// No description provided for @signInSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue without account'**
+  String get signInSkip;
 }
 
 class _AppLocalizationsDelegate
@@ -1558,7 +1700,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['de', 'en', 'zh'].contains(locale.languageCode);
+      <String>['de', 'en', 'es', 'fr', 'zh'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1571,6 +1713,10 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsDe();
     case 'en':
       return AppLocalizationsEn();
+    case 'es':
+      return AppLocalizationsEs();
+    case 'fr':
+      return AppLocalizationsFr();
     case 'zh':
       return AppLocalizationsZh();
   }
