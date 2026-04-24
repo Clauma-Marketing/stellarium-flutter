@@ -347,5 +347,45 @@
 
   "ok": "OK",
   "scannerNotAvailable": "Scanner nicht verfügbar",
-  "scannerNotAvailableOnWeb": "Der Zertifikat-Scanner benötigt eine Kamera und ist nur in der mobilen App verfügbar. Bitte geben Sie Ihre Registrierungsnummer manuell ein."
+  "scannerNotAvailableOnWeb": "Der Zertifikat-Scanner benötigt eine Kamera und ist nur in der mobilen App verfügbar. Bitte geben Sie Ihre Registrierungsnummer manuell ein.",
+
+  "skyPreviewTitle": "Der Nachthimmel über dir",
+  "skyPreviewTitleWithLocation": "Der Nachthimmel über {locationName}",
+  "@skyPreviewTitleWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "calculateNightSky": "Nachthimmel berechnen",
+  "skyPreviewCalculating": "Berechne deinen Nachthimmel",
+  "skyPreviewCalculatingWithLocation": "Berechne den Nachthimmel über {locationName}",
+  "@skyPreviewCalculatingWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "skyPreviewHint": "Tippe auf einen Stern, um ihn zu entdecken",
+  "skyPreviewContinue": "Weiter",
+
+  "signInTitle": "Anmelden",
+  "signInSubtitle": "Speichere deine Sterne auf allen Geräten",
+  "signInCreateAccount": "Konto erstellen",
+  "signInWelcomeBack": "Willkommen zurück",
+  "signInWithGoogle": "Weiter mit Google",
+  "signInWithApple": "Weiter mit Apple",
+  "signInWithEmail": "Weiter mit E-Mail",
+  "signInOr": "oder",
+  "signInEmail": "E-Mail",
+  "signInPassword": "Passwort",
+  "signInForgotPassword": "Passwort vergessen?",
+  "signInSignIn": "Anmelden",
+  "signInAlreadyHaveAccount": "Bereits ein Konto?",
+  "signInNoAccount": "Noch kein Konto?",
+  "signInBackToOptions": "Alle Anmeldeoptionen",
+  "signInEmailOptIn": "Halte mich auf dem Laufenden mit Sternenbeobachtungstipps, neuen Funktionen und Angeboten",
+  "signInSkip": "Ohne Konto fortfahren"
 }

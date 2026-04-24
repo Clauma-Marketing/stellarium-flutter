@@ -348,5 +348,45 @@
 
   "ok": "确定",
   "scannerNotAvailable": "扫描仪不可用",
-  "scannerNotAvailableOnWeb": "证书扫描仪需要相机,仅在移动应用程序中可用。请手动输入您的注册号码。"
+  "scannerNotAvailableOnWeb": "证书扫描仪需要相机,仅在移动应用程序中可用。请手动输入您的注册号码。",
+
+  "skyPreviewTitle": "你头顶的夜空",
+  "skyPreviewTitleWithLocation": "{locationName} 上空的夜空",
+  "@skyPreviewTitleWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "calculateNightSky": "计算夜空",
+  "skyPreviewCalculating": "正在计算你的夜空",
+  "skyPreviewCalculatingWithLocation": "正在计算 {locationName} 上空的夜空",
+  "@skyPreviewCalculatingWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "skyPreviewHint": "点击一颗星星来了解它",
+  "skyPreviewContinue": "继续",
+
+  "signInTitle": "登录",
+  "signInSubtitle": "在所有设备上保存你的星星",
+  "signInCreateAccount": "创建账户",
+  "signInWelcomeBack": "欢迎回来",
+  "signInWithGoogle": "使用 Google 继续",
+  "signInWithApple": "使用 Apple 继续",
+  "signInWithEmail": "使用邮箱继续",
+  "signInOr": "或",
+  "signInEmail": "邮箱",
+  "signInPassword": "密码",
+  "signInForgotPassword": "忘记密码？",
+  "signInSignIn": "登录",
+  "signInAlreadyHaveAccount": "已有账户？",
+  "signInNoAccount": "没有账户？",
+  "signInBackToOptions": "所有登录选项",
+  "signInEmailOptIn": "接收观星技巧、新功能和特别优惠的更新",
+  "signInSkip": "不登录继续"
 }

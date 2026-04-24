@@ -13,6 +13,7 @@ import '../onboarding_service.dart';
 import 'pages/att_permission_page.dart';
 import 'pages/location_permission_page.dart';
 import 'pages/notification_permission_page.dart';
+import 'pages/sky_preview_page.dart';
 import 'pages/welcome_page.dart';
 
 /// Main onboarding screen that manages the onboarding flow
@@ -32,8 +33,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
+  // Location data from permission page, passed to sky preview
+  double? _latitude;
+  double? _longitude;
+  String? _locationName;
+
   // Check if we should show ATT page (iOS only)
   bool get _showAttPage => !kIsWeb && Platform.isIOS;
+
+  // Sky preview is only available on mobile
+  bool get _showSkyPreview => !kIsWeb;
 
   @override
   void initState() {
@@ -47,6 +56,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final pageNames = [
       'welcome',
       'location_permission',
+      if (_showSkyPreview) 'sky_preview',
       'notification_permission',
       if (_showAttPage) 'att_permission',
     ];
@@ -58,8 +68,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  // Total number of pages: Welcome, Location, Notification, [ATT on iOS]
-  int get _totalPages => _showAttPage ? 4 : 3;
+  // Total number of pages: Welcome, Location, [Sky Preview on mobile], Notification, [ATT on iOS]
+  int get _totalPages {
+    int count = 3; // Welcome, Location, Notification
+    if (_showSkyPreview) count++;
+    if (_showAttPage) count++;
+    return count;
+  }
 
   void _goToNextPage() {
     if (_currentPage < _totalPages - 1) {
@@ -77,6 +92,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // Track onboarding completion
     AnalyticsService.instance.logOnboardingComplete();
 
+    widget.onComplete();
+
+    // These services are useful after onboarding, but they must never delay the
+    // transition to the sign-in screen.
+    unawaited(_initializePostOnboardingServices());
+  }
+
+  Future<void> _initializePostOnboardingServices() async {
     // Initialize services that were deferred from startup to avoid
     // triggering notification permission dialogs for new users
     if (!kIsWeb) {
@@ -85,13 +108,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         KlaviyoService.instance.handlePush(message.data);
       });
 
-      // Initialize Klaviyo if not already initialized
+      // Initialize Klaviyo if not already initialized (must not block onboarding transition)
       if (!KlaviyoService.instance.isInitialized) {
-        final locale = LocaleService.instance.locale;
-        final languageCode = locale?.languageCode ??
-            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-        await KlaviyoService.instance.initialize(languageCode);
-        KlaviyoService.instance.setupTokenRefreshListener();
+        try {
+          final locale = LocaleService.instance.locale;
+          final languageCode = locale?.languageCode ??
+              WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+          await KlaviyoService.instance
+              .initialize(languageCode)
+              .timeout(const Duration(seconds: 5));
+          KlaviyoService.instance.setupTokenRefreshListener();
+        } catch (e) {
+          debugPrint('Klaviyo initialization failed: $e');
+        }
       }
 
       // Firestore sync must not block the transition out of onboarding (it can hang when offline).
@@ -108,12 +137,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         }
       }());
     }
-
-    widget.onComplete();
   }
 
   void _onLocationObtained(double latitude, double longitude) {
     OnboardingService.saveUserLocation(latitude, longitude);
+    setState(() {
+      _latitude = latitude;
+      _longitude = longitude;
+    });
+  }
+
+  void _onLocationNameResolved(String locationName) {
+    setState(() {
+      _locationName = locationName;
+    });
   }
 
   @override
@@ -123,34 +160,54 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   List<Widget> _buildPages() {
+    int pageIndex = 0;
+
     final pages = <Widget>[
       // Page 0: Welcome
       WelcomePage(
         onGetStarted: _goToNextPage,
-        currentPage: 0,
+        currentPage: pageIndex++,
         totalPages: _totalPages,
       ),
       // Page 1: Location Permission
       LocationPermissionPage(
         onContinue: _goToNextPage,
         onLocationObtained: _onLocationObtained,
-        currentPage: 1,
-        totalPages: _totalPages,
-      ),
-      // Page 2: Notification Permission
-      NotificationPermissionPage(
-        onContinue: _goToNextPage,
-        currentPage: 2,
+        onLocationNameResolved: _onLocationNameResolved,
+        currentPage: pageIndex++,
         totalPages: _totalPages,
       ),
     ];
 
-    // Add ATT page for iOS only (last page)
+    // Sky Preview (mobile only)
+    if (_showSkyPreview) {
+      pages.add(
+        SkyPreviewPage(
+          onContinue: _goToNextPage,
+          latitude: _latitude ?? OnboardingService.defaultLatitude,
+          longitude: _longitude ?? OnboardingService.defaultLongitude,
+          locationName: _locationName,
+          currentPage: pageIndex++,
+          totalPages: _totalPages,
+        ),
+      );
+    }
+
+    // Notification Permission
+    pages.add(
+      NotificationPermissionPage(
+        onContinue: _goToNextPage,
+        currentPage: pageIndex++,
+        totalPages: _totalPages,
+      ),
+    );
+
+    // ATT page for iOS only (last page)
     if (_showAttPage) {
       pages.add(
         AttPermissionPage(
           onContinue: _completeOnboarding,
-          currentPage: 3,
+          currentPage: pageIndex++,
           totalPages: _totalPages,
         ),
       );

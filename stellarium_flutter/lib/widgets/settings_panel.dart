@@ -2912,8 +2912,17 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
     AdaptyPaywallProduct product,
     AdaptyPurchaseResult purchaseResult,
   ) {
-    view.dismiss();
-    widget.onComplete();
+    switch (purchaseResult) {
+      case AdaptyPurchaseResultSuccess():
+        view.dismiss();
+        widget.onComplete();
+        break;
+      case AdaptyPurchaseResultPending():
+      case AdaptyPurchaseResultUserCancelled():
+        break;
+      default:
+        break;
+    }
   }
 
   @override

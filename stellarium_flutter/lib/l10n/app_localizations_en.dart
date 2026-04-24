@@ -782,4 +782,81 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get scannerNotAvailableOnWeb =>
       'The certificate scanner requires a camera and is only available on the mobile app. Please enter your registration number manually.';
+
+  @override
+  String get skyPreviewTitle => 'The Night Sky above You';
+
+  @override
+  String skyPreviewTitleWithLocation(String locationName) {
+    return 'The Night Sky above $locationName';
+  }
+
+  @override
+  String get calculateNightSky => 'Calculate Night Sky';
+
+  @override
+  String get skyPreviewCalculating => 'Calculating your Night Sky';
+
+  @override
+  String skyPreviewCalculatingWithLocation(String locationName) {
+    return 'Calculating the Night Sky above $locationName';
+  }
+
+  @override
+  String get skyPreviewHint => 'Tap on a star to discover it';
+
+  @override
+  String get skyPreviewContinue => 'Continue';
+
+  @override
+  String get signInTitle => 'Sign In';
+
+  @override
+  String get signInSubtitle => 'Save your stars across devices';
+
+  @override
+  String get signInCreateAccount => 'Create Account';
+
+  @override
+  String get signInWelcomeBack => 'Welcome Back';
+
+  @override
+  String get signInWithGoogle => 'Continue with Google';
+
+  @override
+  String get signInWithApple => 'Continue with Apple';
+
+  @override
+  String get signInWithEmail => 'Continue with Email';
+
+  @override
+  String get signInOr => 'or';
+
+  @override
+  String get signInEmail => 'Email';
+
+  @override
+  String get signInPassword => 'Password';
+
+  @override
+  String get signInForgotPassword => 'Forgot password?';
+
+  @override
+  String get signInSignIn => 'Sign In';
+
+  @override
+  String get signInAlreadyHaveAccount => 'Already have an account?';
+
+  @override
+  String get signInNoAccount => 'Don\'t have an account?';
+
+  @override
+  String get signInBackToOptions => 'All sign-in options';
+
+  @override
+  String get signInEmailOptIn =>
+      'Keep me updated with stargazing tips, new features, and special offers';
+
+  @override
+  String get signInSkip => 'Continue without account';
 }

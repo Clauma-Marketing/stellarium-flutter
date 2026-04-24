@@ -792,4 +792,81 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get scannerNotAvailableOnWeb =>
       'Der Zertifikat-Scanner benötigt eine Kamera und ist nur in der mobilen App verfügbar. Bitte geben Sie Ihre Registrierungsnummer manuell ein.';
+
+  @override
+  String get skyPreviewTitle => 'Der Nachthimmel über dir';
+
+  @override
+  String skyPreviewTitleWithLocation(String locationName) {
+    return 'Der Nachthimmel über $locationName';
+  }
+
+  @override
+  String get calculateNightSky => 'Nachthimmel berechnen';
+
+  @override
+  String get skyPreviewCalculating => 'Berechne deinen Nachthimmel';
+
+  @override
+  String skyPreviewCalculatingWithLocation(String locationName) {
+    return 'Berechne den Nachthimmel über $locationName';
+  }
+
+  @override
+  String get skyPreviewHint => 'Tippe auf einen Stern, um ihn zu entdecken';
+
+  @override
+  String get skyPreviewContinue => 'Weiter';
+
+  @override
+  String get signInTitle => 'Anmelden';
+
+  @override
+  String get signInSubtitle => 'Speichere deine Sterne auf allen Geräten';
+
+  @override
+  String get signInCreateAccount => 'Konto erstellen';
+
+  @override
+  String get signInWelcomeBack => 'Willkommen zurück';
+
+  @override
+  String get signInWithGoogle => 'Weiter mit Google';
+
+  @override
+  String get signInWithApple => 'Weiter mit Apple';
+
+  @override
+  String get signInWithEmail => 'Weiter mit E-Mail';
+
+  @override
+  String get signInOr => 'oder';
+
+  @override
+  String get signInEmail => 'E-Mail';
+
+  @override
+  String get signInPassword => 'Passwort';
+
+  @override
+  String get signInForgotPassword => 'Passwort vergessen?';
+
+  @override
+  String get signInSignIn => 'Anmelden';
+
+  @override
+  String get signInAlreadyHaveAccount => 'Bereits ein Konto?';
+
+  @override
+  String get signInNoAccount => 'Noch kein Konto?';
+
+  @override
+  String get signInBackToOptions => 'Alle Anmeldeoptionen';
+
+  @override
+  String get signInEmailOptIn =>
+      'Halte mich auf dem Laufenden mit Sternenbeobachtungstipps, neuen Funktionen und Angeboten';
+
+  @override
+  String get signInSkip => 'Ohne Konto fortfahren';
 }

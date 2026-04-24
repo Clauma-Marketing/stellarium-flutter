@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "984409956037-5os7hlc9iui77j1bjfn7q7t227t99plh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.software.starregister",
+            "certificate_hash": "728a6b670db544a287b42f43acfe9dabe23d743e"
+          }
+        },
+        {
           "client_id": "984409956037-k1qfkfkkf9lucrv019h41mrjorhnlahs.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -59,6 +67,22 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "984409956037-8m1haeq7qe0d1068pjqv0f7n9lrktrcq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.starregistration.planetarium",
+            "certificate_hash": "d6bf619fcbd19d09fa306d99ec8cc9a4d13d5739"
+          }
+        },
+        {
+          "client_id": "984409956037-djlc4fuj8qof3rna5jchqnirfdmmh1o1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.starregistration.planetarium",
+            "certificate_hash": "728a6b670db544a287b42f43acfe9dabe23d743e"
+          }
+        },
         {
           "client_id": "984409956037-k1qfkfkkf9lucrv019h41mrjorhnlahs.apps.googleusercontent.com",
           "client_type": 3

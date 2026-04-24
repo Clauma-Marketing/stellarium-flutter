@@ -730,28 +730,8 @@ void main() {
     let companionOrbitAngle = 0;
 
     function createCompanionStar() {
-      // Companion star is typically smaller and dimmer
-      // Random variation in size (50-80% of primary)
-      const companionRadius = config.starRadius * (0.5 + Math.random() * 0.3);
-
-      // Slightly different color (could be cooler or hotter)
-      const colorVariation = Math.random() > 0.5 ? 1 : -1;
-      const spectralTypes = ['O', 'B', 'A', 'F', 'G', 'K', 'M'];
-      const currentIdx = spectralTypes.indexOf(config.spectralType);
-      const companionIdx = Math.max(0, Math.min(6, currentIdx + colorVariation));
-      const companionType = spectralTypes[companionIdx];
-
-      const companionColors = {
-        'O': { core: '#9bb0ff', surface: '#aac0ff' },
-        'B': { core: '#aabfff', surface: '#bbccff' },
-        'A': { core: '#cad7ff', surface: '#dde5ff' },
-        'F': { core: '#f8f7ff', surface: '#fffef8' },
-        'G': { core: '#fff4ea', surface: '#ffcc66' },
-        'K': { core: '#ffd2a1', surface: '#ff9933' },
-        'M': { core: '#ffcc6f', surface: '#ff6633' },
-      };
-
-      const colors = companionColors[companionType] || companionColors['K'];
+      // Companion star is typically smaller and dimmer (65% of primary)
+      const companionRadius = config.starRadius * 0.65;
 
       const geometry = new THREE.SphereGeometry(companionRadius, 48, 48);
 
@@ -760,8 +740,8 @@ void main() {
           uTime: { value: 0 },
           uTurbulence: { value: config.turbulence * 0.8 },
           uPulseSpeed: { value: config.pulseSpeed * 1.2 },
-          uCoreColor: { value: new THREE.Color(colors.core) },
-          uSurfaceColor: { value: new THREE.Color(colors.surface) }
+          uCoreColor: { value: new THREE.Color(config.coreColor) },
+          uSurfaceColor: { value: new THREE.Color(config.surfaceColor) }
         },
         vertexShader: sunVertexShader,
         fragmentShader: sunFragmentShader,

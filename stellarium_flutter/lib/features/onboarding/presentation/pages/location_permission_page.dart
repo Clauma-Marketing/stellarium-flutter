@@ -15,6 +15,7 @@ import '../widgets/permission_page_template.dart';
 class LocationPermissionPage extends StatefulWidget {
   final VoidCallback onContinue;
   final void Function(double latitude, double longitude)? onLocationObtained;
+  final void Function(String locationName)? onLocationNameResolved;
   final int? currentPage;
   final int? totalPages;
 
@@ -22,6 +23,7 @@ class LocationPermissionPage extends StatefulWidget {
     super.key,
     required this.onContinue,
     this.onLocationObtained,
+    this.onLocationNameResolved,
     this.currentPage,
     this.totalPages,
   });
@@ -92,15 +94,15 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       // Track permission granted
       AnalyticsService.instance.logPermissionGranted(permission: 'location');
 
+      // Reverse geocode before showing confirmation so city name is ready
+      await _reverseGeocode(position.latitude, position.longitude);
+
       if (!mounted) return;
       setState(() {
         _isLoading = false;
         _locationConfirmed = true;
         _position = position;
       });
-
-      // Reverse geocode to get location name
-      _reverseGeocode(position.latitude, position.longitude);
     } catch (e) {
       // Location failed, continue without location
       AnalyticsService.instance.logPermissionSkipped(permission: 'location');
@@ -124,15 +126,15 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       // Track permission granted
       AnalyticsService.instance.logPermissionGranted(permission: 'location');
 
+      // Reverse geocode before showing confirmation so city name is ready
+      await _reverseGeocode(position.latitude, position.longitude);
+
       if (!mounted) return;
       setState(() {
         _isLoading = false;
         _locationConfirmed = true;
         _position = position;
       });
-
-      // Reverse geocode to get location name
-      _reverseGeocode(position.latitude, position.longitude);
     } catch (e) {
       // Location failed on web, continue without location
       AnalyticsService.instance.logPermissionSkipped(permission: 'location');
@@ -179,9 +181,11 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
           final locationParts = [city, country].where((s) => s != null && s.isNotEmpty).toList();
 
           if (locationParts.isNotEmpty) {
+            final name = locationParts.join(', ');
             setState(() {
-              _locationName = locationParts.join(', ');
+              _locationName = name;
             });
+            widget.onLocationNameResolved?.call(name);
           }
         }
       }
@@ -224,7 +228,7 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
       title: l10n.locationConfirmedTitle,
       subtitle: l10n.locationConfirmedSubtitle,
       features: const [],
-      primaryButtonText: l10n.onboardingContinue,
+      primaryButtonText: l10n.calculateNightSky,
       onPrimaryPressed: widget.onContinue,
       customContent: _buildLocationDisplay(),
       currentPage: widget.currentPage,

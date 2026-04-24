@@ -124,11 +124,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     AdaptyPaywallProduct product,
     AdaptyPurchaseResult purchaseResult,
   ) {
-    debugPrint('Purchase completed');
-    // Track successful subscription
-    AnalyticsService.instance.logSubscriptionStart(productId: product.vendorProductId);
-    view.dismiss();
-    _completeWithSubscription();
+    switch (purchaseResult) {
+      case AdaptyPurchaseResultSuccess():
+        debugPrint('Purchase successful');
+        AnalyticsService.instance.logSubscriptionStart(productId: product.vendorProductId);
+        view.dismiss();
+        _completeWithSubscription();
+        break;
+      case AdaptyPurchaseResultPending():
+        debugPrint('Purchase pending');
+        break;
+      case AdaptyPurchaseResultUserCancelled():
+        debugPrint('Purchase cancelled by user');
+        break;
+      default:
+        break;
+    }
   }
 
   @override
@@ -146,9 +157,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     AdaptyUIPaywallView view,
     AdaptyProfile profile,
   ) {
-    debugPrint('Restore completed');
-    view.dismiss();
-    _completeWithSubscription();
+    final hasAccess = profile.accessLevels.values.any((level) => level.isActive);
+    if (hasAccess) {
+      debugPrint('Restore completed with active subscription');
+      view.dismiss();
+      _completeWithSubscription();
+    } else {
+      debugPrint('Restore completed but no active subscription found');
+    }
   }
 
   @override

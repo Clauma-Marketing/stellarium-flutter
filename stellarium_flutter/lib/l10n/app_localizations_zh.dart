@@ -750,4 +750,80 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get scannerNotAvailableOnWeb => '证书扫描仪需要相机,仅在移动应用程序中可用。请手动输入您的注册号码。';
+
+  @override
+  String get skyPreviewTitle => '你头顶的夜空';
+
+  @override
+  String skyPreviewTitleWithLocation(String locationName) {
+    return '$locationName 上空的夜空';
+  }
+
+  @override
+  String get calculateNightSky => '计算夜空';
+
+  @override
+  String get skyPreviewCalculating => '正在计算你的夜空';
+
+  @override
+  String skyPreviewCalculatingWithLocation(String locationName) {
+    return '正在计算 $locationName 上空的夜空';
+  }
+
+  @override
+  String get skyPreviewHint => '点击一颗星星来了解它';
+
+  @override
+  String get skyPreviewContinue => '继续';
+
+  @override
+  String get signInTitle => '登录';
+
+  @override
+  String get signInSubtitle => '在所有设备上保存你的星星';
+
+  @override
+  String get signInCreateAccount => '创建账户';
+
+  @override
+  String get signInWelcomeBack => '欢迎回来';
+
+  @override
+  String get signInWithGoogle => '使用 Google 继续';
+
+  @override
+  String get signInWithApple => '使用 Apple 继续';
+
+  @override
+  String get signInWithEmail => '使用邮箱继续';
+
+  @override
+  String get signInOr => '或';
+
+  @override
+  String get signInEmail => '邮箱';
+
+  @override
+  String get signInPassword => '密码';
+
+  @override
+  String get signInForgotPassword => '忘记密码？';
+
+  @override
+  String get signInSignIn => '登录';
+
+  @override
+  String get signInAlreadyHaveAccount => '已有账户？';
+
+  @override
+  String get signInNoAccount => '没有账户？';
+
+  @override
+  String get signInBackToOptions => '所有登录选项';
+
+  @override
+  String get signInEmailOptIn => '接收观星技巧、新功能和特别优惠的更新';
+
+  @override
+  String get signInSkip => '不登录继续';
 }
