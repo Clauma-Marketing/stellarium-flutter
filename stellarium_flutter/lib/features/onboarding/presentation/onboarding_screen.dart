@@ -92,6 +92,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // Track onboarding completion
     AnalyticsService.instance.logOnboardingComplete();
 
+    widget.onComplete();
+
+    // These services are useful after onboarding, but they must never delay the
+    // transition to the sign-in screen.
+    unawaited(_initializePostOnboardingServices());
+  }
+
+  Future<void> _initializePostOnboardingServices() async {
     // Initialize services that were deferred from startup to avoid
     // triggering notification permission dialogs for new users
     if (!kIsWeb) {
@@ -100,13 +108,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         KlaviyoService.instance.handlePush(message.data);
       });
 
-      // Initialize Klaviyo if not already initialized
+      // Initialize Klaviyo if not already initialized (must not block onboarding transition)
       if (!KlaviyoService.instance.isInitialized) {
-        final locale = LocaleService.instance.locale;
-        final languageCode = locale?.languageCode ??
-            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-        await KlaviyoService.instance.initialize(languageCode);
-        KlaviyoService.instance.setupTokenRefreshListener();
+        try {
+          final locale = LocaleService.instance.locale;
+          final languageCode = locale?.languageCode ??
+              WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+          await KlaviyoService.instance
+              .initialize(languageCode)
+              .timeout(const Duration(seconds: 5));
+          KlaviyoService.instance.setupTokenRefreshListener();
+        } catch (e) {
+          debugPrint('Klaviyo initialization failed: $e');
+        }
       }
 
       // Firestore sync must not block the transition out of onboarding (it can hang when offline).
@@ -123,8 +137,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         }
       }());
     }
-
-    widget.onComplete();
   }
 
   void _onLocationObtained(double latitude, double longitude) {
