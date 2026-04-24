@@ -869,5 +869,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get signInBackToOptions => 'Todas las opciones';
 
   @override
+  String get signInEmailOptIn =>
+      'Mantenme informado con consejos de observación, novedades y ofertas especiales';
+
+  @override
   String get signInSkip => 'Continuar sin cuenta';
 }

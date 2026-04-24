@@ -35,12 +35,16 @@ class SkyPreviewPage extends StatefulWidget {
   State<SkyPreviewPage> createState() => _SkyPreviewPageState();
 }
 
-class _SkyPreviewPageState extends State<SkyPreviewPage> {
+class _SkyPreviewPageState extends State<SkyPreviewPage>
+    with SingleTickerProviderStateMixin {
   SelectedObjectInfo? _selectedObject;
   Timer? _infoDismissTimer;
   final GlobalKey<StellariumWebViewState> _webViewKey = GlobalKey();
   bool _animationStarted = false;
   bool _animationDone = false;
+
+  // Fade-in controller for the viewer
+  late AnimationController _fadeController;
 
   /// Duration of the time-lapse animation.
   static const _animationDuration = Duration(seconds: 6);
@@ -85,6 +89,8 @@ class _SkyPreviewPageState extends State<SkyPreviewPage> {
 
   void _onViewerReady(bool ready) {
     if (!ready || !mounted) return;
+    // Fade in the viewer
+    _fadeController.forward();
     _startTimeLapse();
   }
 
@@ -103,9 +109,7 @@ class _SkyPreviewPageState extends State<SkyPreviewPage> {
     webView.setTime(startMjd);
 
     // Calculate speed: cover _hoursToAnimate in _animationDuration
-    // speed = (hours * 3600) / animationSeconds = real seconds per engine second
-    final speed =
-        (_hoursToAnimate * 3600) / _animationDuration.inSeconds;
+    final speed = (_hoursToAnimate * 3600) / _animationDuration.inSeconds;
     webView.setTimeSpeed(speed);
 
     // Stop at current time and show final title
@@ -113,7 +117,7 @@ class _SkyPreviewPageState extends State<SkyPreviewPage> {
       if (!mounted) return;
       final webView = _webViewKey.currentState;
       if (webView == null) return;
-      webView.setTimeSpeed(1.0); // resume real-time
+      webView.setTimeSpeed(1.0);
       setState(() => _animationDone = true);
     });
   }
@@ -121,6 +125,10 @@ class _SkyPreviewPageState extends State<SkyPreviewPage> {
   @override
   void initState() {
     super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
     AnalyticsService.instance
         .logScreenView(screenName: 'onboarding_sky_preview');
   }
@@ -128,6 +136,7 @@ class _SkyPreviewPageState extends State<SkyPreviewPage> {
   @override
   void dispose() {
     _infoDismissTimer?.cancel();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -149,114 +158,199 @@ class _SkyPreviewPageState extends State<SkyPreviewPage> {
           child: Column(
             children: [
               const SizedBox(height: 24),
-              // Title — shows "Calculating..." during load/animation,
-              // then the personalized sky title when done
+              // Title with checkmark + animated text transition
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
-                child: Text(
-                  _animationDone ? finalTitle : calculatingTitle,
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: Row(
                   key: ValueKey(_animationDone),
-                  style:
-                      Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                  textAlign: TextAlign.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_animationDone) ...[
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Flexible(
+                      child: Text(
+                        _animationDone ? finalTitle : calculatingTitle,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
-              // Sky viewer
+              // Sky viewer with glow border and fade-in
               Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Stack(
-                    children: [
-                      // Stellarium WebView (no loading overlay)
-                      Positioned.fill(
-                        child: StellariumWebView(
-                          key: _webViewKey,
-                          latitude: widget.latitude,
-                          longitude: widget.longitude,
-                          initialSettings: _previewSettings,
-                          showLoadingOverlay: false,
-                          onReady: _onViewerReady,
-                          onObjectSelected: _onStarTapped,
-                        ),
+                child: FadeTransition(
+                  opacity: _fadeController,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOut,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _animationDone
+                            ? Colors.green.withValues(alpha: 0.5)
+                            : primaryBlue.withValues(alpha: 0.3),
+                        width: 1.5,
                       ),
-                      // Bottom info bar for selected star
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: AnimatedSlide(
-                          offset: _selectedObject != null
-                              ? Offset.zero
-                              : const Offset(0, 1),
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOut,
-                          child: AnimatedOpacity(
-                            opacity: _selectedObject != null ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 250),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _animationDone
+                              ? Colors.green.withValues(alpha: 0.2)
+                              : primaryBlue.withValues(alpha: 0.15),
+                          blurRadius: 24,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(19),
+                      child: Stack(
+                        children: [
+                          // Stellarium WebView
+                          Positioned.fill(
+                            child: StellariumWebView(
+                              key: _webViewKey,
+                              latitude: widget.latitude,
+                              longitude: widget.longitude,
+                              initialSettings: _previewSettings,
+                              showLoadingOverlay: false,
+                              onReady: _onViewerReady,
+                              onObjectSelected: _onStarTapped,
+                            ),
+                          ),
+                          // Top vignette for depth
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 60,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.7),
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(12),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.5),
+                                    Colors.transparent,
+                                  ],
                                 ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.star_rounded,
-                                    color: primaryBlue,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      _selectedObject?.displayName ?? '',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (_selectedObject?.magnitude != null)
-                                    Text(
-                                      'mag ${_selectedObject!.magnitude!.toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.6),
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    _selectedObject?.type ?? '',
-                                    style: TextStyle(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.5),
-                                      fontSize: 13,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
                           ),
-                        ),
+                          // Bottom vignette
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: 80,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.6),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Bottom info bar for selected star
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: AnimatedSlide(
+                              offset: _selectedObject != null
+                                  ? Offset.zero
+                                  : const Offset(0, 1),
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                              child: AnimatedOpacity(
+                                opacity: _selectedObject != null ? 1.0 : 0.0,
+                                duration: const Duration(milliseconds: 250),
+                                child: Container(
+                                  margin: const EdgeInsets.all(10),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.1),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.star_rounded,
+                                        color: primaryBlue,
+                                        size: 22,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          _selectedObject?.displayName ?? '',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (_selectedObject?.magnitude != null)
+                                        Text(
+                                          'mag ${_selectedObject!.magnitude!.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.6),
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        _selectedObject?.type ?? '',
+                                        style: TextStyle(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.5),
+                                          fontSize: 13,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               // Page indicator
               if (widget.currentPage != null && widget.totalPages != null)
                 Padding(

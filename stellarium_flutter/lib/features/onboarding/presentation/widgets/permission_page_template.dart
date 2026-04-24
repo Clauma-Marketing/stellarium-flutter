@@ -26,9 +26,9 @@ class PermissionPageTemplate extends StatefulWidget {
   final String title;
   final String subtitle;
   final List<FeatureItem> features;
-  final String primaryButtonText;
+  final String? primaryButtonText;
   final String? secondaryButtonText;
-  final VoidCallback onPrimaryPressed;
+  final VoidCallback? onPrimaryPressed;
   final VoidCallback? onSecondaryPressed;
   final String? privacyNotice;
   final bool isLoading;
@@ -44,9 +44,9 @@ class PermissionPageTemplate extends StatefulWidget {
     required this.title,
     required this.subtitle,
     required this.features,
-    required this.primaryButtonText,
+    this.primaryButtonText,
     this.secondaryButtonText,
-    required this.onPrimaryPressed,
+    this.onPrimaryPressed,
     this.onSecondaryPressed,
     this.privacyNotice,
     this.isLoading = false,
@@ -166,6 +166,7 @@ class _PermissionPageTemplateState extends State<PermissionPageTemplate> {
                     const SizedBox(height: 24),
                   ],
                   // Primary button
+                  if (widget.primaryButtonText != null && widget.onPrimaryPressed != null)
                   SizedBox(
                     width: double.infinity,
                     height: 56,
@@ -189,7 +190,7 @@ class _PermissionPageTemplateState extends State<PermissionPageTemplate> {
                               ),
                             )
                           : Text(
-                              widget.primaryButtonText,
+                              widget.primaryButtonText!,
                               style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,

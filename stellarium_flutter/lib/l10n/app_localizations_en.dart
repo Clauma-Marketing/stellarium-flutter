@@ -854,5 +854,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signInBackToOptions => 'All sign-in options';
 
   @override
+  String get signInEmailOptIn =>
+      'Keep me updated with stargazing tips, new features, and special offers';
+
+  @override
   String get signInSkip => 'Continue without account';
 }

@@ -178,9 +178,14 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
     AdaptyUIPaywallView view,
     AdaptyProfile profile,
   ) {
-    debugPrint('SubscriptionRequired: Restore completed');
-    view.dismiss();
-    _onSubscriptionSuccess();
+    final hasAccess = profile.accessLevels.values.any((level) => level.isActive);
+    if (hasAccess) {
+      debugPrint('SubscriptionRequired: Restore completed with active subscription');
+      view.dismiss();
+      _onSubscriptionSuccess();
+    } else {
+      debugPrint('SubscriptionRequired: Restore completed but no active subscription');
+    }
   }
 
   @override

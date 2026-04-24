@@ -872,5 +872,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get signInBackToOptions => 'Toutes les options';
 
   @override
+  String get signInEmailOptIn =>
+      'Tenez-moi informé des conseils d\'observation, nouveautés et offres spéciales';
+
+  @override
   String get signInSkip => 'Continuer sans compte';
 }

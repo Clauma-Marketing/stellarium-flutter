@@ -387,5 +387,6 @@
   "signInAlreadyHaveAccount": "已有账户？",
   "signInNoAccount": "没有账户？",
   "signInBackToOptions": "所有登录选项",
+  "signInEmailOptIn": "接收观星技巧、新功能和特别优惠的更新",
   "signInSkip": "不登录继续"
 }

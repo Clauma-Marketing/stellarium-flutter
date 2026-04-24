@@ -864,5 +864,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get signInBackToOptions => 'Alle Anmeldeoptionen';
 
   @override
+  String get signInEmailOptIn =>
+      'Halte mich auf dem Laufenden mit Sternenbeobachtungstipps, neuen Funktionen und Angeboten';
+
+  @override
   String get signInSkip => 'Ohne Konto fortfahren';
 }

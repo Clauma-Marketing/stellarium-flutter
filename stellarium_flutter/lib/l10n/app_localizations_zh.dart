@@ -822,5 +822,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get signInBackToOptions => '所有登录选项';
 
   @override
+  String get signInEmailOptIn => '接收观星技巧、新功能和特别优惠的更新';
+
+  @override
   String get signInSkip => '不登录继续';
 }

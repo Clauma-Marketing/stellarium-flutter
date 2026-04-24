@@ -1682,6 +1682,12 @@ abstract class AppLocalizations {
   /// **'All sign-in options'**
   String get signInBackToOptions;
 
+  /// No description provided for @signInEmailOptIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep me updated with stargazing tips, new features, and special offers'**
+  String get signInEmailOptIn;
+
   /// No description provided for @signInSkip.
   ///
   /// In en, this message translates to:

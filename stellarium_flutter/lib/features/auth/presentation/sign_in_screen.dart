@@ -8,8 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/analytics_service.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/locale_service.dart';
-import '../../onboarding/presentation/widgets/animated_starfield.dart';
+import '../../../services/klaviyo_service.dart';
 import '../../onboarding/presentation/widgets/permission_page_template.dart';
 
 /// Sign-in / sign-up screen with Google, Apple and email+password.
@@ -32,6 +31,7 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _showEmailForm = false;
   bool _isSignUp = true;
   bool _obscurePassword = true;
+  bool _emailOptIn = true;
   String? _error;
 
   final _emailController = TextEditingController();
@@ -51,6 +51,16 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
+  void _onSignInSuccess() {
+    if (_emailOptIn) {
+      final email = AuthService.instance.currentUser?.email;
+      if (email != null && email.isNotEmpty) {
+        KlaviyoService.instance.setEmail(email);
+      }
+    }
+    widget.onSignedIn();
+  }
+
   Future<void> _handleGoogleSignIn() async {
     setState(() {
       _isLoading = true;
@@ -58,7 +68,7 @@ class _SignInScreenState extends State<SignInScreen> {
     });
     try {
       await AuthService.instance.signInWithGoogle();
-      if (mounted) widget.onSignedIn();
+      if (mounted) _onSignInSuccess();
     } on FirebaseAuthException catch (e) {
       if (e.code == 'sign-in-cancelled') return;
       _setError(_friendlyError(e));
@@ -78,11 +88,10 @@ class _SignInScreenState extends State<SignInScreen> {
     });
     try {
       await AuthService.instance.signInWithApple();
-      if (mounted) widget.onSignedIn();
+      if (mounted) _onSignInSuccess();
     } on FirebaseException catch (e) {
       _setError(_friendlyError(e));
     } catch (e) {
-      // Apple sign-in cancelled throws a PlatformException
       if (e.toString().contains('AuthorizationErrorCode.canceled')) return;
       _setError(e.toString());
     } finally {
@@ -108,7 +117,7 @@ class _SignInScreenState extends State<SignInScreen> {
           _passwordController.text,
         );
       }
-      if (mounted) widget.onSignedIn();
+      if (mounted) _onSignInSuccess();
     } on FirebaseAuthException catch (e) {
       _setError(_friendlyError(e));
     } catch (e) {
@@ -167,201 +176,199 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final locale = LocaleService.instance.locale?.languageCode ??
-        Localizations.localeOf(context).languageCode;
     final showApple = !kIsWeb && Platform.isIOS;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: AnimatedStarfield(
-        starCount: 50,
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 40),
-                  // Logo
-                  SvgPicture.asset(
-                    locale == 'de'
-                        ? 'assets/logo_de.svg'
-                        : 'assets/star-reg_logo.svg',
-                    height: 36,
+    return PermissionPageTemplate(
+      iconImagePath: 'assets/icons/sign-in.png',
+      title: _showEmailForm
+          ? (_isSignUp ? l10n.signInCreateAccount : l10n.signInWelcomeBack)
+          : l10n.signInTitle,
+      subtitle: l10n.signInSubtitle,
+      features: const [],
+      secondaryButtonText: widget.onSkip != null ? l10n.signInSkip : null,
+      onSecondaryPressed: widget.onSkip,
+      customContent: _buildSignInContent(l10n, showApple),
+    );
+  }
+
+  Widget _buildSignInContent(AppLocalizations l10n, bool showApple) {
+    return DefaultTextStyle(
+      style: const TextStyle(decoration: TextDecoration.none),
+      child: Column(
+      children: [
+        // Error message
+        if (_error != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.red.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
                   ),
-                  const SizedBox(height: 40),
-                  // Title
-                  Text(
-                    _showEmailForm
-                        ? (_isSignUp
-                            ? l10n.signInCreateAccount
-                            : l10n.signInWelcomeBack)
-                        : l10n.signInTitle,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                    textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        if (!_showEmailForm) ...[
+          // Google & Apple side by side
+          Row(
+            children: [
+              Expanded(
+                child: _SocialButton(
+                  onPressed: _isLoading ? null : _handleGoogleSignIn,
+                  iconWidget: SvgPicture.asset(
+                    'assets/icons/google_logo.svg',
+                    width: 22,
+                    height: 22,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.signInSubtitle,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                    textAlign: TextAlign.center,
+                  label: 'Google',
+                ),
+              ),
+              if (showApple) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _SocialButton(
+                    onPressed: _isLoading ? null : _handleAppleSignIn,
+                    iconWidget:
+                        const Icon(Icons.apple, color: Colors.white, size: 24),
+                    label: 'Apple',
                   ),
-                  const SizedBox(height: 36),
-
-                  // Error message
-                  if (_error != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.red.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline,
-                              color: Colors.red, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _error!,
-                              style: const TextStyle(
-                                  color: Colors.red, fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  if (!_showEmailForm) ...[
-                    // Social sign-in buttons
-                    _SocialButton(
-                      onPressed: _isLoading ? null : _handleGoogleSignIn,
-                      iconWidget: SvgPicture.asset(
-                        'assets/icons/google_logo.svg',
-                        width: 22,
-                        height: 22,
-                      ),
-                      label: l10n.signInWithGoogle,
-                    ),
-                    if (showApple) ...[
-                      const SizedBox(height: 12),
-                      _SocialButton(
-                        onPressed: _isLoading ? null : _handleAppleSignIn,
-                        iconWidget: const Icon(Icons.apple,
-                            color: Colors.white, size: 24),
-                        label: l10n.signInWithApple,
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    // Divider
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Divider(
-                              color: Colors.white.withValues(alpha: 0.2)),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            l10n.signInOr,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Divider(
-                              color: Colors.white.withValues(alpha: 0.2)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // Email button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: OutlinedButton.icon(
-                        onPressed: _isLoading
-                            ? null
-                            : () => setState(() => _showEmailForm = true),
-                        icon: Icon(Icons.email_outlined,
-                            color: Colors.white.withValues(alpha: 0.9)),
-                        label: Text(
-                          l10n.signInWithEmail,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.3)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    // Email form
-                    _buildEmailForm(l10n),
-                  ],
-
-                  // Skip button
-                  if (widget.onSkip != null) ...[
-                    const SizedBox(height: 24),
-                    TextButton(
-                      onPressed: _isLoading ? null : widget.onSkip,
-                      child: Text(
-                        l10n.signInSkip,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  // Loading indicator
-                  if (_isLoading) ...[
-                    const SizedBox(height: 16),
-                    const CircularProgressIndicator(color: primaryBlue),
-                  ],
-                  const SizedBox(height: 40),
-                ],
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Divider
+          Row(
+            children: [
+              Expanded(
+                child:
+                    Divider(color: Colors.white.withValues(alpha: 0.2)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  l10n.signInOr,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Expanded(
+                child:
+                    Divider(color: Colors.white.withValues(alpha: 0.2)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Email button
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: _isLoading
+                  ? null
+                  : () => setState(() => _showEmailForm = true),
+              icon: Icon(Icons.email_outlined,
+                  color: Colors.white.withValues(alpha: 0.9)),
+              label: Text(
+                l10n.signInWithEmail,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.3)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26),
+                ),
               ),
             ),
           ),
+        ] else ...[
+          // Email form
+          _buildEmailForm(l10n),
+        ],
+
+        // Email opt-in checkbox
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: () => setState(() => _emailOptIn = !_emailOptIn),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Checkbox(
+                    value: _emailOptIn,
+                    onChanged: (v) =>
+                        setState(() => _emailOptIn = v ?? false),
+                    activeColor: primaryBlue,
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.4),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.signInEmailOptIn,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
+    ),
     );
   }
 
   Widget _buildEmailForm(AppLocalizations l10n) {
-    return Form(
+    return Material(
+      color: Colors.transparent,
+      child: Form(
       key: _formKey,
       child: Column(
         children: [
-          // Email field
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             style: const TextStyle(color: Colors.white),
-            decoration: _inputDecoration(l10n.signInEmail, Icons.email_outlined),
+            decoration:
+                _inputDecoration(l10n.signInEmail, Icons.email_outlined),
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Email is required';
               if (!v.contains('@')) return 'Enter a valid email';
@@ -369,7 +376,6 @@ class _SignInScreenState extends State<SignInScreen> {
             },
           ),
           const SizedBox(height: 12),
-          // Password field
           TextFormField(
             controller: _passwordController,
             obscureText: _obscurePassword,
@@ -394,7 +400,6 @@ class _SignInScreenState extends State<SignInScreen> {
               return null;
             },
           ),
-          // Forgot password
           if (!_isSignUp) ...[
             Align(
               alignment: Alignment.centerRight,
@@ -410,7 +415,7 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
             ),
           ] else ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
           ],
           // Submit button
           SizedBox(
@@ -426,13 +431,22 @@ class _SignInScreenState extends State<SignInScreen> {
                   borderRadius: BorderRadius.circular(26),
                 ),
               ),
-              child: Text(
-                _isSignUp ? l10n.signInCreateAccount : l10n.signInSignIn,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      _isSignUp ? l10n.signInCreateAccount : l10n.signInSignIn,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 12),
@@ -481,6 +495,7 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -504,7 +519,8 @@ class _SignInScreenState extends State<SignInScreen> {
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: Colors.red.withValues(alpha: 0.5)),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
 }

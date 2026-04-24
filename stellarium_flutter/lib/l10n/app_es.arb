@@ -388,5 +388,6 @@
   "signInAlreadyHaveAccount": "¿Ya tienes una cuenta?",
   "signInNoAccount": "¿No tienes cuenta?",
   "signInBackToOptions": "Todas las opciones",
+  "signInEmailOptIn": "Mantenme informado con consejos de observación, novedades y ofertas especiales",
   "signInSkip": "Continuar sin cuenta"
 }

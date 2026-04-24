@@ -327,8 +327,10 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     setState(() {
       if (!onboardingComplete) {
         _currentScreen = AppScreen.onboarding;
+      } else if (!AuthService.instance.isSignedIn) {
+        // Returning user who hasn't signed in yet
+        _currentScreen = AppScreen.signIn;
       } else {
-        // Always show star registration for returning users
         _currentScreen = AppScreen.starRegistration;
       }
     });
