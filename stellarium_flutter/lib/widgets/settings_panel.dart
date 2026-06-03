@@ -15,6 +15,7 @@ import '../l10n/app_localizations.dart';
 import '../services/analytics_service.dart';
 import '../services/locale_service.dart';
 import '../services/firestore_sync_service.dart';
+import '../services/reverse_geocoding.dart';
 import '../services/notification_preferences.dart';
 import '../services/saved_stars_service.dart';
 import '../stellarium/stellarium.dart';
@@ -938,25 +939,20 @@ class _TimeLocationBottomSheetState extends State<TimeLocationBottomSheet> with 
     final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
     final language = locale.languageCode;
 
-    try {
-      final url = Uri.parse(
-        'https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.latitude},${location.longitude}&language=$language&key=$_googleApiKey',
-      );
-      final response = await http.get(url);
+    // Native OS geocoder first (free), Google as fallback.
+    final result = await reverseGeocode(
+      latitude: location.latitude,
+      longitude: location.longitude,
+      language: language,
+      googleApiKey: _googleApiKey,
+    );
 
-      if (response.statusCode == 200 && mounted) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final results = json['results'] as List<dynamic>?;
-        if (results != null && results.isNotEmpty) {
-          final place = PlaceSuggestion.fromGoogleGeocode(results[0] as Map<String, dynamic>);
-          setState(() {
-            _locationName = place.shortName;
-            _searchController.text = place.shortName;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Reverse geocode error: $e');
+    final name = result?.formatted;
+    if (name != null && mounted) {
+      setState(() {
+        _locationName = name;
+        _searchController.text = name;
+      });
     }
   }
 

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/onboarding/onboarding_service.dart';
@@ -88,8 +89,15 @@ class FirestoreSyncService {
         fcmToken = await _messaging.getToken();
       }
 
-      // Get timezone
-      final timezone = DateTime.now().timeZoneName;
+      // Get timezone. Prefer the IANA identifier (e.g. "Europe/Berlin") so the
+      // backend can apply DST correctly for whatever date a notification fires;
+      // fall back to the abbreviation if the platform lookup fails.
+      String timezone;
+      try {
+        timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
+      } catch (_) {
+        timezone = DateTime.now().timeZoneName;
+      }
       final timezoneOffset = DateTime.now().timeZoneOffset.inMinutes;
 
       final userData = <String, dynamic>{

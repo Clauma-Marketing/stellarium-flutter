@@ -51,6 +51,38 @@ const messaging = admin.messaging();
 // Collection to track sent notifications (avoid duplicates)
 const NOTIFICATIONS_SENT_COLLECTION = "notificationsSent";
 /**
+ * Returns the UTC offset (in minutes) of the given IANA timezone at `date`,
+ * resolving DST for that specific date. Returns null if `tz` is missing or not
+ * a usable IANA identifier (e.g. an old client that stored an abbreviation),
+ * so callers can fall back to a stored fixed offset.
+ */
+function zoneOffsetMinutes(tz, date) {
+    if (!tz || !tz.includes("/"))
+        return null;
+    try {
+        const dtf = new Intl.DateTimeFormat("en-US", {
+            timeZone: tz,
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+        });
+        const parts = dtf.formatToParts(date);
+        const get = (type) => { var _a; return Number((_a = parts.find((p) => p.type === type)) === null || _a === void 0 ? void 0 : _a.value); };
+        let hour = get("hour");
+        if (hour === 24)
+            hour = 0; // Intl can emit "24" at midnight
+        const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), hour, get("minute"), get("second"));
+        return Math.round((asUtc - date.getTime()) / 60000);
+    }
+    catch (_e) {
+        return null;
+    }
+}
+/**
  * Scheduled function that runs every hour to check star visibility
  * and send notifications to users whose stars are becoming visible soon.
  */
@@ -149,9 +181,14 @@ async function checkAndNotifyForStar(userId, starId, star, userData) {
     // Build and send notification
     try {
         const direction = (0, starVisibility_1.getDirectionName)((0, starVisibility_1.getStarAzimuth)(star.ra, star.dec, userData.latitude, userData.longitude, notificationTime));
-        // Get the full viewing window (start - end times) in user's local timezone
-        // Default to UTC (0) if timezone offset is not available
-        const timezoneOffset = (_a = userData.timezoneOffsetMinutes) !== null && _a !== void 0 ? _a : 0;
+        // Get the full viewing window (start - end times) in the user's local time.
+        // Prefer the IANA timezone (DST-correct for the actual notification date);
+        // fall back to the stored fixed offset, then to UTC.
+        let timezoneOffset = (_a = userData.timezoneOffsetMinutes) !== null && _a !== void 0 ? _a : 0;
+        const zoneOffset = zoneOffsetMinutes(userData.timezone, notificationTime);
+        if (zoneOffset !== null) {
+            timezoneOffset = zoneOffset;
+        }
         const viewingWindow = (0, starVisibility_1.formatViewingWindowLocal)(star.ra, star.dec, userData.latitude, userData.longitude, timezoneOffset, notificationTime);
         let body;
         if (currentlyVisible) {

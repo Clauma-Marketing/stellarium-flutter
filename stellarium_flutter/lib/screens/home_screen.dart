@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:adapty_flutter/adapty_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../features/onboarding/onboarding_service.dart';
@@ -15,6 +13,7 @@ import '../services/analytics_service.dart';
 import '../services/app_review_service.dart';
 import '../services/engagement_tracking_service.dart';
 import '../services/locale_service.dart';
+import '../services/reverse_geocoding.dart';
 import '../services/subscription_availability_service.dart';
 import '../services/saved_stars_service.dart';
 import '../services/search_history_service.dart';
@@ -236,46 +235,19 @@ class _HomeScreenState extends State<HomeScreen>
     final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
     final language = locale.languageCode;
 
-    try {
-      final url = Uri.parse(
-        'https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lng&language=$language&key=$_googleApiKey',
-      );
-      final response = await http.get(url);
+    // Native OS geocoder first (free), Google as fallback.
+    final result = await reverseGeocode(
+      latitude: lat,
+      longitude: lng,
+      language: language,
+      googleApiKey: _googleApiKey,
+    );
 
-      if (response.statusCode == 200 && mounted) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final results = json['results'] as List<dynamic>?;
-        if (results != null && results.isNotEmpty) {
-          final addressComponents = (results[0] as Map<String, dynamic>)['address_components'] as List<dynamic>?;
-
-          String? city;
-          String? country;
-
-          if (addressComponents != null) {
-            for (final component in addressComponents) {
-              final types = (component['types'] as List<dynamic>?)?.cast<String>() ?? [];
-              if (types.contains('locality')) {
-                city = component['long_name'] as String?;
-              } else if (types.contains('administrative_area_level_1') && city == null) {
-                city = component['long_name'] as String?;
-              }
-              if (types.contains('country')) {
-                country = component['long_name'] as String?;
-              }
-            }
-          }
-
-          final locationParts = [city, country].where((s) => s != null && s.isNotEmpty).toList();
-
-          if (locationParts.isNotEmpty && mounted) {
-            setState(() {
-              _locationName = locationParts.join(', ');
-            });
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Reverse geocoding failed: $e');
+    final name = result?.formatted;
+    if (name != null && mounted) {
+      setState(() {
+        _locationName = name;
+      });
     }
   }
 

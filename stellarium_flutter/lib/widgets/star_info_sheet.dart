@@ -661,11 +661,66 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
     }
   }
 
+  /// Parse a J2000 right-ascension string ("HH MM SS.s") to degrees.
+  /// Returns null if it can't be parsed.
+  static double? _parseJ2000RaToDeg(String s) {
+    final t = s.trim();
+    if (t.isEmpty) return null;
+    final parts = t.split(RegExp(r'[\s:hms]+')).where((p) => p.isNotEmpty).toList();
+    if (parts.length < 2) return null;
+    final h = double.tryParse(parts[0]);
+    final m = double.tryParse(parts[1]);
+    final sec = parts.length > 2 ? (double.tryParse(parts[2]) ?? 0) : 0;
+    if (h == null || m == null) return null;
+    return (h + m / 60 + sec / 3600) * 15.0; // hours -> degrees
+  }
+
+  /// Parse a J2000 declination string ("+DD MM SS.s") to degrees.
+  /// Returns null if it can't be parsed.
+  static double? _parseJ2000DecToDeg(String s) {
+    final t = s.trim();
+    if (t.isEmpty) return null;
+    final sign = t.startsWith('-') ? -1.0 : 1.0;
+    final parts = t
+        .replaceFirst(RegExp(r'^[+-]'), '')
+        .split(RegExp(r'[\s:dms°′″]+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.length < 2) return null;
+    final d = double.tryParse(parts[0]);
+    final m = double.tryParse(parts[1]);
+    final sec = parts.length > 2 ? (double.tryParse(parts[2]) ?? 0) : 0;
+    if (d == null || m == null) return null;
+    return sign * (d + m / 60 + sec / 3600);
+  }
+
+  /// Resolve usable equatorial coordinates (raDeg, decDeg) from any available
+  /// source. The registry data (which always carries coordinates) is preferred,
+  /// then the initial selection data. For each source we use the decimal values
+  /// when present and otherwise fall back to parsing the J2000 strings — some
+  /// registry records only populate the J2000 strings, and engine selections can
+  /// arrive without a declination, which previously left visibility blank.
+  (double, double)? _resolveStarCoordinates() {
+    for (final md in [_registryInfo?.modelData, widget.starInfo.modelData]) {
+      if (md == null) continue;
+      if (md.rightAscension != 0 || md.declination != 0) {
+        return (md.rightAscension, md.declination);
+      }
+      final ra = _parseJ2000RaToDeg(md.j2000Ra);
+      final dec = _parseJ2000DecToDeg(md.j2000Dec);
+      if (ra != null && dec != null) return (ra, dec);
+    }
+    return null;
+  }
+
   Future<void> _loadVisibilityInfo() async {
-    // Use effective star info (registry data if available, otherwise basic)
-    final modelData = _effectiveStarInfo.modelData;
-    if (modelData == null ||
-        (modelData.rightAscension == 0 && modelData.declination == 0)) {
+    final coords = _resolveStarCoordinates();
+    if (coords == null) {
+      final rmd = _registryInfo?.modelData;
+      final wmd = widget.starInfo.modelData;
+      debugPrint('[VIS] no usable coords -> section hidden. '
+          'registryMD=${rmd == null ? 'null' : '${rmd.rightAscension},${rmd.declination} j2000="${rmd.j2000Ra}"/"${rmd.j2000Dec}"'}, '
+          'widgetMD=${wmd == null ? 'null' : '${wmd.rightAscension},${wmd.declination} j2000="${wmd.j2000Ra}"/"${wmd.j2000Dec}"'}');
       return;
     }
 
@@ -679,8 +734,8 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
 
       // Use the shared visibility info helper for consistent calculations
       final visibility = StarVisibility.getVisibilityInfo(
-        starRaDeg: modelData.rightAscension,
-        starDecDeg: modelData.declination,
+        starRaDeg: coords.$1,
+        starDecDeg: coords.$2,
         latitudeDeg: location.latitude,
         longitudeDeg: location.longitude,
       );
@@ -771,13 +826,12 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
             _registryInfo = result;
             _isLoadingRegistry = false;
           });
-          // Recalculate visibility with registry coordinates if initial coords were 0,0
-          final initialModelData = widget.starInfo.modelData;
-          if (initialModelData == null ||
-              (initialModelData.rightAscension == 0 &&
-                  initialModelData.declination == 0)) {
-            _loadVisibilityInfo();
-          }
+          // Registry data carries full coordinates and is preferred by
+          // _resolveStarCoordinates(), so (re)compute visibility now that it's
+          // available. This recovers the case where the initial selection had
+          // partial/missing coordinates (e.g. an engine selection with no
+          // declination, or a skySource without model_data).
+          _loadVisibilityInfo();
         } else if (mounted) {
           setState(() {
             _isLoadingRegistry = false;

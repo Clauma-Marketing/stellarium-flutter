@@ -157,37 +157,45 @@ class StarVisibility {
     return altitude > _horizonAltitude;
   }
 
-  /// Check if it's dark enough to see stars (astronomical twilight)
+  /// Check if it's dark enough to see stars at [dateTime] — i.e. the sky is in
+  /// astronomical twilight or darker (sun at least 12° below the horizon). Uses
+  /// the same dusk/dawn definition as [getTonightViewingWindow] so "currently
+  /// visible" and the viewing window stay consistent.
   static bool isDarkEnough({
     required double latitudeDeg,
     required double longitudeDeg,
     required DateTime dateTime,
   }) {
-    final sunTimes = SunTimes(
-      latitude: latitudeDeg,
-      longitude: longitudeDeg,
-      date: dateTime,
-    );
+    final today = DateTime(dateTime.year, dateTime.month, dateTime.day);
 
-    // Check if we're in astronomical twilight or darker
-    final astroStart = sunTimes.astronomicalTwilightEnd;
-    final astroEnd = sunTimes.astronomicalTwilightStart;
-
-    if (astroStart == null || astroEnd == null) {
-      // Polar day/night - check sun position directly
-      return sunTimes.isPolarNight;
+    // A dark period can belong to the night that began the previous evening or
+    // to the one beginning this evening; [dateTime] is dark if it falls inside
+    // either night's dusk -> dawn window.
+    for (final nightStart in [
+      today.subtract(const Duration(days: 1)),
+      today,
+    ]) {
+      final dusk = _duskFor(latitudeDeg, longitudeDeg, nightStart);
+      final dawn = _dawnFor(
+          latitudeDeg, longitudeDeg, nightStart.add(const Duration(days: 1)));
+      if (dusk != null &&
+          dawn != null &&
+          dawn.isAfter(dusk) &&
+          dateTime.isAfter(dusk) &&
+          dateTime.isBefore(dawn)) {
+        return true;
+      }
     }
 
-    final time = dateTime;
-
-    // Night is between astronomical twilight end (evening) and start (morning)
-    if (astroStart.isBefore(astroEnd)) {
-      // Normal case: night spans midnight
-      return time.isAfter(astroStart) || time.isBefore(astroEnd);
-    } else {
-      // Summer near poles: night is a short period
-      return time.isAfter(astroStart) && time.isBefore(astroEnd);
+    // No dusk at all (sun never crosses -12°): dark only during polar night.
+    if (_duskFor(latitudeDeg, longitudeDeg, today) == null) {
+      return SunTimes(
+        latitude: latitudeDeg,
+        longitude: longitudeDeg,
+        date: today,
+      ).isPolarNight;
     }
+    return false;
   }
 
   /// Check if a star is visible (above horizon AND dark enough)
@@ -426,6 +434,26 @@ class StarVisibility {
 
   /// Get the viewing window for tonight when star is both visible and dark
   /// Returns (start, end) times, or (null, null) if not visible tonight
+  /// Dusk for the night beginning on [date]: the start of astronomical twilight
+  /// (sun 12° below the horizon), which is dark enough for star observation.
+  /// Falls back to civil twilight, then sunset, for high-latitude summers where
+  /// the sun never even reaches -12°.
+  static DateTime? _duskFor(double latDeg, double lonDeg, DateTime date) {
+    final s = SunTimes(latitude: latDeg, longitude: lonDeg, date: date);
+    // nauticalTwilightEnd is the sun crossing -12°, i.e. the moment astronomical
+    // twilight begins (we use astronomical twilight, not astronomical night).
+    return s.nauticalTwilightEnd ?? s.civilTwilightEnd ?? s.sunset;
+  }
+
+  /// Dawn for the morning of [date]: the end of astronomical twilight (sun rises
+  /// past 12° below the horizon). Uses the same fallback chain as [_duskFor].
+  static DateTime? _dawnFor(double latDeg, double lonDeg, DateTime date) {
+    final s = SunTimes(latitude: latDeg, longitude: lonDeg, date: date);
+    // nauticalTwilightStart is the sun crossing -12°, i.e. the moment
+    // astronomical twilight ends in the morning.
+    return s.nauticalTwilightStart ?? s.civilTwilightStart ?? s.sunrise;
+  }
+
   static (DateTime?, DateTime?) getTonightViewingWindow({
     required double starRaDeg,
     required double starDecDeg,
@@ -433,106 +461,65 @@ class StarVisibility {
     required double longitudeDeg,
     required DateTime date,
   }) {
-    final sunTimes = SunTimes(
-      latitude: latitudeDeg,
-      longitude: longitudeDeg,
-      date: date,
-    );
+    // Darkness window for the night that begins on [date]: this evening's dusk
+    // through tomorrow morning's dawn.
+    final darkStart = _duskFor(latitudeDeg, longitudeDeg, date);
+    final darkEnd =
+        _dawnFor(latitudeDeg, longitudeDeg, date.add(const Duration(days: 1)));
 
-    // Get darkness window (astronomical twilight)
-    final darkStart = sunTimes.astronomicalTwilightEnd;
-    final darkEnd = sunTimes.astronomicalTwilightStart;
-
-    if (darkStart == null || darkEnd == null) {
-      // No astronomical darkness (polar summer)
+    if (darkStart == null || darkEnd == null || !darkEnd.isAfter(darkStart)) {
+      // Sun never sets (true polar day) - no dark viewing window.
       return (null, null);
     }
 
-    // For tonight, darkness is from this evening's twilight end
-    // to tomorrow morning's twilight start
-    final tomorrowSunTimes = SunTimes(
-      latitude: latitudeDeg,
-      longitude: longitudeDeg,
-      date: date.add(const Duration(days: 1)),
-    );
-    final morningTwilightStart = tomorrowSunTimes.astronomicalTwilightStart;
-
-    DateTime? windowStart;
-    DateTime? windowEnd;
-
-    // Check if star is circumpolar
-    if (isCircumpolar(starDecDeg: starDecDeg, latitudeDeg: latitudeDeg)) {
-      // Star is always up, so window is just the dark period
-      windowStart = darkStart;
-      windowEnd = morningTwilightStart ?? darkEnd;
-    } else if (neverRises(starDecDeg: starDecDeg, latitudeDeg: latitudeDeg)) {
-      // Star never rises
-      return (null, null);
-    } else {
-      // Get rise and set times
-      final riseTime = getStarRiseTime(
+    // Walk the darkness window in small steps and keep the longest contiguous
+    // span during which the star stays above the practical horizon. Sampling
+    // the altitude directly avoids the cross-midnight rise/set edge cases that
+    // previously discarded near-circumpolar stars and short summer nights
+    // entirely. A near-circumpolar star can dip below the horizon at lower
+    // culmination mid-window; we report its longest visible stretch rather than
+    // spanning the gap. darkEnd is always sampled so the window isn't truncated
+    // by the step size.
+    const stepMinutes = 5;
+    final totalMinutes = darkEnd.difference(darkStart).inMinutes;
+    DateTime? bestStart, bestEnd, runStart, runEnd;
+    for (var m = 0;; m += stepMinutes) {
+      final atEnd = m >= totalMinutes;
+      final t = atEnd ? darkEnd : darkStart.add(Duration(minutes: m));
+      final alt = getStarAltitude(
         starRaDeg: starRaDeg,
         starDecDeg: starDecDeg,
         latitudeDeg: latitudeDeg,
         longitudeDeg: longitudeDeg,
-        date: date,
+        dateTime: t,
       );
-
-      final setTime = getStarSetTime(
-        starRaDeg: starRaDeg,
-        starDecDeg: starDecDeg,
-        latitudeDeg: latitudeDeg,
-        longitudeDeg: longitudeDeg,
-        date: date,
-      );
-
-      // Also check tomorrow for rise/set
-      final tomorrowRise = getStarRiseTime(
-        starRaDeg: starRaDeg,
-        starDecDeg: starDecDeg,
-        latitudeDeg: latitudeDeg,
-        longitudeDeg: longitudeDeg,
-        date: date.add(const Duration(days: 1)),
-      );
-
-      // Determine visibility window
-      // Window start is the later of: darkness start, star rise
-      // Window end is the earlier of: dawn, star set
-
-      // Check if star sets before darkness even starts
-      if (setTime != null && setTime.isBefore(darkStart)) {
-        // Star has already set before it gets dark - check if it rises again tonight
-        if (tomorrowRise != null && tomorrowRise.isAfter(darkStart)) {
-          // Star rises during the night
-          windowStart = tomorrowRise;
-          windowEnd = morningTwilightStart ?? darkEnd;
-        } else {
-          // Star doesn't rise during the dark period
-          return (null, null);
+      if (alt > _horizonAltitude) {
+        runStart ??= t;
+        runEnd = t;
+      } else if (runStart != null) {
+        if (bestStart == null ||
+            runEnd!.difference(runStart) > bestEnd!.difference(bestStart)) {
+          bestStart = runStart;
+          bestEnd = runEnd;
         }
-      } else {
-        // Normal case: star is up during some part of the night
-        if (riseTime != null && riseTime.isAfter(darkStart)) {
-          windowStart = riseTime;
-        } else {
-          // Star already up at darkness start, or rises before
-          windowStart = darkStart;
-        }
-
-        if (setTime != null && setTime.isBefore(morningTwilightStart ?? darkEnd)) {
-          windowEnd = setTime;
-        } else {
-          windowEnd = morningTwilightStart ?? darkEnd;
-        }
+        runStart = null;
+        runEnd = null;
       }
-
-      // Validate window
-      if (windowEnd.isBefore(windowStart)) {
-        return (null, null);
-      }
+      if (atEnd) break;
+    }
+    if (runStart != null &&
+        (bestStart == null ||
+            runEnd!.difference(runStart) > bestEnd!.difference(bestStart))) {
+      bestStart = runStart;
+      bestEnd = runEnd;
     }
 
-    return (windowStart, windowEnd);
+    if (bestStart == null) {
+      // Star never clears the practical horizon during darkness tonight.
+      return (null, null);
+    }
+
+    return (bestStart, bestEnd);
   }
 
   /// Get azimuth direction as a human-readable string
@@ -604,29 +591,15 @@ class StarVisibility {
       return (null, null);
     }
 
-    // Get sun times for today and tomorrow
     final today = DateTime(now.year, now.month, now.day);
-    final sunTimes = SunTimes(
-      latitude: latitudeDeg,
-      longitude: longitudeDeg,
-      date: today,
-    );
-    final tomorrowSunTimes = SunTimes(
-      latitude: latitudeDeg,
-      longitude: longitudeDeg,
-      date: today.add(const Duration(days: 1)),
-    );
 
-    // Get dawn time (astronomical twilight start)
-    // If it's after midnight, use today's twilight start; otherwise tomorrow's
-    DateTime? dawnTime;
-    if (now.hour < 12) {
-      // After midnight - dawn is today
-      dawnTime = sunTimes.astronomicalTwilightStart;
-    } else {
-      // Before midnight - dawn is tomorrow
-      dawnTime = tomorrowSunTimes.astronomicalTwilightStart;
-    }
+    // First light (dawn). After midnight it's this morning's dawn; before
+    // midnight it's tomorrow morning's. Uses the same twilight fallback as the
+    // viewing-window calc so high-latitude summers still resolve a dawn instead
+    // of returning null.
+    final DateTime? dawnTime = now.hour < 12
+        ? _dawnFor(latitudeDeg, longitudeDeg, today)
+        : _dawnFor(latitudeDeg, longitudeDeg, today.add(const Duration(days: 1)));
 
     // Get star set time
     DateTime? setTime;
