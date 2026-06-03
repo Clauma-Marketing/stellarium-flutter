@@ -692,12 +692,33 @@ class StellariumWebViewState extends State<StellariumWebView>
     _safeRunJavaScript('stellariumAPI.onTouchEnd($pointerId, $x, $y)');
   }
 
+  /// Encode a Dart string as an ASCII-safe JS double-quoted string literal,
+  /// escaping every non-ASCII UTF-16 code unit (surrogate pairs included) as
+  /// \uXXXX. iOS WKWebView's runJavaScript truncates source strings that
+  /// contain raw emoji/multibyte characters (e.g. "JaPiMa ❤️" arrived as
+  /// "JaPiM"), so we keep the JS source pure ASCII.
+  static String _jsStr(String s) {
+    final sb = StringBuffer('"');
+    for (final u in s.codeUnits) {
+      if (u == 0x22) {
+        sb.write('\\"');
+      } else if (u == 0x5C) {
+        sb.write('\\\\');
+      } else if (u >= 0x20 && u < 0x7F) {
+        sb.writeCharCode(u);
+      } else {
+        sb.write('\\u');
+        sb.write(u.toRadixString(16).padLeft(4, '0'));
+      }
+    }
+    sb.write('"');
+    return sb.toString();
+  }
+
   /// Set a custom label to display near the selected star
   void setCustomLabel(String? label) {
     if (label != null && label.isNotEmpty) {
-      // Escape quotes in the label
-      final escaped = label.replaceAll('"', '\\"').replaceAll("'", "\\'");
-      _safeRunJavaScript('stellariumAPI.setCustomLabel("$escaped")');
+      _safeRunJavaScript('stellariumAPI.setCustomLabel(${_jsStr(label)})');
     } else {
       _safeRunJavaScript('stellariumAPI.clearCustomLabel()');
     }
@@ -710,16 +731,13 @@ class StellariumWebViewState extends State<StellariumWebView>
 
   /// Add a persistent label for a star (shown without selection)
   void addPersistentLabel(String identifier, String label) {
-    final escapedId = identifier.replaceAll('"', '\\"').replaceAll("'", "\\'");
-    final escapedLabel = label.replaceAll('"', '\\"').replaceAll("'", "\\'");
     _safeRunJavaScript(
-        'stellariumAPI.addPersistentLabel("$escapedId", "$escapedLabel")');
+        'stellariumAPI.addPersistentLabel(${_jsStr(identifier)}, ${_jsStr(label)})');
   }
 
   /// Remove a persistent label for a star
   void removePersistentLabel(String identifier) {
-    final escapedId = identifier.replaceAll('"', '\\"').replaceAll("'", "\\'");
-    _safeRunJavaScript('stellariumAPI.removePersistentLabel("$escapedId")');
+    _safeRunJavaScript('stellariumAPI.removePersistentLabel(${_jsStr(identifier)})');
   }
 
   /// Clear all persistent labels
@@ -730,8 +748,7 @@ class StellariumWebViewState extends State<StellariumWebView>
   /// Start gyroscope guidance to a star by name
   /// Shows an arrow pointing to the star without changing FOV
   void startGuidance(String name) {
-    final escaped = name.replaceAll('"', '\\"').replaceAll("'", "\\'");
-    _safeRunJavaScript('stellariumAPI.startGuidance("$escaped")');
+    _safeRunJavaScript('stellariumAPI.startGuidance(${_jsStr(name)})');
   }
 
   /// Stop gyroscope guidance

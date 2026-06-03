@@ -9,6 +9,7 @@ class OnboardingService {
 
   static const String _onboardingCompleteKey = 'onboarding_complete';
   static const String _subscriptionShownKey = 'subscription_shown';
+  static const String _signInCompletedKey = 'sign_in_completed';
   static const String _userLatitudeKey = 'user_latitude';
   static const String _userLongitudeKey = 'user_longitude';
   static const String _foundStarRegistrationKey = 'found_star_registration';
@@ -37,6 +38,30 @@ class OnboardingService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_onboardingCompleteKey, false);
     await prefs.setBool(_subscriptionShownKey, false);
+  }
+
+  /// Whether the user has completed (or explicitly skipped) the sign-in
+  /// screen in this install.
+  ///
+  /// This is stored in SharedPreferences (NSUserDefaults), which is wiped on
+  /// app uninstall — unlike the Firebase Auth refresh token, which persists
+  /// in the iOS Keychain across uninstalls. We rely on this flag, not
+  /// FirebaseAuth.currentUser, to decide whether to show the sign-in screen.
+  static Future<bool> isSignInCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_signInCompletedKey) ?? false;
+  }
+
+  /// Mark the sign-in screen as completed (signed in or skipped).
+  static Future<void> markSignInCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_signInCompletedKey, true);
+  }
+
+  /// Reset sign-in completion (e.g., on explicit sign-out).
+  static Future<void> resetSignInCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_signInCompletedKey);
   }
 
   /// Check if subscription screen has been shown

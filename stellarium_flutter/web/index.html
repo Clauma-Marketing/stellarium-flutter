@@ -69,8 +69,12 @@
     <canvas id="stellarium-canvas"></canvas>
   </div>
 
-  <!-- Load Stellarium Web Engine -->
-  <script src="stellarium-web-engine.js"></script>
+  <!-- Load Stellarium Web Engine.
+       The ?v= query busts the browser cache so re-initializing the engine
+       always fetches the current build (otherwise a stale wasm can be served
+       on re-init). Bump this version whenever the engine is rebuilt. -->
+  <script>window.__SWE_VER = '20260601-4';</script>
+  <script src="stellarium-web-engine.js?v=20260601-4"></script>
 
   <!-- Stellarium initialization -->
   <script>
@@ -99,7 +103,16 @@
       // Create Stellarium engine
       StelWebEngine({
         canvas: canvas,
-        wasmFile: 'stellarium-web-engine.wasm',
+        // The engine resolves the .wasm through locateFile (not wasmFile), so
+        // cache-bust there. Without this, a stale wasm cached under the plain
+        // URL is reused on reload even though the dev server has a newer build.
+        locateFile: function(path, prefix) {
+          var base = (prefix || '') + path;
+          return path && path.indexOf('.wasm') !== -1
+              ? base + '?v=' + (window.__SWE_VER || '')
+              : base;
+        },
+        wasmFile: 'stellarium-web-engine.wasm?v=' + (window.__SWE_VER || ''),
         onReady: function (stel) {
           window.stellarium = stel;
           window.stellariumReady = true;

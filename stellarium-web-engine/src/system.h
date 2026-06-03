@@ -119,11 +119,15 @@ bool sys_lang_supports_spacing();
  *   yoffset  - the distance form the bottom of the buffer to the first letter.
  *              It is normally equivalent to the font descent.
  *
+ * Parameters (cont.):
+ *   color    - Packed RGBA color (R | G<<8 | B<<16 | A<<24) the text should be
+ *              rendered in. Color emoji keep their own colors.
+ *
  * Returns:
- *   An allocated buffer of one byte per pixel texture.
+ *   An allocated straight-alpha RGBA buffer (4 bytes per pixel).
  */
 char *sys_render_text(const char *txt, float size, int effects, int align,
-                      int *w, int *h, int* xoffset, int* yoffset);
+                      int color, int *w, int *h, int* xoffset, int* yoffset);
 
 /*
  * Global structure that holds pointers to functions that allow to change
@@ -141,7 +145,8 @@ typedef struct {
     const char *(*translate)(void *user, const char *domain, const char *str);
     const char *(*get_lang)();
     char *(*render_text)(void *user, const char *txt, float size, int effects,
-                         int align, int *w, int *h, int *xoffset, int *yoffset);
+                         int align, int color, int *w, int *h,
+                         int *xoffset, int *yoffset);
     int (*list_dir)(void *user, const char *dir, void *cuser,
                     int (*f)(void *user, const char *path, int is_dir));
 } sys_callbacks_t;

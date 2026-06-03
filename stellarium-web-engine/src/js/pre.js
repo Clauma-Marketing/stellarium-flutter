@@ -62,6 +62,121 @@ Module['onRuntimeInitialized'] = function() {
     Module._sys_set_translate_function(callback);
   }
 
+  // Render labels that contain color emoji via an offscreen 2D canvas, so they
+  // use the platform's native COLOR emoji font (Apple Color Emoji in the iOS
+  // WebView / macOS browser, system emoji elsewhere). The engine only calls
+  // this for strings that contain emoji codepoints; all other text keeps using
+  // the in-engine nanovg fonts.
+  (function() {
+    var TEXT_UPPERCASE = 1, TEXT_BOLD = 2; // see painter.h TEXT_EFFECT_FLAGS
+    var FONT_STACK = 'system-ui, -apple-system, "Segoe UI", Roboto, ' +
+                     '"Helvetica Neue", Arial, sans-serif';
+    var cv = document.createElement('canvas');
+    var ctx = cv.getContext('2d', {willReadFrequently: true});
+
+    var cb = Module.addFunction(function(user, txtPtr, size, effects, align,
+                                         color, wPtr, hPtr, xoffPtr, yoffPtr) {
+      var txt = Module.UTF8ToString(txtPtr);
+      if (effects & TEXT_UPPERCASE) txt = txt.toUpperCase();
+      var lines = txt.split('\n');
+      var px = Math.max(1, Math.round(size));
+      var font = ((effects & TEXT_BOLD) ? '700 ' : '') + px + 'px ' + FONT_STACK;
+
+      // Measure widest line. Reserve extra width for emoji: ctx.measureText
+      // under-measures color-emoji advance on some engines (notably iOS
+      // WebKit), which clipped labels like "JaPiMa ❤️" - the trailing emoji
+      // and last letter fell outside the too-narrow canvas. Use the glyph
+      // bounding box when available and add a full em per emoji codepoint. The
+      // engine centers the texture, so over-estimating the width is harmless.
+      ctx.font = font;
+      var maxW = 1, i;
+      for (i = 0; i < lines.length; i++) {
+        var m = ctx.measureText(lines[i]);
+        var lw = Math.max(m.width,
+            (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || 0));
+        var emo = 0, ch, cp;
+        for (ch of lines[i]) {
+          cp = ch.codePointAt(0);
+          if ((cp >= 0x1F000 && cp <= 0x1FAFF) || (cp >= 0x2600 && cp <= 0x27BF) ||
+              (cp >= 0x2B00 && cp <= 0x2BFF) || (cp >= 0x2300 && cp <= 0x23FF))
+            emo++;
+        }
+        lw += emo * px * 2.6;
+        maxW = Math.max(maxW, lw);
+      }
+
+      var lineH = Math.ceil(px * 1.3);
+      var pad = Math.ceil(px * 0.4) + 3; // room for the dark halo
+      var w = Math.ceil(maxW) + pad * 2;
+      var h = lineH * lines.length + pad * 2;
+
+      // Resizing the canvas resets its context, so set state afterwards.
+      cv.width = w;
+      cv.height = h;
+      ctx.font = font;
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'center';
+
+      var r = color & 0xff, g = (color >> 8) & 0xff, b = (color >> 16) & 0xff;
+      // Render fully opaque. The packed alpha carries the label's fade (it is
+      // animated by the engine's label fader); applying it to the canvas fill
+      // here would fade the text a SECOND time on top of the engine's u_color
+      // modulate. Worse, color emoji ignore the fillStyle alpha and stay
+      // opaque, so the text ends up far dimmer than the emoji. Let the engine's
+      // modulate apply the fade once, uniformly to text and emoji.
+      var fill = 'rgba(' + r + ',' + g + ',' + b + ',1)';
+      var cx = w / 2;
+
+      // 1) Dark blurred halo for legibility against the sky. A blurred shadow
+      //    sits *behind* the glyphs, so (unlike a stroke) it never covers the
+      //    fill. Drawn twice to deepen it.
+      ctx.shadowColor = 'rgba(0,0,0,0.95)';
+      ctx.shadowBlur = Math.max(2.5, px * 0.22);
+      ctx.fillStyle = 'rgba(0,0,0,0.95)';
+      for (i = 0; i < lines.length; i++) {
+        var yh = pad + i * lineH;
+        ctx.fillText(lines[i], cx, yh);
+        ctx.fillText(lines[i], cx, yh);
+      }
+      // 2) Solid bright fill on top, no shadow. Several passes make the
+      //    anti-aliased edges read as solid color even at small on-screen
+      //    sizes (so the label looks filled gold, not just an outline).
+      ctx.shadowColor = 'rgba(0,0,0,0)';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = fill;
+      for (i = 0; i < lines.length; i++) {
+        var yf = pad + i * lineH;
+        ctx.fillText(lines[i], cx, yf);
+        ctx.fillText(lines[i], cx, yf);
+        ctx.fillText(lines[i], cx, yf);
+      }
+
+      // Hand a straight-alpha RGBA buffer to the engine (it owns/frees it).
+      // The engine's text texture is sampled bottom-up, so flip the rows
+      // vertically here (otherwise the label renders upside down).
+      var src = ctx.getImageData(0, 0, w, h).data;
+      var rb = w * 4;
+      var data = new Uint8Array(w * h * 4);
+      for (var yy = 0; yy < h; yy++)
+        data.set(src.subarray(yy * rb, yy * rb + rb), (h - 1 - yy) * rb);
+      var ptr = Module._malloc(w * h * 4);
+      Module.writeArrayToMemory(data, ptr);
+      // Module.setValue / Module.HEAP32 are not reliable in this build, so
+      // write the int32 outputs as little-endian bytes via writeArrayToMemory.
+      var i32 = function(p, v) {
+        Module.writeArrayToMemory(
+            [v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff],
+            p);
+      };
+      i32(wPtr, w);
+      i32(hPtr, h);
+      i32(xoffPtr, 0);
+      i32(yoffPtr, 0);
+      return ptr;
+    }, 'iiifiiiiiii');
+    Module._sys_set_render_text_function(cb);
+  })();
+
   if (Module.onReady) Module.onReady(Module);
 }
 

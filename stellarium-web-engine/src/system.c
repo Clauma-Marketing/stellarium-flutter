@@ -128,11 +128,20 @@ bool sys_lang_supports_spacing()
 }
 
 char *sys_render_text(const char *txt, float size, int effects, int align,
-                      int *w, int *h, int* xoffset, int* yoffset)
+                      int color, int *w, int *h, int* xoffset, int* yoffset)
 {
     assert(sys_callbacks.render_text);
     return sys_callbacks.render_text(sys_callbacks.user, txt, size, effects,
-                                     align, w, h, xoffset, yoffset);
+                                     align, color, w, h, xoffset, yoffset);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void sys_set_render_text_function(
+    char *(*callback)(void *user, const char *txt, float size, int effects,
+                      int align, int color, int *w, int *h,
+                      int *xoffset, int *yoffset))
+{
+    sys_callbacks.render_text = callback;
 }
 
 EMSCRIPTEN_KEEPALIVE

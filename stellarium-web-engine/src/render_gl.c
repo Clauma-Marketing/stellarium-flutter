@@ -846,58 +846,44 @@ void render_texture(renderer_t *rend, texture_t  *tex,
     texture_2d(rend, tex, uv, verts, NULL, color, 0);
 }
 
-static uint8_t img_get(const uint8_t *img, int w, int h, int x, int y)
+// Pack a normalized color into an 8-bit-per-channel RGBA int (R | G<<8 |
+// B<<16 | A<<24), as expected by the JS canvas text renderer.
+static int pack_text_color(const double c[4])
 {
-    if (x < 0 || x >= w || y < 0 || y >= h) return 0;
-    return img[y * w + x];
-}
-
-static void blend_color(double dst[4], const double src[4])
-{
-    double a;
-    a = (1 - src[3]) * dst[3] + src[3];
-    if (a == 0) {
-        dst[0] = src[0];
-        dst[1] = src[1];
-        dst[2] = src[2];
-        dst[3] = 0;
-        return;
+    int i, v[4];
+    for (i = 0; i < 4; i++) {
+        double x = c[i] * 255 + 0.5;
+        v[i] = x < 0 ? 0 : (x > 255 ? 255 : (int)x);
     }
-    dst[0] = ((1 - src[3]) * dst[3] * dst[0] + src[3] * src[0]) / a;
-    dst[1] = ((1 - src[3]) * dst[3] * dst[1] + src[3] * src[1]) / a;
-    dst[2] = ((1 - src[3]) * dst[3] * dst[2] + src[3] * src[2]) / a;
-    dst[3] = a;
+    return v[0] | (v[1] << 8) | (v[2] << 16) | (v[3] << 24);
 }
 
-static void text_shadow_effect(const uint8_t *src, uint8_t *dst,
-                               int w, int h, const double color[3])
+// Return true if the text contains an emoji / colored-pictograph codepoint.
+// Such labels are routed to the system (canvas) text path so they can be drawn
+// with native color emoji; all other text keeps using the nanovg fonts.
+static bool text_has_color_glyph(const char *s)
 {
-    int i, j, di, dj;
-    double s;
-    double text_col[4], frag[4];
-
-    for (i = 0; i < h; i++)
-    for (j = 0; j < w; j++) {
-        // Compute shadow blur.
-        // Note: could use some weigths.
-        s = 0;
-        for (di = -1; di <= 1; di++)
-        for (dj = -1; dj <= 1; dj++) {
-            s += img_get(src, w - 2, h - 2, j + dj - 1, i + di - 1) / 255.;
+    while (*s) {
+        unsigned char c = (unsigned char)*s;
+        uint32_t cp;
+        int n, i;
+        if (c < 0x80) { cp = c; n = 1; }
+        else if ((c & 0xE0) == 0xC0) { cp = c & 0x1F; n = 2; }
+        else if ((c & 0xF0) == 0xE0) { cp = c & 0x0F; n = 3; }
+        else if ((c & 0xF8) == 0xF0) { cp = c & 0x07; n = 4; }
+        else { s++; continue; }
+        for (i = 1; i < n; i++) {
+            if ((s[i] & 0xC0) != 0x80) { n = i; break; }
+            cp = (cp << 6) | (s[i] & 0x3F);
         }
-        s /= 9;
-        s = sqrt(s); // Increase shadow effect strength.
-        vec4_set(frag, color[0] / 8, color[1] / 8, color[2] / 8, s);
-        // Blend real color on top of shadow.
-        vec4_set(text_col, color[0], color[1], color[2],
-                 img_get(src, w - 2, h - 2, j - 1, i - 1) / 255.);
-        blend_color(frag, text_col);
-
-        dst[(i * w + j) * 4 + 0] = frag[0] * 255;
-        dst[(i * w + j) * 4 + 1] = frag[1] * 255;
-        dst[(i * w + j) * 4 + 2] = frag[2] * 255;
-        dst[(i * w + j) * 4 + 3] = frag[3] * 255;
+        s += n;
+        if ((cp >= 0x1F000 && cp <= 0x1FAFF) ||   // emoji & pictographs
+            (cp >= 0x2600  && cp <= 0x27BF)  ||   // misc symbols + dingbats
+            (cp >= 0x2B00  && cp <= 0x2BFF)  ||   // stars / misc symbols+arrows
+            (cp >= 0x2300  && cp <= 0x23FF))      // misc technical (⌚⏰ ...)
+            return true;
     }
+    return false;
 }
 
 // Render text using a system bakend generated texture.
@@ -912,7 +898,7 @@ static void text_using_texture(renderer_t *rend,
     double uv[4][2], verts[4][2];
     double s[2], ofs[2] = {0, 0}, bounds[4];
     const double scale = rend->scale;
-    uint8_t *img, *img_rgba;
+    uint8_t *img;
     int i, w, h, xoff, yoff, flags;
     tex_cache_t *ctex;
     texture_t *tex;
@@ -925,23 +911,22 @@ static void text_using_texture(renderer_t *rend,
     }
 
     if (!ctex) {
-        img = (void*)sys_render_text(text, size * scale, effects, align, &w, &h,
+        // The system callback (JS canvas) renders directly to a straight-alpha
+        // RGBA buffer in the requested color, with native color emoji and its
+        // own dark outline for legibility. Upload it verbatim - no monochrome
+        // tinting, so emoji keep their real colors.
+        img = (void*)sys_render_text(text, size * scale, effects, align,
+                                     pack_text_color(color), &w, &h,
                                      &xoff, &yoff);
-        // Shadow effect, into a texture with one pixel extra border.
-        w += 2;
-        h += 2;
-        img_rgba = malloc(w * h * 4);
-        text_shadow_effect(img, img_rgba, w, h, color);
-        free(img);
         ctex = calloc(1, sizeof(*ctex));
         ctex->size = size;
         ctex->effects = effects;
         ctex->xoff = xoff;
         ctex->yoff = yoff;
         ctex->text = strdup(text);
-        ctex->tex = texture_from_data(img_rgba, w, h, 4, 0, 0, w, h, 0);
+        ctex->tex = texture_from_data(img, w, h, 4, 0, 0, w, h, 0);
         vec3_copy(color, ctex->color);
-        free(img_rgba);
+        free(img);
         DL_APPEND(rend->tex_cache, ctex);
     }
 
@@ -1132,7 +1117,9 @@ void render_text(renderer_t *rend, const painter_t *painter,
         return;
     }
 
-    if (sys_callbacks.render_text) {
+    // Only labels that actually contain color emoji go through the system
+    // (canvas) texture path; everything else uses the in-engine nanovg fonts.
+    if (sys_callbacks.render_text && text_has_color_glyph(text)) {
         text_using_texture(rend, painter, text, win_pos, view_pos, align,
                            effects, size, color, angle, bounds);
     } else {
@@ -2092,6 +2079,33 @@ static void set_default_fonts(renderer_t *rend)
                   NULL, 0);
     core_add_font(rend, "bold", "asset://font/NotoSans-Bold.ttf",
                   NULL, 0);
+    // Monochrome emoji/symbol fallback (Noto Sans has no emoji glyphs). The
+    // renderer rasterizes glyf outlines only (no COLR/sbix), so this must be
+    // the monochrome Noto Emoji.
+    //
+    // NOTE: we must NOT route this through core_add_font(). That helper treats
+    // a font id of 0 as "no font set" (`!rend->fonts[font].id`), but NanoVG's
+    // first-created font legitimately has id 0 - which is the regular face
+    // (NotoSans-Regular, created first above). A second core_add_font("regular")
+    // would therefore REPLACE the regular face with the emoji font instead of
+    // adding a fallback, turning all regular text into tofu boxes. Attach the
+    // fallback directly instead; id 0 is a valid base for nvgAddFallbackFontId.
+    {
+        int emoji_size = 0;
+        const void *emoji_data = asset_get_data(
+            "asset://font/NotoEmoji-Regular.ttf", &emoji_size, NULL);
+        if (emoji_data) {
+            int emoji_id = nvgCreateFontMem(
+                rend->vg, "emoji", (unsigned char*)emoji_data, emoji_size, 0);
+            if (emoji_id >= 0) {
+                nvgAddFallbackFontId(rend->vg, rend->fonts[FONT_REGULAR].id,
+                                     emoji_id);
+                nvgAddFallbackFontId(rend->vg, rend->fonts[FONT_BOLD].id,
+                                     emoji_id);
+            }
+        }
+    }
+
     rend->fonts[FONT_REGULAR].is_default_font = true;
     rend->fonts[FONT_BOLD].is_default_font = true;
 }
@@ -2125,8 +2139,9 @@ renderer_t* render_create(void)
     rend->vg = nvgCreateGL2(NVG_ANTIALIAS);
 #endif
 
-    if (!sys_callbacks.render_text)
-        set_default_fonts(rend);
+    // Always load the nanovg fonts: they render all normal text. The system
+    // (canvas) text path is used only for labels that contain color emoji.
+    set_default_fonts(rend);
 
     // Query the point size range.
     GL(glGetIntegerv(GL_ALIASED_POINT_SIZE_RANGE, range));

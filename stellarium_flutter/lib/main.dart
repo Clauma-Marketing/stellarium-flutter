@@ -42,6 +42,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// Global navigator key for handling deep links from notifications
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+bool _firebaseInitialized = false;
+bool _returningUserServicesStarted = false;
+
 /// Handle notification tap - extracts and opens links from notification data.
 /// Supports both external URLs and in-app deep links.
 ///
@@ -136,6 +139,58 @@ Future<void> _initializeStarNotificationServices() async {
   }
 }
 
+/// Start returning-user services without blocking the first rendered screen.
+///
+/// On physical iOS devices these paths can wait on APNs/FCM or network-backed
+/// SDK initialization, while simulators often fail or return faster. Keeping
+/// them off the startup critical path prevents a blank/loading screen from
+/// hiding the registration/login flow.
+void _startReturningUserServices() {
+  if (kIsWeb || !_firebaseInitialized || _returningUserServicesStarted) return;
+  _returningUserServicesStarted = true;
+
+  unawaited(() async {
+    try {
+      // Set up Firebase Messaging background handler
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
+
+      // Handle foreground messages for Klaviyo tracking (if initialized)
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        KlaviyoService.instance.handlePush(message.data);
+      });
+
+      // Handle notification tap when app is in background
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+      // Handle notification tap that launched the app from terminated state
+      final initialMessage =
+          await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        // Delay slightly to ensure app is ready
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _handleNotificationTap(initialMessage);
+        });
+      }
+
+      // Initialize Klaviyo for returning users
+      final locale = LocaleService.instance.locale;
+      final languageCode = locale?.languageCode ??
+          WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+      await KlaviyoService.instance
+          .initialize(languageCode)
+          .timeout(const Duration(seconds: 8));
+      KlaviyoService.instance.setupTokenRefreshListener();
+
+      // Initialize star visibility notification services
+      await _initializeStarNotificationServices()
+          .timeout(const Duration(seconds: 12));
+    } catch (e) {
+      debugPrint('Deferred returning-user services failed: $e');
+    }
+  }());
+}
+
 void main() async {
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -151,6 +206,13 @@ void main() async {
     if (!kIsWeb) {
       try {
         await Firebase.initializeApp();
+        _firebaseInitialized = true;
+        debugPrint(
+          '[FIREBASE] connected to '
+          'projectId=${Firebase.app().options.projectId} '
+          'iosBundleId=${Firebase.app().options.iosBundleId} '
+          'appId=${Firebase.app().options.appId}',
+        );
         AnalyticsService.instance.initialize();
 
         // Initialize Crashlytics
@@ -177,7 +239,7 @@ void main() async {
           configuration: AdaptyConfiguration(
             apiKey: 'public_live_IOi0yFDb.WFTHrIKk8DzeTfEPmBwQ',
           )
-            ..withLogLevel(AdaptyLogLevel.verbose)
+            ..withLogLevel(AdaptyLogLevel.error)
             ..withActivateUI(true),
         );
 
@@ -199,36 +261,7 @@ void main() async {
       final onboardingComplete = await OnboardingService.isOnboardingComplete();
 
       if (onboardingComplete) {
-        // Set up Firebase Messaging background handler
-        FirebaseMessaging.onBackgroundMessage(
-            _firebaseMessagingBackgroundHandler);
-
-        // Handle foreground messages for Klaviyo tracking (if initialized)
-        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-          KlaviyoService.instance.handlePush(message.data);
-        });
-
-        // Handle notification tap when app is in background
-        FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-
-        // Handle notification tap that launched the app from terminated state
-        final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-        if (initialMessage != null) {
-          // Delay slightly to ensure app is ready
-          Future.delayed(const Duration(milliseconds: 500), () {
-            _handleNotificationTap(initialMessage);
-          });
-        }
-
-        // Initialize Klaviyo for returning users
-        final locale = LocaleService.instance.locale;
-        final languageCode = locale?.languageCode ??
-            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-        await KlaviyoService.instance.initialize(languageCode);
-        KlaviyoService.instance.setupTokenRefreshListener();
-
-        // Initialize star visibility notification services
-        await _initializeStarNotificationServices();
+        _startReturningUserServices();
       } else {
         // For new users, just load saved stars (no Firebase Messaging setup)
         await SavedStarsService.instance.load();
@@ -238,7 +271,7 @@ void main() async {
     runApp(const StellariumApp());
   }, (error, stack) {
     // Catch errors outside of Flutter framework
-    if (!kIsWeb) {
+    if (!kIsWeb && _firebaseInitialized) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
     }
   });
@@ -310,7 +343,14 @@ class AppEntryPoint extends StatefulWidget {
   State<AppEntryPoint> createState() => _AppEntryPointState();
 }
 
-enum AppScreen { loading, onboarding, signIn, starRegistration, subscription, home }
+enum AppScreen {
+  loading,
+  onboarding,
+  signIn,
+  starRegistration,
+  subscription,
+  home
+}
 
 class _AppEntryPointState extends State<AppEntryPoint> {
   AppScreen _currentScreen = AppScreen.loading;
@@ -322,34 +362,60 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   }
 
   Future<void> _checkOnboardingStatus() async {
+    // Web has no Firebase configured (main() skips Firebase.initializeApp on
+    // web), so the auth-gated routing below throws on FirebaseAuth.instance and
+    // the app hangs on the loading spinner. For web, skip straight to the sky
+    // view so the engine can be tested. Mobile is unaffected.
+    if (kIsWeb) {
+      setState(() => _currentScreen = AppScreen.home);
+      return;
+    }
+
     final onboardingComplete = await OnboardingService.isOnboardingComplete();
+    final signInCompleted = await OnboardingService.isSignInCompleted();
+
+    AuthService.instance.debugDumpState('startup');
+    debugPrint(
+      '[ROUTE] onboardingComplete=$onboardingComplete '
+      'signInCompleted=$signInCompleted '
+      'isSignedIn=${AuthService.instance.isSignedIn}',
+    );
+
+    // The iOS Keychain persists Firebase Auth's refresh token across app
+    // uninstalls, so FirebaseAuth.currentUser can be non-null on a "fresh"
+    // install. If the user hasn't actively signed in (or skipped) in this
+    // install, drop the stale session so the app doesn't operate under an
+    // identity the user didn't choose here.
+    if (!signInCompleted && AuthService.instance.isSignedIn) {
+      debugPrint('[ROUTE] clearing stale Keychain session');
+      await AuthService.instance.signOut();
+    }
 
     setState(() {
       if (!onboardingComplete) {
         _currentScreen = AppScreen.onboarding;
-      } else if (!AuthService.instance.isSignedIn) {
-        // Returning user who hasn't signed in yet
+      } else if (!signInCompleted) {
         _currentScreen = AppScreen.signIn;
       } else {
         _currentScreen = AppScreen.starRegistration;
       }
+      debugPrint('[ROUTE] -> $_currentScreen');
     });
   }
 
   void _onOnboardingComplete() {
-    // After onboarding, show sign-in (skippable)
-    if (!AuthService.instance.isSignedIn) {
-      setState(() {
-        _currentScreen = AppScreen.signIn;
-      });
-    } else {
-      setState(() {
-        _currentScreen = AppScreen.starRegistration;
-      });
-    }
+    // After onboarding, always show sign-in. The user just finished onboarding,
+    // so by definition they haven't picked a provider in this install yet.
+    debugPrint('[ROUTE] onboarding complete -> signIn');
+    setState(() {
+      _currentScreen = AppScreen.signIn;
+    });
   }
 
   void _onSignInComplete() {
+    debugPrint('[ROUTE] sign-in complete (or skipped)');
+    AuthService.instance.debugDumpState('post-signin');
+    unawaited(OnboardingService.markSignInCompleted());
     setState(() {
       _currentScreen = AppScreen.starRegistration;
     });
@@ -369,7 +435,8 @@ class _AppEntryPointState extends State<AppEntryPoint> {
 
     // Check if engagement paywall was already triggered (user exceeded 2-min free time)
     await EngagementTrackingService.instance.load();
-    final engagementPaywallTriggered = EngagementTrackingService.instance.paywallTriggered;
+    final engagementPaywallTriggered =
+        EngagementTrackingService.instance.paywallTriggered;
 
     // PAYWALL COORDINATION:
     // We have two paywall entry points with different placement IDs:

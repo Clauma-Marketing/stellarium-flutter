@@ -359,7 +359,8 @@ static void star_render_name(const painter_t *painter, const star_t *s,
         vec4_copy(gold, label_color);
         effects = TEXT_BOLD;
         radius += LABEL_SPACING;
-        u8_split_line(buf, sizeof(buf), buf, 16);
+        // Custom names can be long; wrap less aggressively than regular labels.
+        u8_split_line(buf, sizeof(buf), buf, 24);
         labels_add_3d(buf, frame, pos, true,
                      radius, FONT_SIZE_BASE, label_color, 0, 0,
                      effects | TEXT_MULTILINES, -s->vmag + 10, &s->obj);
@@ -372,7 +373,8 @@ static void star_render_name(const painter_t *painter, const star_t *s,
         vec4_copy(gold, label_color);
         effects = TEXT_BOLD;
         radius += LABEL_SPACING;
-        u8_split_line(buf, sizeof(buf), buf, 16);
+        // Custom names can be long; wrap less aggressively than regular labels.
+        u8_split_line(buf, sizeof(buf), buf, 24);
         labels_add_3d(buf, frame, pos, true,
                      radius, FONT_SIZE_BASE, label_color, 0, 0,
                      effects | TEXT_MULTILINES, -s->vmag + 10, &s->obj);

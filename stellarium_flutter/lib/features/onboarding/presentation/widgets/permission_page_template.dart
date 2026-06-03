@@ -61,7 +61,6 @@ class PermissionPageTemplate extends StatefulWidget {
 }
 
 class _PermissionPageTemplateState extends State<PermissionPageTemplate> {
-
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).languageCode;
@@ -74,159 +73,196 @@ class _PermissionPageTemplateState extends State<PermissionPageTemplate> {
         children: [
           // Large icon with radial fade background - center at 30% from top
           Positioned(
-            top: screenHeight * 0.30 - (screenWidth * 0.7 / 2), // 30% minus half container height
+            top: screenHeight * 0.30 -
+                (screenWidth * 0.7 / 2), // 30% minus half container height
             left: 0,
             right: 0,
             child: _buildIconWithBackground(screenWidth, screenHeight),
           ),
           // Content overlay
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                children: [
-                  const SizedBox(height: 24),
-                  // Logo header
-                  SvgPicture.asset(
-                    locale == 'de' ? 'assets/logo_de.svg' : 'assets/star-reg_logo.svg',
-                    height: 32,
-                  ),
-                  const Spacer(flex: 8),
-                  // Title with shadow for readability
-                  Text(
-                    widget.title,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black.withValues(alpha: 0.8),
-                              blurRadius: 20,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 24),
+                            // Logo header
+                            SvgPicture.asset(
+                              locale == 'de'
+                                  ? 'assets/logo_de.svg'
+                                  : 'assets/star-reg_logo.svg',
+                              height: 32,
                             ),
-                            Shadow(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              blurRadius: 40,
+                            const Spacer(flex: 8),
+                            // Title with shadow for readability
+                            Text(
+                              widget.title,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withValues(alpha: 0.8),
+                                    blurRadius: 20,
+                                  ),
+                                  Shadow(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    blurRadius: 40,
+                                  ),
+                                ],
+                              ),
+                              textAlign: TextAlign.center,
                             ),
+                            const SizedBox(height: 16),
+                            // Subtitle with shadow for readability
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                widget.subtitle,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  height: 1.4,
+                                  shadows: [
+                                    Shadow(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.8),
+                                      blurRadius: 15,
+                                    ),
+                                    Shadow(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.6),
+                                      blurRadius: 30,
+                                    ),
+                                  ],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            // Custom content or features
+                            if (widget.customContent != null) ...[
+                              const SizedBox(height: 24),
+                              widget.customContent!,
+                            ],
+                            if (widget.features.isNotEmpty) ...[
+                              const SizedBox(height: 24),
+                              ...widget.features
+                                  .map((feature) => _buildFeatureItem(feature)),
+                            ],
+                            const Spacer(flex: 1),
+                            // Page indicator
+                            if (widget.currentPage != null &&
+                                widget.totalPages != null) ...[
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children:
+                                    List.generate(widget.totalPages!, (index) {
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 4),
+                                    width: widget.currentPage == index ? 24 : 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(4),
+                                      color: widget.currentPage == index
+                                          ? primaryBlue
+                                          : Colors.white.withValues(alpha: 0.3),
+                                    ),
+                                  );
+                                }),
+                              ),
+                              const SizedBox(height: 24),
+                            ],
+                            // Primary button
+                            if (widget.primaryButtonText != null &&
+                                widget.onPrimaryPressed != null)
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: widget.isLoading
+                                      ? null
+                                      : widget.onPrimaryPressed,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryBlue,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(28),
+                                    ),
+                                  ),
+                                  child: widget.isLoading
+                                      ? const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Text(
+                                          widget.primaryButtonText!,
+                                          style: const TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w600,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            // Secondary button
+                            if (widget.secondaryButtonText != null &&
+                                widget.onSecondaryPressed != null) ...[
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: TextButton(
+                                  onPressed: widget.onSecondaryPressed,
+                                  child: Text(
+                                    widget.secondaryButtonText!,
+                                    style: TextStyle(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.6),
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.6),
+                                          blurRadius: 10,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            SizedBox(
+                                height: widget.secondaryButtonText != null
+                                    ? 24
+                                    : 48),
                           ],
                         ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  // Subtitle with shadow for readability
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      widget.subtitle,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            height: 1.4,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withValues(alpha: 0.8),
-                                blurRadius: 15,
-                              ),
-                              Shadow(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                blurRadius: 30,
-                              ),
-                            ],
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  // Custom content or features
-                  if (widget.customContent != null) ...[
-                    const SizedBox(height: 24),
-                    widget.customContent!,
-                  ],
-                  if (widget.features.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    ...widget.features.map((feature) => _buildFeatureItem(feature)),
-                  ],
-                  const Spacer(flex: 1),
-                  // Page indicator
-                  if (widget.currentPage != null && widget.totalPages != null) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(widget.totalPages!, (index) {
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: widget.currentPage == index ? 24 : 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4),
-                            color: widget.currentPage == index
-                                ? primaryBlue
-                                : Colors.white.withValues(alpha: 0.3),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  // Primary button
-                  if (widget.primaryButtonText != null && widget.onPrimaryPressed != null)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: widget.isLoading ? null : widget.onPrimaryPressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                      ),
-                      child: widget.isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              widget.primaryButtonText!,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                    ),
-                  ),
-                  // Secondary button
-                  if (widget.secondaryButtonText != null && widget.onSecondaryPressed != null) ...[
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: TextButton(
-                        onPressed: widget.onSecondaryPressed,
-                        child: Text(
-                          widget.secondaryButtonText!,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontWeight: FontWeight.w500,
-                            fontSize: 15,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ),
-                  ],
-                  SizedBox(height: widget.secondaryButtonText != null ? 24 : 48),
-                ],
-              ),
+                  ),
+                );
+              },
             ),
           ),
         ],

@@ -38,7 +38,10 @@
 
   <!-- Direction arrow is now rendered inside the engine via pointer.c -->
 
-  <script src="stellarium-web-engine.js"></script>
+  <!-- Cache-bust the engine: WKWebView caches the compiled wasm module, so a
+       new build can otherwise be ignored. Bump this on every engine rebuild. -->
+  <script>window.__SWE_VER = '20260603-2';</script>
+  <script src="stellarium-web-engine.js?v=20260603-2"></script>
   <script>
     // Global state
     window.stellarium = null;
@@ -303,7 +306,15 @@
       // Create Stellarium engine
       StelWebEngine({
         canvas: canvas,
-        wasmFile: 'stellarium-web-engine.wasm',
+        // The engine resolves the .wasm via locateFile; append ?v= so WKWebView
+        // fetches/compiles the current build instead of a cached stale wasm.
+        locateFile: function(path, prefix) {
+          var base = (prefix || '') + path;
+          return path && path.indexOf('.wasm') !== -1
+              ? base + '?v=' + (window.__SWE_VER || '')
+              : base;
+        },
+        wasmFile: 'stellarium-web-engine.wasm?v=' + (window.__SWE_VER || ''),
         onReady: function(stel) {
           window.stellarium = stel;
           window.stellariumReady = true;
