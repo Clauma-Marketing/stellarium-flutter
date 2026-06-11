@@ -610,6 +610,32 @@ class AppLocalizationsFr extends AppLocalizations {
   String get starRegNameAStar => 'Nommer une étoile';
 
   @override
+  String get starRegQuestionTitle => 'Votre planétarium personnel';
+
+  @override
+  String get starRegQuestionSubtitle => 'Comment souhaitez-vous commencer ?';
+
+  @override
+  String get starRegExploreCardTitle => 'Explorez le ciel nocturne';
+
+  @override
+  String get starRegExploreCardBody =>
+      'Découvrez les étoiles, les planètes et les constellations au-dessus de vous — en direct, où que vous soyez.';
+
+  @override
+  String get starRegHaveStarCardTitle => 'Trouvez votre étoile nommée';
+
+  @override
+  String get starRegHaveStarCardBody =>
+      'Vous avez reçu un enregistrement d\'étoile — par exemple en cadeau ? Localisez votre étoile personnelle dans le ciel.';
+
+  @override
+  String get starRegStartExploring => 'Commencer l\'exploration';
+
+  @override
+  String get starRegHaveStar => 'J\'ai une étoile nommée';
+
+  @override
   String get starRegEnterNumber =>
       'Veuillez entrer un numéro d\'enregistrement';
 

@@ -1208,6 +1208,54 @@ abstract class AppLocalizations {
   /// **'Name a Star'**
   String get starRegNameAStar;
 
+  /// No description provided for @starRegQuestionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Personal Planetarium'**
+  String get starRegQuestionTitle;
+
+  /// No description provided for @starRegQuestionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How would you like to begin?'**
+  String get starRegQuestionSubtitle;
+
+  /// No description provided for @starRegExploreCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore the Night Sky'**
+  String get starRegExploreCardTitle;
+
+  /// No description provided for @starRegExploreCardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover stars, planets, and constellations above you — live, wherever you are.'**
+  String get starRegExploreCardBody;
+
+  /// No description provided for @starRegHaveStarCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Find Your Named Star'**
+  String get starRegHaveStarCardTitle;
+
+  /// No description provided for @starRegHaveStarCardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Received a star registration — for example as a gift? Locate your personal star in the sky.'**
+  String get starRegHaveStarCardBody;
+
+  /// No description provided for @starRegStartExploring.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Exploring'**
+  String get starRegStartExploring;
+
+  /// No description provided for @starRegHaveStar.
+  ///
+  /// In en, this message translates to:
+  /// **'I have a named star'**
+  String get starRegHaveStar;
+
   /// No description provided for @starRegEnterNumber.
   ///
   /// In en, this message translates to:

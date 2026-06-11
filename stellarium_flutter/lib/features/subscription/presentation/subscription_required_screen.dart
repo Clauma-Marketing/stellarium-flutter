@@ -364,6 +364,7 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
                 onContinue: _onStarRegistrationContinue,
                 onSkip: _onStarRegistrationSkip,
                 onStarFound: _onStarFound,
+                startInRegistrationMode: true,
               ),
             ),
           ],

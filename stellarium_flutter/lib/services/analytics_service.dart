@@ -206,6 +206,16 @@ class AnalyticsService {
     await logEvent(name: 'name_star_clicked');
   }
 
+  /// Log when user indicates they already have a named star
+  Future<void> logHaveNamedStarClicked() async {
+    await logEvent(name: 'have_named_star_clicked');
+  }
+
+  /// Log when user chooses to start exploring without a named star
+  Future<void> logStartExploringClicked() async {
+    await logEvent(name: 'start_exploring_clicked');
+  }
+
   // ==================== Bottom Bar Actions ====================
 
   /// Log when user focuses on search bar

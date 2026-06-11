@@ -573,6 +573,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get starRegNameAStar => '命名一颗星星';
 
   @override
+  String get starRegQuestionTitle => '您的私人天文馆';
+
+  @override
+  String get starRegQuestionSubtitle => '您想如何开始？';
+
+  @override
+  String get starRegExploreCardTitle => '探索夜空';
+
+  @override
+  String get starRegExploreCardBody => '实时探索您头顶的星星、行星和星座——无论身在何处。';
+
+  @override
+  String get starRegHaveStarCardTitle => '找到您命名的星星';
+
+  @override
+  String get starRegHaveStarCardBody => '收到过星星注册（比如作为礼物）？在天空中找到属于您的那颗星星。';
+
+  @override
+  String get starRegStartExploring => '开始探索';
+
+  @override
+  String get starRegHaveStar => '我有一颗命名的星星';
+
+  @override
   String get starRegEnterNumber => '请输入注册号码';
 
   @override

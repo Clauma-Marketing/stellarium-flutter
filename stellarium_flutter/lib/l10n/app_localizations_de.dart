@@ -605,6 +605,32 @@ class AppLocalizationsDe extends AppLocalizations {
   String get starRegNameAStar => 'Stern benennen';
 
   @override
+  String get starRegQuestionTitle => 'Dein persönliches Planetarium';
+
+  @override
+  String get starRegQuestionSubtitle => 'Womit möchtest du beginnen?';
+
+  @override
+  String get starRegExploreCardTitle => 'Erkunde den Nachthimmel';
+
+  @override
+  String get starRegExploreCardBody =>
+      'Entdecke Sterne, Planeten und Sternbilder über dir – live, wo immer du bist.';
+
+  @override
+  String get starRegHaveStarCardTitle => 'Finde deinen benannten Stern';
+
+  @override
+  String get starRegHaveStarCardBody =>
+      'Du hast eine Sterntaufe erhalten – zum Beispiel als Geschenk? Finde deinen persönlichen Stern am Himmel.';
+
+  @override
+  String get starRegStartExploring => 'Jetzt entdecken';
+
+  @override
+  String get starRegHaveStar => 'Ich habe einen benannten Stern';
+
+  @override
   String get starRegEnterNumber => 'Bitte gib eine Registrierungsnummer ein';
 
   @override

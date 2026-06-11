@@ -610,6 +610,32 @@ class AppLocalizationsEs extends AppLocalizations {
   String get starRegNameAStar => 'Nombrar una estrella';
 
   @override
+  String get starRegQuestionTitle => 'Tu planetario personal';
+
+  @override
+  String get starRegQuestionSubtitle => '¿Cómo quieres empezar?';
+
+  @override
+  String get starRegExploreCardTitle => 'Explora el cielo nocturno';
+
+  @override
+  String get starRegExploreCardBody =>
+      'Descubre estrellas, planetas y constelaciones sobre ti, en vivo, estés donde estés.';
+
+  @override
+  String get starRegHaveStarCardTitle => 'Encuentra tu estrella nombrada';
+
+  @override
+  String get starRegHaveStarCardBody =>
+      '¿Recibiste un registro de estrella, por ejemplo como regalo? Localiza tu estrella personal en el cielo.';
+
+  @override
+  String get starRegStartExploring => 'Empezar a explorar';
+
+  @override
+  String get starRegHaveStar => 'Tengo una estrella con nombre';
+
+  @override
   String get starRegEnterNumber => 'Por favor, ingresa un número de registro';
 
   @override
