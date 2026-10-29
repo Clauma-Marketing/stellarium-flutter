@@ -124,6 +124,10 @@ exports.checkStarVisibility = (0, scheduler_1.onSchedule)({
                     if (star.ra === undefined || star.dec === undefined) {
                         continue;
                     }
+                    // Don't advertise a registered name the registry has revoked
+                    if (star.removedFromRegistry) {
+                        continue;
+                    }
                     // Check if star is becoming visible in the next 30-60 minutes
                     const sent = await checkAndNotifyForStar(userDoc.id, starDoc.id, star, userData);
                     if (sent)

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Night Sky Guide — store screenshots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,750;9..144,900&family=Outfit:wght@400;500;600&family=Noto+Serif+SC:wght@700;900&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { overflow: hidden; }
+  body {
+    --gold: #e9c476;
+    --gold-hi: #ffe9b8;
+    --ink: #f7f4ec;
+    font-family: 'Outfit', 'PingFang SC', sans-serif;
+    width: var(--W); height: var(--H); position: relative;
+    background: #05060f;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  /* ---- layered atmosphere ---- */
+  .nebula { position: absolute; inset: 0; overflow: hidden; }
+  .nebula::before { /* per-shot accent wash, upper sky */
+    content: ''; position: absolute; inset: -20%;
+    background:
+      radial-gradient(58% 38% at 72% 6%, var(--acc1) 0%, transparent 60%),
+      radial-gradient(70% 45% at 12% 22%, var(--acc2) 0%, transparent 65%),
+      radial-gradient(90% 60% at 50% 108%, #1b1430 0%, transparent 70%),
+      linear-gradient(180deg, #0b1026 0%, #070a1c 45%, #05060f 100%);
+  }
+  .nebula::after { /* aurora ribbon */
+    content: ''; position: absolute; left: -30%; right: -30%; top: 6%; height: 34%;
+    background: linear-gradient(100deg, transparent 12%, var(--acc1) 38%, var(--acc2) 58%, transparent 86%);
+    filter: blur(120px); opacity: .38; transform: rotate(-9deg);
+  }
+  #grain { position: absolute; inset: 0; opacity: .5; mix-blend-mode: overlay; }
+  #stars { position: absolute; inset: 0; }
+  .st { position: absolute; background: #e6ecff; border-radius: 50%;
+        box-shadow: 0 0 6px 1px rgba(214, 225, 255, .55); }
+  .st.gold { background: var(--gold); box-shadow: 0 0 8px 2px rgba(233, 196, 118, .5); }
+  .glint { position: absolute; color: var(--gold-hi); opacity: .9;
+           filter: drop-shadow(0 0 14px rgba(255, 224, 160, .85)); }
+  .glint svg { display: block; }
+
+  /* ---- celestial cast: moon, planets, meteors ---- */
+  .moon { position: absolute; z-index: 1; opacity: .9;
+    filter: drop-shadow(0 0 46px rgba(240, 226, 192, .4)); }
+  .moon svg { display: block; }
+  .orb { position: absolute; border-radius: 50%; }
+  .orb.ice { background: radial-gradient(circle at 34% 30%, #cfe0ff, #6f92e8 68%, #3a56a8);
+    box-shadow: 0 0 34px 6px rgba(140, 170, 255, .45); }
+  .orb.rose { background: radial-gradient(circle at 34% 30%, #ffd2b8, #e08a62 66%, #a05134);
+    box-shadow: 0 0 30px 5px rgba(255, 160, 120, .4); }
+  .sat { position: absolute; }
+  .sat .body { width: 100%; height: 100%; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #efd3a0, #b98a4a 62%, #7c5a2c);
+    box-shadow: 0 0 36px 8px rgba(233, 196, 118, .35); }
+  .sat::after { content: ''; position: absolute; left: 50%; top: 50%;
+    width: 185%; height: 42%; border: 3.5px solid rgba(238, 208, 145, .75);
+    border-radius: 50%; transform: translate(-50%, -50%) rotate(-20deg); }
+  .meteor { position: absolute; height: 3.5px; border-radius: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 238, 205, .08) 30%, rgba(255, 238, 205, .9));
+    transform-origin: right center; }
+  .meteor::after { content: ''; position: absolute; right: -5px; top: 50%;
+    transform: translateY(-50%); width: 9px; height: 9px; border-radius: 50%;
+    background: #fff8e8; box-shadow: 0 0 20px 7px rgba(255, 242, 214, .85); }
+  .flare { position: absolute; color: #f2f5ff; opacity: .95;
+    filter: drop-shadow(0 0 10px rgba(190, 210, 255, .9)); }
+  .flare svg { display: block; }
+
+  /* faint background constellation */
+  #constel { position: absolute; inset: 0; opacity: .5; }
+  #constel line { stroke: rgba(150, 170, 235, .38); stroke-width: 2; }
+  #constel circle { fill: #aebdf0; }
+
+  /* ---- caption ---- */
+  .cap { text-align: center; position: relative; z-index: 4; padding: 128px 70px 0; }
+  .eyebrow {
+    display: flex; align-items: center; justify-content: center; gap: 34px;
+    margin-bottom: 44px;
+  }
+  .eyebrow .rule { width: 110px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold)); }
+  .eyebrow .rule:last-child { transform: scaleX(-1); }
+  .eyebrow .dia { color: var(--gold); font-size: 34px; letter-spacing: 26px; text-indent: 26px; }
+  .cap h1 {
+    font-family: 'Fraunces', 'Noto Serif SC', serif;
+    font-size: 128px; line-height: 1.04; font-weight: 750;
+    letter-spacing: -0.01em;
+    background: linear-gradient(180deg, #fdfcf8 30%, #ecd9a8 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 40px;
+    filter: drop-shadow(0 6px 50px rgba(8, 12, 34, .9));
+  }
+  .cap p {
+    font-size: 46px; line-height: 1.4; font-weight: 500; color: #cfd6f2;
+    max-width: 1080px; margin: 0 auto;
+  }
+
+  /* ---- phone ---- */
+  .stage { position: relative; z-index: 3; margin-top: 66px; perspective: 2600px; }
+  .halo { /* glow pool behind the phone */
+    position: absolute; left: 50%; top: 4%; transform: translateX(-50%);
+    width: 1500px; height: 1250px; border-radius: 50%;
+    background: radial-gradient(50% 50% at 50% 50%, var(--acc1) 0%, transparent 68%);
+    opacity: .5; filter: blur(60px);
+  }
+  .orbit { /* elliptical ring sweeping behind the device */
+    position: absolute; left: 50%; top: 320px; transform: translateX(-50%) rotate(-16deg);
+    width: 1720px; height: 560px; border-radius: 50%;
+    border: 2.5px solid transparent;
+    border-top-color: rgba(233, 196, 118, .65);
+    border-left-color: rgba(233, 196, 118, .18);
+  }
+  .orbit::after { /* planet bead on the ring */
+    content: ''; position: absolute; left: 7%; top: 12%;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffe9b8, #c89a45);
+    box-shadow: 0 0 24px 6px rgba(233, 196, 118, .55);
+  }
+  .phone {
+    position: relative; width: 1000px; margin: 0 auto;
+    border-radius: 152px; padding: 20px;
+    background: linear-gradient(155deg, #57536b 0%, #191a2e 38%, #0c0d1c 78%, #3a3450 100%);
+    box-shadow:
+      0 90px 200px rgba(0, 0, 0, .85),
+      0 30px 90px rgba(10, 8, 30, .8),
+      0 0 0 1.5px rgba(233, 196, 118, .34),
+      0 0 130px rgba(120, 130, 255, .16);
+    transform: rotateX(4.5deg) rotateZ(var(--tilt));
+    transform-origin: 50% 20%;
+  }
+  .screen {
+    border-radius: 132px; overflow: hidden; position: relative;
+    background: #000; padding-top: 118px;
+  }
+  .screen img { width: 100%; display: block; }
+  .screen.raw { padding-top: 0; }
+  .screen::after { /* glass sheen */
+    content: ''; position: absolute; inset: 0; border-radius: 132px;
+    background: linear-gradient(118deg, rgba(255, 255, 255, .13) 0%, rgba(255, 255, 255, .04) 18%, transparent 32%);
+    pointer-events: none;
+  }
+  .island {
+    position: absolute; top: 34px; left: 50%; transform: translateX(-50%);
+    width: 280px; height: 76px; border-radius: 38px;
+    background: #05060c; border: 1px solid #23283e; z-index: 3;
+  }
+
+  body.fit .phone { width: 880px; } /* search shots: whole UI incl. bottom bar in frame */
+
+  .vignette { /* fade the device into the dark — hides tilt-cut bottom corners */
+    position: absolute; left: 0; right: 0; bottom: 0; height: 240px; z-index: 6;
+    background: linear-gradient(180deg, transparent 0%, rgba(5, 6, 15, .88) 78%, #05060f 100%);
+  }
+
+  /* ---- iPad canvas tuning ---- */
+  body.ipad .cap { padding-top: 104px; }
+  body.ipad .eyebrow { margin-bottom: 36px; }
+  body.ipad .cap h1 { font-size: 112px; }
+  body.ipad .cap p { font-size: 42px; max-width: 1240px; }
+  body.ipad .stage { margin-top: 56px; }
+  body.ipad .phone { width: 860px; }
+  body.ipad .halo { width: 1300px; height: 1050px; }
+  body.ipad .orbit { width: 1500px; height: 470px; top: 260px; }
+</style>
+</head>
+<body>
+<div class="nebula"></div>
+<svg id="grain" xmlns="http://www.w3.org/2000/svg">
+  <filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.16"/></feComponentTransfer>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#n)"/>
+</svg>
+<svg id="constel"></svg>
+<div id="stars"></div>
+
+<div class="cap">
+  <div class="eyebrow"><div class="rule"></div><div class="dia">✦</div><div class="rule"></div></div>
+  <h1 id="h1"></h1>
+  <p id="p"></p>
+</div>
+
+<div class="stage">
+  <div class="halo"></div>
+  <div class="orbit"></div>
+  <div class="phone">
+    <div class="screen"><img id="shot" src=""><div class="island"></div></div>
+  </div>
+</div>
+<div class="vignette"></div>
+<script>
+const CAPTIONS = {
+  en: {
+    search:         ["Search for<br>your star", "By name or registration number — straight to your star"],
+    found:          ["Found in<br>a heartbeat", "The sky glides to your star and tells its story"],
+    hero:           ["The night sky,<br>live above you", "A real-time planetarium for every place and moment"],
+    star:           ["Find your star,<br>give it a name", "Your named star shines gold — saved in your sky forever"],
+    constellations: ["Constellations<br>at a glance", "Lines, names and 100,000+ stars in your pocket"],
+    planet:         ["Visit the planets<br>up close", "Saturn’s rings and moons — tonight’s solar system, live"],
+    dusk:           ["Know what’s up<br>tonight", "Venus, the Moon and the first stars after sunset"],
+  },
+  de: {
+    search:         ["Such deinen<br>Stern", "Name oder Registrierungsnummer eintippen – und hinspringen"],
+    found:          ["In Sekunden<br>gefunden", "Der Himmel gleitet zu deinem Stern und erzählt seine Geschichte"],
+    hero:           ["Der Nachthimmel,<br>live über dir", "Ein Echtzeit-Planetarium für jeden Ort und Moment"],
+    star:           ["Finde deinen Stern,<br>gib ihm einen Namen", "Dein benannter Stern leuchtet golden – für immer in deinem Himmel"],
+    constellations: ["Sternbilder auf<br>einen Blick", "Linien, Namen und über 100.000 Sterne in deiner Tasche"],
+    planet:         ["Planeten aus<br>der Nähe", "Saturns Ringe und Monde – das Sonnensystem heute Nacht, live"],
+    dusk:           ["Was heute Nacht<br>am Himmel steht", "Venus, der Mond und die ersten Sterne nach Sonnenuntergang"],
+  },
+  es: {
+    search:         ["Busca<br>tu estrella", "Por nombre o número de registro: llega de un salto"],
+    found:          ["Encontrada en<br>un instante", "El cielo se desliza hasta tu estrella y cuenta su historia"],
+    hero:           ["El cielo nocturno,<br>en vivo sobre ti", "Un planetario en tiempo real para cada lugar y momento"],
+    star:           ["Encuentra tu estrella<br>y dale un nombre", "Tu estrella brilla en dorado, guardada para siempre en tu cielo"],
+    constellations: ["Las constelaciones<br>de un vistazo", "Líneas, nombres y más de 100 000 estrellas en tu bolsillo"],
+    planet:         ["Visita los planetas<br>de cerca", "Los anillos y lunas de Saturno: el sistema solar de esta noche"],
+    dusk:           ["Descubre qué hay<br>esta noche", "Venus, la Luna y las primeras estrellas tras el atardecer"],
+  },
+  fr: {
+    search:         ["Cherchez<br>votre étoile", "Par nom ou numéro d’enregistrement — en un instant"],
+    found:          ["Trouvée en<br>un clin d’œil", "Le ciel glisse vers votre étoile et raconte son histoire"],
+    hero:           ["Le ciel nocturne,<br>en direct au-dessus de vous", "Un planétarium en temps réel, où que vous soyez"],
+    star:           ["Trouvez votre étoile,<br>donnez-lui un nom", "Votre étoile brille en or, gardée pour toujours dans votre ciel"],
+    constellations: ["Les constellations<br>en un coup d’œil", "Lignes, noms et plus de 100 000 étoiles dans votre poche"],
+    planet:         ["Approchez-vous<br>des planètes", "Les anneaux et lunes de Saturne : le système solaire de ce soir"],
+    dusk:           ["Sachez ce qui<br>brille ce soir", "Vénus, la Lune et les premières étoiles après le coucher du soleil"],
+  },
+  tr: {
+    search:         ["Yıldızını<br>ara", "İsim veya kayıt numarası yaz, anında bul"],
+    found:          ["Bir kalp atışında<br>bulundu", "Gökyüzü yıldızına süzülür ve hikâyesini anlatır"],
+    hero:           ["Gece gökyüzü,<br>tam üzerinde canlı", "Her yer ve her an için gerçek zamanlı bir planetaryum"],
+    star:           ["Yıldızını bul,<br>ona bir isim ver", "İsim verdiğin yıldız altın renginde parlar – sonsuza dek gökyüzünde"],
+    constellations: ["Takımyıldızlar<br>bir bakışta", "Çizgiler, isimler ve cebinde 100.000’den fazla yıldız"],
+    planet:         ["Gezegenleri<br>yakından keşfet", "Satürn’ün halkaları ve uyduları – bu gecenin Güneş Sistemi, canlı"],
+    dusk:           ["Bu gece gökyüzünde<br>neler var?", "Venüs, Ay ve gün batımından sonraki ilk yıldızlar"],
+  },
+  it: {
+    search:         ["Cerca la<br>tua stella", "Per nome o numero di registrazione — in un attimo"],
+    found:          ["Trovata in<br>un battito", "Il cielo scivola fino alla tua stella e ne racconta la storia"],
+    hero:           ["Il cielo notturno,<br>dal vivo sopra di te", "Un planetario in tempo reale, ovunque e in ogni momento"],
+    star:           ["Trova la tua stella,<br>dalle un nome", "La tua stella brilla d’oro – per sempre nel tuo cielo"],
+    constellations: ["Le costellazioni<br>a colpo d’occhio", "Linee, nomi e oltre 100.000 stelle in tasca"],
+    planet:         ["Visita i pianeti<br>da vicino", "Gli anelli e le lune di Saturno: il sistema solare di stanotte"],
+    dusk:           ["Scopri cosa c’è<br>stanotte", "Venere, la Luna e le prime stelle dopo il tramonto"],
+  },
+  pl: {
+    search:         ["Wyszukaj<br>swoją gwiazdę", "Po nazwie lub numerze rejestracji — jednym dotknięciem"],
+    found:          ["Znaleziona w<br>mgnieniu oka", "Niebo płynie do Twojej gwiazdy i opowiada jej historię"],
+    hero:           ["Nocne niebo<br>na żywo nad Tobą", "Planetarium w czasie rzeczywistym – w każdym miejscu i chwili"],
+    star:           ["Znajdź swoją gwiazdę<br>i nadaj jej imię", "Twoja gwiazda lśni na złoto – na zawsze na Twoim niebie"],
+    constellations: ["Gwiazdozbiory<br>na jeden rzut oka", "Linie, nazwy i ponad 100 000 gwiazd w Twojej kieszeni"],
+    planet:         ["Zobacz planety<br>z bliska", "Pierścienie i księżyce Saturna – dzisiejszy Układ Słoneczny na żywo"],
+    dusk:           ["Co widać<br>dziś w nocy?", "Wenus, Księżyc i pierwsze gwiazdy po zachodzie słońca"],
+  },
+  ro: {
+    search:         ["Caută-ți<br>steaua", "După nume sau număr de înregistrare — într-o clipă"],
+    found:          ["Găsită într-o<br>clipită", "Cerul alunecă spre steaua ta și îi spune povestea"],
+    hero:           ["Cerul nopții,<br>live deasupra ta", "Un planetariu în timp real, oriunde și oricând"],
+    star:           ["Găsește-ți steaua,<br>dă-i un nume", "Steaua ta strălucește auriu – pentru totdeauna pe cerul tău"],
+    constellations: ["Constelațiile<br>dintr-o privire", "Linii, nume și peste 100 000 de stele în buzunarul tău"],
+    planet:         ["Vizitează planetele<br>de aproape", "Inelele și lunile lui Saturn – sistemul solar din această noapte"],
+    dusk:           ["Ce se vede<br>în seara asta?", "Venus, Luna și primele stele după apus"],
+  },
+  zh: {
+    search:         ["搜索<br>你的星星", "输入名称或注册编号，一键直达"],
+    found:          ["眨眼之间<br>即刻找到", "星空滑向你的星星，讲述它的故事"],
+    hero:           ["夜空，就在<br>你的头顶实时呈现", "随时随地的实时天文馆"],
+    star:           ["找到你的星星<br>为它命名", "你命名的星星闪耀金光，永远留在你的星空中"],
+    constellations: ["星座<br>一目了然", "连线、名称与十万余颗星星，尽在掌中"],
+    planet:         ["近距离<br>探访行星", "土星的光环与卫星——今晚的太阳系，实时呈现"],
+    dusk:           ["今晚天上<br>有什么", "金星、月亮和日落后的第一批星星"],
+  },
+};
+
+// Per-shot accent atmosphere + device tilt: each screenshot in the store row
+// gets its own hue so the set reads as a gallery, not five repeats.
+const MOOD = {
+  search:         { a1: 'rgba(64, 200, 220, .30)',  a2: 'rgba(64, 92, 235, .28)',   tilt: '2.6deg'  },
+  found:          { a1: 'rgba(233, 178, 74, .30)',  a2: 'rgba(122, 92, 255, .24)',  tilt: '-3.0deg' },
+  hero:           { a1: 'rgba(64, 112, 255, .34)',  a2: 'rgba(122, 92, 255, .30)',  tilt: '-3.2deg' },
+  star:           { a1: 'rgba(233, 178, 74, .34)',  a2: 'rgba(255, 120, 90, .22)',  tilt: '2.8deg'  },
+  constellations: { a1: 'rgba(58, 176, 255, .32)',  a2: 'rgba(64, 92, 235, .30)',   tilt: '-2.6deg' },
+  planet:         { a1: 'rgba(214, 148, 80, .32)',  a2: 'rgba(150, 92, 235, .26)',  tilt: '3.0deg'  },
+  dusk:           { a1: 'rgba(196, 92, 200, .30)',  a2: 'rgba(255, 130, 100, .24)', tilt: '-2.8deg' },
+};
+
+const q = new URLSearchParams(location.search);
+const shot = q.get('shot') || 'hero';
+const lang = q.get('lang') || 'en';
+const fmt = q.get('fmt') || 'phone';
+
+const dims = fmt === 'ipad' ? [2048, 2732] : [1290, 2796];
+document.body.style.setProperty('--W', dims[0] + 'px');
+document.body.style.setProperty('--H', dims[1] + 'px');
+if (fmt === 'ipad') document.body.classList.add('ipad');
+if (shot === 'search' || shot === 'found') document.body.classList.add('fit');
+
+const mood = MOOD[shot] || MOOD.hero;
+document.body.style.setProperty('--acc1', mood.a1);
+document.body.style.setProperty('--acc2', mood.a2);
+document.body.style.setProperty('--tilt', mood.tilt);
+
+const cap = (CAPTIONS[lang] || CAPTIONS.en)[shot];
+document.getElementById('h1').innerHTML = cap[0];
+document.getElementById('p').innerHTML = cap[1];
+document.getElementById('shot').src = 'captures/scene-' + shot + '.png';
+if (shot === 'constellations' || shot === 'planet') document.querySelector('.screen').classList.add('raw');
+
+// Deterministic scatter (seeded LCG — stable across renders, varied per shot)
+let seed = 987654321 + shot.length * 7919;
+const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+
+// star dust
+const field = document.getElementById('stars');
+for (let i = 0; i < 230; i++) {
+  const s = document.createElement('div');
+  const size = 2 + rnd() * 5;
+  s.className = 'st' + (rnd() < 0.16 ? ' gold' : '');
+  s.style.cssText = `left:${rnd() * 100}%;top:${rnd() * 100}%;` +
+    `width:${size}px;height:${size}px;opacity:${0.2 + rnd() * 0.65}`;
+  field.appendChild(s);
+}
+
+// four-point sparkle glints, a few overlapping the phone for depth
+const GLINT = (sz) => `<svg width="${sz}" height="${sz}" viewBox="0 0 100 100">` +
+  `<path d="M50 0 C54 32 68 46 100 50 C68 54 54 68 50 100 C46 68 32 54 0 50 C32 46 46 32 50 0 Z" fill="currentColor"/></svg>`;
+const spots = [
+  [7, 7, 64], [86, 11, 88], [12, 26, 46], [90, 30, 52],
+  [5, 47, 70], [93, 55, 60], [10, 76, 54], [88, 82, 74],
+];
+for (const [x, y, sz] of spots) {
+  const g = document.createElement('div');
+  g.className = 'glint';
+  g.style.cssText = `left:${x}%;top:${y}%;z-index:${y > 40 ? 5 : 1};opacity:${.5 + rnd() * .5}`;
+  g.innerHTML = GLINT(sz);
+  document.body.appendChild(g);
+}
+
+// ---- celestial cast ------------------------------------------------------
+// crescent moon in the upper corner away from the device tilt
+const moonRight = mood.tilt.startsWith('-');
+const moon = document.createElement('div');
+moon.className = 'moon';
+const msz = 175;
+moon.style.cssText = `${moonRight ? 'right:4.5%' : 'left:4.5%'};top:${18.5 + rnd() * 2}%;` +
+  `width:${msz}px;height:${msz}px`;
+moon.innerHTML = `<svg width="${msz}" height="${msz}" viewBox="0 0 100 100">
+  <defs><radialGradient id="mg" cx="35%" cy="35%">
+    <stop offset="0%" stop-color="#f8eed6"/><stop offset="100%" stop-color="#cfb684"/>
+  </radialGradient></defs>
+  <mask id="mm"><rect width="100" height="100" fill="white"/>
+    <circle cx="67" cy="36" r="40" fill="black"/></mask>
+  <circle cx="50" cy="50" r="46" fill="url(#mg)" mask="url(#mm)"/></svg>`;
+document.body.appendChild(moon);
+
+// a ringed planet peeking in on the other side, plus two small worlds
+const sat = document.createElement('div');
+sat.className = 'sat';
+const ssz = 112;
+sat.style.cssText = `${moonRight ? 'left:1.5%' : 'right:1.5%'};top:${52 + rnd() * 8}%;` +
+  `width:${ssz}px;height:${ssz}px;z-index:5;opacity:.92`;
+sat.innerHTML = '<div class="body"></div>';
+document.body.appendChild(sat);
+
+const orbs = [
+  ['ice', 44, moonRight ? 8 + rnd() * 6 : 82 + rnd() * 6, 27 + rnd() * 4, 1],
+  ['rose', 30, moonRight ? 88 + rnd() * 4 : 4 + rnd() * 4, 43 + rnd() * 6, 1],
+];
+for (const [kind, sz, x, y, z] of orbs) {
+  const o = document.createElement('div');
+  o.className = 'orb ' + kind;
+  o.style.cssText = `left:${x}%;top:${y}%;width:${sz}px;height:${sz}px;z-index:${z};opacity:.9`;
+  document.body.appendChild(o);
+}
+
+// meteor shower: bright streaks raking across the upper sky, one low crosser
+// slots dodge the caption band (~y 8–17%): top strip, the caption/phone gap, one low crosser
+const meteorSlots = [
+  [12 + rnd() * 10, 2 + rnd() * 3, 1, .95], [46 + rnd() * 10, 1.5 + rnd() * 2.5, 1, .8],
+  [60 + rnd() * 14, 17 + rnd() * 3, 1, .9], [4 + rnd() * 8, 18 + rnd() * 3, 1, .7],
+  [58 + rnd() * 16, 58 + rnd() * 10, 5, .65],
+];
+for (const [x, y, z, op] of meteorSlots) {
+  const m = document.createElement('div');
+  m.className = 'meteor';
+  const len = 240 + rnd() * 240, ang = 22 + rnd() * 16;
+  m.style.cssText = `left:${x}%;top:${y}%;width:${len}px;z-index:${z};opacity:${op};` +
+    `transform:rotate(${ang}deg)`;
+  document.body.appendChild(m);
+}
+
+// small white cross-flare stars between the gold glints
+const FLARE = (sz) => `<svg width="${sz}" height="${sz}" viewBox="0 0 100 100">` +
+  `<path d="M50 0 C53 34 66 47 100 50 C66 53 53 66 50 100 C47 66 34 53 0 50 C34 47 47 34 50 0 Z" fill="currentColor"/></svg>`;
+for (let i = 0; i < 6; i++) {
+  const f = document.createElement('div');
+  f.className = 'flare';
+  const sz = 22 + rnd() * 20, y = 6 + rnd() * 80;
+  f.style.cssText = `left:${3 + rnd() * 92}%;top:${y}%;z-index:${y > 40 ? 5 : 1};opacity:${.5 + rnd() * .5}`;
+  f.innerHTML = FLARE(sz);
+  document.body.appendChild(f);
+}
+
+// faint hand-drawn constellation in the caption sky
+const cons = document.getElementById('constel');
+cons.setAttribute('viewBox', `0 0 ${dims[0]} ${dims[1]}`);
+const pts = [];
+let px = dims[0] * 0.10, py = dims[1] * 0.05;
+for (let i = 0; i < 7; i++) {
+  pts.push([px, py]);
+  px += dims[0] * (0.08 + rnd() * 0.14);
+  py += dims[1] * (rnd() * 0.055 - 0.018);
+}
+let svg = '';
+for (let i = 0; i < pts.length - 1; i++)
+  svg += `<line x1="${pts[i][0]}" y1="${pts[i][1]}" x2="${pts[i+1][0]}" y2="${pts[i+1][1]}"/>`;
+for (const [x, y] of pts) svg += `<circle cx="${x}" cy="${y}" r="${4 + rnd() * 4}"/>`;
+cons.innerHTML = svg;
+</script>
+</body>
+</html>

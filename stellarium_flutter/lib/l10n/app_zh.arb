@@ -179,6 +179,8 @@
   "subscriptionLoading": "正在加载订阅选项...",
   "subscriptionRequiredMessage": "需要订阅或有效的星星注册才能继续使用该应用。",
   "subscriptionSubscribeButton": "立即订阅",
+  "gateWarningMessage": "您的免费星空预览将在{seconds}秒后结束",
+  "gateWarningCta": "查看方案",
   "manageSubscription": "管理订阅",
   "upgradeToPremium": "升级到高级版",
 
@@ -232,6 +234,13 @@
   "notificationVisibility": "可见性提醒",
   "notificationVisibilityDesc": "当行星最佳可见时获得通知",
   "notificationPrivacyNotice": "您可以随时在应用中更改通知设置。",
+
+  "consentTitle": "隐私与数据",
+  "consentMessage": "为了改进应用并衡量广告效果，我们及合作伙伴（如 Google）希望收集使用数据并在您的设备上存储标识符，用于分析、广告衡量和个性化广告。您可以随时在应用设置中更改您的选择。",
+  "consentAccept": "全部接受",
+  "consentDecline": "不接受并继续",
+  "consentSettingsTitle": "分析与个性化广告",
+  "consentSettingsSubtitle": "允许收集使用数据用于分析和广告衡量",
 
   "attTitle": "允许追踪？",
   "attSubtitle": "帮助我们改善您的宇宙之旅。我们使用数据来个性化见解并建议相关事件。",
@@ -396,5 +405,11 @@
   "signInNoAccount": "没有账户？",
   "signInBackToOptions": "所有登录选项",
   "signInEmailOptIn": "接收观星技巧、新功能和特别优惠的更新",
-  "signInSkip": "不登录继续"
+  "signInSkip": "不登录继续",
+
+  "starRemovedFromRegistryTitle": "星星已从登记册中移除",
+  "starRemovedFromRegistryMessage": "“{name}”已不在星星登记册中，因此其登记名称不再显示在星空中。",
+  "starRemovedFromRegistryHint": "您可以将这颗星保留在“我的星星”中，或滑动将其删除。",
+  "starRemovedFromRegistryBadge": "已从登记册中移除",
+  "starRemovalReason": "原因：{reason}"
 }

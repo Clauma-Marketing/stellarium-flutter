@@ -13,10 +13,10 @@ packages:
     dependency: "direct main"
     description:
       name: adapty_flutter
-      sha256: "34535c1315578c4dae68e01e2c8a8efcec401a619c62a115087b8f3be7a5e864"
+      sha256: "851a8bf22fd4a51bd74d149db684c7b22418f2ae58f0ad9f86d77ca42d089738"
       url: "https://pub.dev"
     source: hosted
-    version: "3.11.4"
+    version: "4.0.4"
   app_tracking_transparency:
     dependency: "direct main"
     description:
@@ -981,6 +981,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.3"
+  posthog_flutter:
+    dependency: "direct main"
+    description:
+      name: posthog_flutter
+      sha256: c519532012911c5ff8d650908563eb4ef1c68178253c2a041eca45c8d5711781
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.30.0"
   rxdart:
     dependency: transitive
     description:

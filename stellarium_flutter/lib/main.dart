@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:adapty_flutter/adapty_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
+
+import 'config/posthog_config.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_in_app_messaging/firebase_in_app_messaging.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -13,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'features/auth/presentation/sign_in_screen.dart';
 import 'features/onboarding/onboarding_service.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/onboarding/presentation/pages/consent_page.dart';
 import 'features/onboarding/presentation/pages/star_registration_page.dart';
 import 'features/subscription/presentation/subscription_screen.dart';
 import 'services/auth_service.dart';
@@ -20,10 +24,12 @@ import 'widgets/star_info_sheet.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
 import 'services/analytics_service.dart';
+import 'services/consent_service.dart';
 import 'services/engagement_tracking_service.dart';
 import 'services/firestore_sync_service.dart';
 import 'services/klaviyo_service.dart';
 import 'services/locale_service.dart';
+import 'services/paywall_flow_service.dart';
 import 'services/saved_stars_service.dart';
 import 'services/star_notification_service.dart';
 import 'services/subscription_availability_service.dart';
@@ -195,6 +201,23 @@ void main() async {
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
+    // Initialize PostHog
+    final posthogConfig = PostHogConfig(posthogApiKey)
+      ..host = posthogHost
+      ..debug = kDebugMode;
+    if (kIsWeb) {
+      // Never block startup on analytics. Inside a cross-origin iframe (the
+      // partner embed) storage is partitioned and this future can hang, which
+      // stalls main() before runApp and leaves the page on its spinner.
+      unawaited(
+        Posthog()
+            .setup(posthogConfig)
+            .catchError((Object e) => debugPrint('PostHog setup failed: $e')),
+      );
+    } else {
+      await Posthog().setup(posthogConfig);
+    }
+
     if (kIsWeb) {
       registerStellariumViewFactory();
     }
@@ -214,6 +237,11 @@ void main() async {
           'appId=${Firebase.app().options.appId}',
         );
         AnalyticsService.instance.initialize();
+
+        // Apply Google Consent Mode v2 state (EU User Consent Policy).
+        // Manifest/plist defaults are "denied"; this grants automatically
+        // outside the EEA/UK/CH and re-applies the stored user choice.
+        await ConsentService.instance.initialize();
 
         // Initialize Crashlytics
         FlutterError.onError =
@@ -246,6 +274,9 @@ void main() async {
         // Check if subscription services are available (async, non-blocking)
         // This allows users in China (no Google Play) to use the app without paywalls
         unawaited(SubscriptionAvailabilityService.instance.checkAvailability());
+
+        // Prefetch the A/B-tested paywall flow variant (async, non-blocking)
+        unawaited(PaywallFlowService.instance.load());
       } catch (e) {
         debugPrint('Adapty initialization error: $e');
         // Mark subscription services as unavailable if Adapty fails to initialize
@@ -309,6 +340,7 @@ class _StellariumAppState extends State<StellariumApp> {
       navigatorKey: navigatorKey,
       title: 'Stellarium',
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [PosthogObserver()],
       // Localization support
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -316,11 +348,7 @@ class _StellariumAppState extends State<StellariumApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('en'),
-        Locale('de'),
-        Locale('zh'),
-      ],
+      supportedLocales: LocaleService.supportedLocales,
       // Use custom locale if set, otherwise use system locale
       locale: LocaleService.instance.locale,
       theme: ThemeData.dark().copyWith(
@@ -345,6 +373,7 @@ class AppEntryPoint extends StatefulWidget {
 
 enum AppScreen {
   loading,
+  consent,
   onboarding,
   signIn,
   starRegistration,
@@ -354,6 +383,10 @@ enum AppScreen {
 
 class _AppEntryPointState extends State<AppEntryPoint> {
   AppScreen _currentScreen = AppScreen.loading;
+
+  // Where to route after the standalone consent banner (existing users who
+  // completed onboarding before the banner was introduced).
+  AppScreen _screenAfterConsent = AppScreen.home;
 
   @override
   void initState() {
@@ -399,6 +432,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
       } else {
         _currentScreen = AppScreen.starRegistration;
       }
+      // Existing users never see onboarding again, so show the GDPR consent
+      // banner once as an interstitial before their normal route.
+      if (onboardingComplete && ConsentService.instance.needsPrompt) {
+        _screenAfterConsent = _currentScreen;
+        _currentScreen = AppScreen.consent;
+      }
       debugPrint('[ROUTE] -> $_currentScreen');
     });
   }
@@ -438,6 +477,13 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     final engagementPaywallTriggered =
         EngagementTrackingService.instance.paywallTriggered;
 
+    // A/B test (Adapty remote config on 'night_sky_view'): in the
+    // explore-first flow the post-onboarding paywall is skipped - the user
+    // explores the sky and the 2-min engagement gate / warning banner CTA
+    // takes over as the paywall moment.
+    await PaywallFlowService.instance.load();
+    final exploreFirst = PaywallFlowService.instance.isExploreFirst;
+
     // PAYWALL COORDINATION:
     // We have two paywall entry points with different placement IDs:
     // 1. SubscriptionScreen ('night_sky_view') - skippable, shown to new users after onboarding
@@ -450,7 +496,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     // Solution: If engagementPaywallTriggered is true, skip SubscriptionScreen here.
     // HomeScreen will handle showing the forced paywall via _checkAndShowPaywallIfNeeded.
     setState(() {
-      if (!kIsWeb && !subscriptionShown && !engagementPaywallTriggered) {
+      if (!kIsWeb && !subscriptionShown && !engagementPaywallTriggered && !exploreFirst) {
         _currentScreen = AppScreen.subscription;
       } else {
         _currentScreen = AppScreen.home;
@@ -481,6 +527,15 @@ class _AppEntryPointState extends State<AppEntryPoint> {
               color: Color(0xFF33B4E8),
             ),
           ),
+        );
+
+      case AppScreen.consent:
+        return ConsentPage(
+          onContinue: () {
+            setState(() {
+              _currentScreen = _screenAfterConsent;
+            });
+          },
         );
 
       case AppScreen.onboarding:

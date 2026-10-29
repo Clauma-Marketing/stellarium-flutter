@@ -1,0 +1,421 @@
+{
+  "@@locale": "ro",
+
+  "appTitle": "Star Registration Planetarium",
+
+  "menu": "Meniu",
+  "myStars": "Stelele mele",
+  "myStarsSubtitle": "Locații salvate și favorite",
+  "timeLocation": "Timp și locație",
+  "timeLocationSubtitle": "Setează ora și locul observației",
+  "visualEffects": "Efecte vizuale",
+  "visualEffectsSubtitle": "Afișarea cerului, obiecte și grile",
+  "settings": "Setări",
+  "settingsSubtitle": "Preferințele aplicației",
+
+  "location": "LOCAȚIE",
+  "time": "ORĂ",
+  "searchCityAddress": "Caută oraș, adresă...",
+  "useMyLocation": "Folosește locația mea",
+  "detecting": "Se detectează...",
+  "unknownLocation": "Locație necunoscută",
+  "setToNow": "Setează la acum",
+  "applyChanges": "Aplică modificările",
+  "setTime": "Setează ora",
+  "now": "Acum",
+  "cancel": "Anulează",
+  "apply": "Aplică",
+  "back": "Înapoi",
+
+  "save": "Salvează",
+  "saved": "Salvat",
+  "savedToMyStars": "Salvată în Stelele mele",
+  "removedFromMyStars": "Eliminată din Stelele mele",
+  "pointAtStar": "Localizează steaua",
+  "removeFromMyStars": "Elimină din Stelele mele",
+  "saveToMyStars": "Salvează în Stelele mele",
+
+  "noSavedStarsYet": "Nicio stea salvată încă",
+  "tapStarIconHint": "Atinge pictograma stea din fișa de informații a oricărei stele pentru a o salva aici",
+  "starRemoved": "{name} a fost eliminată",
+  "@starRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registration": "ÎNREGISTRARE",
+  "registeredTo": "Înregistrată pe numele",
+  "registrationDate": "Data",
+  "registrationNumber": "Nr. înregistrare",
+  "registry": "Registru",
+  "properties": "PROPRIETĂȚI",
+  "coordinates": "COORDONATE",
+  "scientificName": "Nume științific",
+  "magnitude": "Magnitudine",
+  "spectralType": "Tip spectral",
+  "distance": "Distanță",
+  "parallax": "Paralaxă",
+  "objectType": "Tip de obiect",
+  "doubleMultipleStar": "Stea dublă/multiplă",
+  "rightAscension": "Ascensie dreaptă",
+  "declination": "Declinație",
+
+  "skyDisplay": "Afișarea cerului",
+  "celestialObjects": "Obiecte cerești",
+  "gridLines": "Grile și linii",
+  "displayOptions": "Opțiuni de afișare",
+
+  "constellationLines": "Liniile constelațiilor",
+  "constellationLinesDesc": "Afișează liniile care unesc stelele din constelații",
+  "constellationNames": "Numele constelațiilor",
+  "constellationNamesDesc": "Afișează etichetele cu numele constelațiilor",
+  "constellationArt": "Ilustrații de constelații",
+  "constellationArtDesc": "Afișează ilustrațiile artistice ale constelațiilor",
+  "atmosphere": "Atmosferă",
+  "atmosphereDesc": "Afișează efectele atmosferice și strălucirea cerului",
+  "landscape": "Peisaj",
+  "landscapeDesc": "Afișează peisajul cu sol și orizont",
+  "landscapeFog": "Ceață pe peisaj",
+  "landscapeFogDesc": "Afișează efectul de ceață pe peisaj",
+  "milkyWay": "Calea Lactee",
+  "milkyWayDesc": "Afișează galaxia Calea Lactee",
+  "dssBackground": "Fundal DSS",
+  "dssBackgroundDesc": "Afișează imaginile de fundal din Digital Sky Survey",
+
+  "stars": "Stele",
+  "starsDesc": "Afișează stelele pe cer",
+  "planets": "Planete",
+  "planetsDesc": "Afișează planetele și corpurile sistemului solar",
+  "deepSkyObjects": "Obiecte de cer profund",
+  "deepSkyObjectsDesc": "Afișează nebuloase, galaxii și roiuri de stele",
+  "satellites": "Sateliți",
+  "satellitesDesc": "Afișează sateliții artificiali",
+
+  "azimuthalGrid": "Grilă azimutală",
+  "azimuthalGridDesc": "Afișează grila de coordonate altitudine/azimut",
+  "equatorialGrid": "Grilă ecuatorială",
+  "equatorialGridDesc": "Afișează grila de ascensie dreaptă/declinație",
+  "equatorialJ2000Grid": "Grilă ecuatorială J2000",
+  "equatorialJ2000GridDesc": "Afișează coordonatele ecuatoriale pentru epoca J2000",
+  "meridianLine": "Linia meridianului",
+  "meridianLineDesc": "Afișează meridianul (nord–sud prin zenit)",
+  "eclipticLine": "Linia eclipticii",
+  "eclipticLineDesc": "Afișează ecliptica (traiectoria aparentă a Soarelui)",
+
+  "nightMode": "Mod nocturn",
+  "nightModeDesc": "Afișaj în tonuri de roșu pentru a-ți proteja vederea nocturnă",
+
+  "loadingSkyView": "Se încarcă vederea cerului...",
+  "failedToLoadSkyView": "Vederea cerului nu a putut fi încărcată",
+
+  "locationPermissionDenied": "Permisiunea de localizare a fost refuzată",
+  "locationPermissionPermanentlyDenied": "Permisiunea de localizare a fost refuzată permanent. Te rugăm să o activezi în Setări.",
+  "errorGettingLocation": "Eroare la obținerea locației: {error}",
+  "@errorGettingLocation": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registrationNotFound": "Numărul de înregistrare \"{number}\" nu a fost găsit",
+  "@registrationNotFound": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSearching": "Eroare la căutare: {error}",
+  "@errorSearching": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "recentSearch": "Căutare recentă",
+  "search": "Caută",
+
+  "language": "Limbă",
+  "languageSubtitle": "Alege limba aplicației",
+  "english": "Engleză",
+  "german": "Germană",
+  "chinese": "Chineză (simplificată)",
+  "systemDefault": "Limba sistemului",
+
+  "subscription": "Abonament",
+  "subscriptionSubtitle": "Gestionează-ți abonamentul",
+  "currentPlan": "Planul actual",
+  "freePlan": "Gratuit",
+  "premiumPlan": "Premium",
+  "proPlan": "Pro",
+  "subscriptionActive": "Activ",
+  "subscriptionExpired": "Expirat",
+  "expiresOn": "Expiră pe {date}",
+  "@expiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "restorePurchases": "Restaurează achizițiile",
+  "restoringPurchases": "Se restaurează...",
+  "purchasesRestored": "Achizițiile au fost restaurate cu succes",
+  "noPurchasesToRestore": "Nu există achiziții de restaurat",
+  "restoreError": "Eroare la restaurarea achizițiilor: {error}",
+  "@restoreError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "subscriptionLoading": "Se încarcă opțiunile de abonament...",
+  "subscriptionRequiredMessage": "Pentru a continua să folosești aplicația, ai nevoie de un abonament sau de o înregistrare de stea validă.",
+  "subscriptionSubscribeButton": "Abonează-te acum",
+  "gateWarningMessage": "Previzualizarea gratuită a cerului se termină în {seconds}s",
+  "@gateWarningMessage": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "gateWarningCta": "Vezi planurile",
+  "manageSubscription": "Gestionează abonamentul",
+  "upgradeToPremium": "Treci la Premium",
+
+  "tapToChangeLocation": "Atinge pentru a schimba locația",
+  "currentLocation": "Locația curentă",
+
+  "checkingStarRegistry": "Se verifică registrul stelelor...",
+  "starNotYetNamed": "Această stea nu are încă un nume",
+  "giveUniqueNameHint": "Dă-i un nume unic, care va fi vizibil pe cer",
+  "nameThisStar": "Dă un nume acestei stele",
+  "viewStarIn3D": "Vedere 3D",
+  "catalogId": "ID catalog",
+
+  "atmosphereButton": "Atmosferă",
+  "movementButton": "Mișcare",
+  "searchPlaceholder": "Caută o stea sau un obiect...",
+
+  "welcomeTitle": "Descoperă cosmosul",
+  "onboardingExploreUniverse": "Explorează cerul nopții, urmărește evenimentele cerești și găsește-ți steaua cu nume printre milioane de altele.",
+  "onboardingGetStarted": "Începe",
+  "onboardingContinue": "Continuă",
+  "onboardingSkip": "Sari peste",
+  "onboardingSkipForNow": "Sari peste deocamdată",
+  "onboardingMaybeLater": "Poate mai târziu",
+  "onboardingRequesting": "Se solicită...",
+
+  "locationAccessTitle": "Permiți accesul la locație?",
+  "locationAccessSubtitle": "Vezi cerul nopții exact așa cum apare din locul în care te afli. Folosim poziția ta pentru poziții precise ale stelelor.",
+  "locationAllowAccess": "Continuă",
+  "locationAccuratePositions": "Poziții precise ale stelelor",
+  "locationAccuratePositionsDesc": "Vezi stelele exact așa cum apar din locația ta",
+  "locationCompassNav": "Navigare cu busolă",
+  "locationCompassNavDesc": "Îndreaptă telefonul spre cer pentru a găsi stelele",
+  "locationRiseSetTimes": "Ore de răsărit și apus",
+  "locationRiseSetTimesDesc": "Află când sunt vizibile obiectele cerești din locația ta",
+  "locationPrivacyNotice": "Locația ta este folosită doar local și nu este niciodată partajată.",
+  "locationConfirmedTitle": "Locație confirmată",
+  "locationConfirmedSubtitle": "Vederea cerului va fi personalizată pentru locația ta",
+  "locationOpenSettings": "Deschide Setările",
+  "locationGettingLocation": "Se obține locația...",
+  "locationServicesDisabled": "Serviciile de localizare sunt dezactivate. Te rugăm să le activezi în setări.",
+  "locationFailedBrowser": "Locația nu a putut fi obținută. Permite accesul la locație în browser.",
+
+  "notificationTitle": "Activezi notificările?",
+  "notificationSubtitle": "Nu rata ploile de meteori și cele mai bune nopți pentru observarea stelelor. Îți trimitem alerte din timp, înainte să aibă loc.",
+  "notificationAllowNotifications": "Continuă",
+  "notificationMoonPhase": "Alerte pentru fazele Lunii",
+  "notificationMoonPhaseDesc": "Află care sunt cele mai bune nopți pentru observarea stelelor",
+  "notificationCelestialEvents": "Evenimente cerești",
+  "notificationCelestialEventsDesc": "Nu rata ploile de meteori și eclipsele",
+  "notificationVisibility": "Alerte de vizibilitate",
+  "notificationVisibilityDesc": "Primești o notificare când planetele sunt cel mai bine vizibile",
+  "notificationPrivacyNotice": "Poți schimba oricând setările notificărilor în aplicație.",
+
+  "consentTitle": "Confidențialitate și date",
+  "consentMessage": "Pentru a îmbunătăți aplicația și a ne măsura publicitatea, noi și partenerii noștri (de ex. Google) am dori să colectăm date de utilizare și să stocăm identificatori pe dispozitivul tău în scopuri de analiză, măsurare a reclamelor și reclame personalizate. Îți poți schimba alegerea oricând în setările aplicației.",
+  "consentAccept": "Acceptă tot",
+  "consentDecline": "Continuă fără a accepta",
+  "consentSettingsTitle": "Analiză și reclame personalizate",
+  "consentSettingsSubtitle": "Permite colectarea datelor de utilizare pentru analiză și măsurarea reclamelor",
+
+  "attTitle": "Permiți urmărirea?",
+  "attSubtitle": "Ajută-ne să-ți îmbunătățim călătoria cosmică. Folosim datele pentru a personaliza informațiile și a-ți sugera evenimente relevante.",
+  "attAllowTracking": "Continuă",
+  "attDontTrack": "Cere aplicației să nu urmărească",
+  "attImproveApp": "Îmbunătățește aplicația",
+  "attImproveAppDesc": "Ajută-ne să înțelegem cum folosești aplicația, ca s-o facem mai bună",
+  "attRelevantContent": "Conținut relevant",
+  "attRelevantContentDesc": "Vezi recomandări adaptate intereselor tale",
+  "attPrivacyMatters": "Confidențialitatea ta contează",
+  "attPrivacyMattersDesc": "Nu vindem niciodată datele tale personale către terți",
+  "attPrivacyNotice": "Poți schimba oricând această setare în Setări iOS > Confidențialitate > Urmărire.",
+
+  "starRegTitle": "Găsește-ți steaua",
+  "starRegSubtitle": "Introdu numărul de înregistrare al stelei pentru a-ți localiza steaua cu nume pe cer",
+  "starRegFindButton": "Găsește steaua mea",
+  "starRegNoStarYet": "Nu am numit încă o stea",
+  "starRegNameAStar": "Numește o stea",
+  "starRegQuestionTitle": "Planetariul tău personal",
+  "starRegQuestionSubtitle": "Cum vrei să începi?",
+  "starRegExploreCardTitle": "Explorează cerul nopții",
+  "starRegExploreCardBody": "Descoperă stelele, planetele și constelațiile de deasupra ta — live, oriunde te-ai afla.",
+  "starRegHaveStarCardTitle": "Găsește-ți steaua cu nume",
+  "starRegHaveStarCardBody": "Ai primit o înregistrare de stea — de exemplu cadou? Localizează-ți steaua personală pe cer.",
+  "starRegStartExploring": "Începe explorarea",
+  "starRegHaveStar": "Am o stea cu nume",
+  "starRegEnterNumber": "Te rugăm să introduci un număr de înregistrare",
+  "starRegInvalidFormat": "Format invalid. Folosește: XXXX-XXXXX-XXXXXXXX",
+  "starRegNotFound": "Steaua nu a fost găsită. Verifică numărul de înregistrare.",
+  "starRegSearchFailed": "Căutarea a eșuat. Încearcă din nou.",
+  "starRegRemoved": "{reason}",
+  "@starRegRemoved": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+
+  "scanCertificate": "Scanează certificatul",
+  "scanningCertificate": "Se scanează certificatul...",
+  "pointCameraAtCertificate": "Îndreaptă camera spre certificat",
+  "registrationNumberWillBeDetected": "Numărul de înregistrare va fi detectat automat",
+  "registrationNumberFound": "Număr găsit",
+  "searchForThisNumber": "Cauți acest număr de înregistrare?",
+  "scanAgain": "Scanează din nou",
+  "searchStar": "Caută steaua",
+  "enterManually": "Introdu manual",
+  "enterRegistrationNumber": "Introdu numărul de înregistrare",
+  "registrationNumberHint": "de ex. 1234-56789-1234567",
+  "noRegistrationNumberFound": "Nu a fost găsit niciun număr de înregistrare. Încearcă din nou sau introdu-l manual.",
+  "couldNotCaptureImage": "Imaginea nu a putut fi capturată. Te rugăm să încerci din nou.",
+
+  "showStarPath": "Arată traseul de 24h",
+  "hideStarPath": "Ascunde traseul de 24h",
+
+  "loaderQuote1": "Fereastra ta personală către cosmos",
+  "loaderQuote2": "Fiecare stea poartă un nume care așteaptă să fie dăruit",
+  "loaderQuote3": "Cerul de deasupra ta, cartografiat și în așteptare",
+  "loaderQuote4": "Un nume gravat în lumină, al tău pentru totdeauna",
+  "loaderQuote5": "Milioane de stele — una îți aparține",
+  "loaderQuote6": "Acolo unde lumina străveche îți întâlnește privirea",
+  "loaderQuote7": "Universul își amintește fiecare nume",
+  "loaderQuote8": "Privește în sus. Găsește-ți locul printre stele.",
+
+  "loaderStatus1": "Îți localizăm coordonatele",
+  "loaderStatus2": "Cartografiem sfera cerească",
+  "loaderStatus3": "Trasăm constelațiile vizibile",
+  "loaderStatus4": "Calculăm pozițiile stelelor",
+  "loaderStatus5": "Îți pregătim cerul nopții",
+
+  "visibilityCalculating": "Se calculează vizibilitatea...",
+  "visibilityVisibleNow": "Vizibilă acum",
+  "visibilityTonight": "Diseară",
+  "visibilityVisible": "vizibilă",
+  "visibilitySince": "DIN",
+  "visibilityFrom": "DE LA",
+  "visibilityUntil": "PÂNĂ LA",
+
+  "notificationAlertTitle": "Alertă de vizibilitate",
+  "notificationAlertSubtitle": "Primește o notificare când steaua răsare",
+
+  "visibilityStatusNeverVisible": "Niciodată vizibilă",
+  "visibilityStatusVisibleNow": "Vizibilă acum",
+  "visibilityStatusWaitForDark": "Așteaptă întunericul",
+  "visibilityStatusBelowHorizon": "Sub orizont",
+  "visibilityNow": "Acum",
+  "visibilityStatusTonight": "Diseară {time}",
+  "@visibilityStatusTonight": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusTomorrow": "Mâine {time}",
+  "@visibilityStatusTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusInDays": "{days}z {hours}h",
+  "@visibilityStatusInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+
+  "legal": "Informații legale",
+  "legalSubtitle": "Condiții de utilizare și Politica de confidențialitate",
+  "termsOfUse": "Condiții de utilizare",
+  "privacyPolicy": "Politica de confidențialitate",
+
+  "ok": "OK",
+  "scannerNotAvailable": "Scanerul nu este disponibil",
+  "scannerNotAvailableOnWeb": "Scanerul de certificate necesită o cameră și este disponibil doar în aplicația mobilă. Te rugăm să introduci numărul de înregistrare manual.",
+
+  "skyPreviewTitle": "Cerul nopții deasupra ta",
+  "skyPreviewTitleWithLocation": "Cerul nopții peste {locationName}",
+  "@skyPreviewTitleWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "calculateNightSky": "Calculează cerul nopții",
+  "skyPreviewCalculating": "Îți calculăm cerul nopții",
+  "skyPreviewCalculatingWithLocation": "Calculăm cerul nopții peste {locationName}",
+  "@skyPreviewCalculatingWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "skyPreviewHint": "Atinge o stea pentru a o descoperi",
+  "skyPreviewContinue": "Continuă",
+
+  "signInTitle": "Conectează-te",
+  "signInSubtitle": "Salvează-ți stelele pe toate dispozitivele",
+  "signInCreateAccount": "Creează cont",
+  "signInWelcomeBack": "Bine ai revenit",
+  "signInWithGoogle": "Continuă cu Google",
+  "signInWithApple": "Continuă cu Apple",
+  "signInWithEmail": "Continuă cu e-mail",
+  "signInOr": "sau",
+  "signInEmail": "E-mail",
+  "signInPassword": "Parolă",
+  "signInForgotPassword": "Ai uitat parola?",
+  "signInSignIn": "Conectează-te",
+  "signInAlreadyHaveAccount": "Ai deja un cont?",
+  "signInNoAccount": "Nu ai cont?",
+  "signInBackToOptions": "Toate opțiunile de conectare",
+  "signInEmailOptIn": "Vreau să primesc sfaturi pentru observarea stelelor, noutăți despre funcții și oferte speciale",
+  "signInSkip": "Continuă fără cont",
+
+  "starRemovedFromRegistryTitle": "Stea eliminată din registru",
+  "starRemovedFromRegistryMessage": "„{name}” nu mai figurează în registrul stelelor, așa că numele înregistrat nu mai este afișat pe cer.",
+  "starRemovedFromRegistryHint": "Poți păstra steaua în Stelele mele sau o poți glisa pentru a o șterge.",
+  "starRemovedFromRegistryBadge": "Eliminată din registru",
+  "starRemovalReason": "Motiv: {reason}"
+}

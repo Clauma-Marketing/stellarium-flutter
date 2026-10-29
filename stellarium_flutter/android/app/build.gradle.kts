@@ -41,7 +41,7 @@ android {
 
     defaultConfig {
         applicationId = "com.starregistration.planetarium"
-        minSdk = flutter.minSdkVersion
+        minSdk = flutter.minSdkVersion // PostHog requires API 23+
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

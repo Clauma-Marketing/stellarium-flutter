@@ -182,6 +182,8 @@
   "subscriptionLoading": "Chargement des options d'abonnement...",
   "subscriptionRequiredMessage": "Un abonnement ou un enregistrement d'étoile valide est requis pour continuer à utiliser l'application.",
   "subscriptionSubscribeButton": "S'abonner maintenant",
+  "gateWarningMessage": "Votre aperçu gratuit du ciel se termine dans {seconds}s",
+  "gateWarningCta": "Voir les offres",
   "manageSubscription": "Gérer l'abonnement",
   "upgradeToPremium": "Passer à Premium",
 
@@ -235,6 +237,13 @@
   "notificationVisibility": "Alertes de visibilité",
   "notificationVisibilityDesc": "Soyez notifié quand les planètes sont les mieux visibles",
   "notificationPrivacyNotice": "Vous pouvez modifier les paramètres de notification à tout moment dans l'application.",
+
+  "consentTitle": "Confidentialité et données",
+  "consentMessage": "Pour améliorer l'application et mesurer notre publicité, nous et nos partenaires (par ex. Google) souhaitons collecter des données d'utilisation et stocker des identifiants sur votre appareil à des fins d'analyse, de mesure publicitaire et de publicité personnalisée. Vous pouvez modifier votre choix à tout moment dans les réglages de l'application.",
+  "consentAccept": "Tout accepter",
+  "consentDecline": "Continuer sans accepter",
+  "consentSettingsTitle": "Analyses et publicités personnalisées",
+  "consentSettingsSubtitle": "Autoriser la collecte de données d'utilisation pour l'analyse et la mesure publicitaire",
 
   "attTitle": "Autoriser le suivi ?",
   "attSubtitle": "Aidez-nous à améliorer votre voyage cosmique. Nous utilisons les données pour personnaliser les insights et suggérer des événements pertinents.",
@@ -397,5 +406,11 @@
   "signInNoAccount": "Pas de compte ?",
   "signInBackToOptions": "Toutes les options",
   "signInEmailOptIn": "Tenez-moi informé des conseils d'observation, nouveautés et offres spéciales",
-  "signInSkip": "Continuer sans compte"
+  "signInSkip": "Continuer sans compte",
+
+  "starRemovedFromRegistryTitle": "Étoile retirée du registre",
+  "starRemovedFromRegistryMessage": "« {name} » ne figure plus dans le registre des étoiles, son nom enregistré n'est donc plus affiché dans le ciel.",
+  "starRemovedFromRegistryHint": "Vous pouvez garder l'étoile dans Mes étoiles ou la faire glisser pour la supprimer.",
+  "starRemovedFromRegistryBadge": "Retirée du registre",
+  "starRemovalReason": "Motif : {reason}"
 }

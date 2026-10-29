@@ -391,6 +391,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subscriptionSubscribeButton => 'Subscribe Now';
 
   @override
+  String gateWarningMessage(int seconds) {
+    return 'Your free sky preview ends in ${seconds}s';
+  }
+
+  @override
+  String get gateWarningCta => 'See plans';
+
+  @override
   String get manageSubscription => 'Manage Subscription';
 
   @override
@@ -544,6 +552,26 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notificationPrivacyNotice =>
       'You can change notification settings anytime in the app.';
+
+  @override
+  String get consentTitle => 'Privacy & Data';
+
+  @override
+  String get consentMessage =>
+      'To improve the app and measure our advertising, we and our partners (e.g. Google) would like to collect usage data and store identifiers on your device for analytics, ad measurement, and personalized ads. You can change your choice anytime in the app settings.';
+
+  @override
+  String get consentAccept => 'Accept All';
+
+  @override
+  String get consentDecline => 'Continue Without Accepting';
+
+  @override
+  String get consentSettingsTitle => 'Analytics & Personalized Ads';
+
+  @override
+  String get consentSettingsSubtitle =>
+      'Allow usage data collection for analytics and ad measurement';
 
   @override
   String get attTitle => 'Allow Tracking?';
@@ -885,4 +913,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signInSkip => 'Continue without account';
+
+  @override
+  String get starRemovedFromRegistryTitle => 'Star removed from registry';
+
+  @override
+  String starRemovedFromRegistryMessage(String name) {
+    return '\"$name\" is no longer listed in the star registry, so its registered name is no longer shown in the sky.';
+  }
+
+  @override
+  String get starRemovedFromRegistryHint =>
+      'You can keep the star in My Stars or swipe it away to delete it.';
+
+  @override
+  String get starRemovedFromRegistryBadge => 'Removed from registry';
+
+  @override
+  String starRemovalReason(String reason) {
+    return 'Reason: $reason';
+  }
 }

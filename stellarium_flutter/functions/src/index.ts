@@ -39,6 +39,8 @@ interface SavedStar {
   ra?: number;
   dec?: number;
   notificationsEnabled?: boolean;
+  // Set by the app when the registry no longer lists the star (e.g. refund)
+  removedFromRegistry?: boolean;
 }
 
 /**
@@ -131,6 +133,11 @@ export const checkStarVisibility = onSchedule(
             const star = starDoc.data() as SavedStar;
 
             if (star.ra === undefined || star.dec === undefined) {
+              continue;
+            }
+
+            // Don't advertise a registered name the registry has revoked
+            if (star.removedFromRegistry) {
               continue;
             }
 

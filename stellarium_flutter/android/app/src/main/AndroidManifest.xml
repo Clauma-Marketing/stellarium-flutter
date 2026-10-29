@@ -56,6 +56,22 @@
             android:name="google_analytics_adid_collection_enabled"
             android:value="false" />
 
+        <!-- Google Consent Mode v2 defaults: denied until ConsentService
+             grants (automatically outside EEA/UK/CH, or via the consent
+             banner inside). Required by Google's EU User Consent Policy. -->
+        <meta-data
+            android:name="google_analytics_default_allow_analytics_storage"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_storage"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_user_data"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_personalization_signals"
+            android:value="false" />
+
         <!-- Disable Klaviyo advertising ID collection -->
         <meta-data
             android:name="com.klaviyo.core.networking.AnalyticsCollector.ADVERTISING_ID_ENABLED"
@@ -65,6 +81,9 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCc4LPIozIoEHVAMFz5uyQ_LrT1nAlbmfc" />
+
+        <!-- PostHog Analytics — disable auto-init so we can configure the host manually -->
+        <meta-data android:name="com.posthog.posthog.AUTO_INIT" android:value="false" />
 
         <!-- Klaviyo Push Service for receiving Firebase messaging events -->
         <service

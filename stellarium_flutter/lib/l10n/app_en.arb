@@ -180,6 +180,15 @@
   "subscriptionLoading": "Loading subscription options...",
   "subscriptionRequiredMessage": "A subscription or valid star registration is required to continue using the app.",
   "subscriptionSubscribeButton": "Subscribe Now",
+  "gateWarningMessage": "Your free sky preview ends in {seconds}s",
+  "@gateWarningMessage": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "gateWarningCta": "See plans",
   "manageSubscription": "Manage Subscription",
   "upgradeToPremium": "Upgrade to Premium",
 
@@ -233,6 +242,13 @@
   "notificationVisibility": "Visibility Alerts",
   "notificationVisibilityDesc": "Get notified when planets are best visible",
   "notificationPrivacyNotice": "You can change notification settings anytime in the app.",
+
+  "consentTitle": "Privacy & Data",
+  "consentMessage": "To improve the app and measure our advertising, we and our partners (e.g. Google) would like to collect usage data and store identifiers on your device for analytics, ad measurement, and personalized ads. You can change your choice anytime in the app settings.",
+  "consentAccept": "Accept All",
+  "consentDecline": "Continue Without Accepting",
+  "consentSettingsTitle": "Analytics & Personalized Ads",
+  "consentSettingsSubtitle": "Allow usage data collection for analytics and ad measurement",
 
   "attTitle": "Allow Tracking?",
   "attSubtitle": "Help us improve your cosmic journey. We use data to personalize insights and suggest relevant events.",
@@ -395,5 +411,25 @@
   "signInNoAccount": "Don't have an account?",
   "signInBackToOptions": "All sign-in options",
   "signInEmailOptIn": "Keep me updated with stargazing tips, new features, and special offers",
-  "signInSkip": "Continue without account"
+  "signInSkip": "Continue without account",
+
+  "starRemovedFromRegistryTitle": "Star removed from registry",
+  "starRemovedFromRegistryMessage": "\"{name}\" is no longer listed in the star registry, so its registered name is no longer shown in the sky.",
+  "@starRemovedFromRegistryMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "starRemovedFromRegistryHint": "You can keep the star in My Stars or swipe it away to delete it.",
+  "starRemovedFromRegistryBadge": "Removed from registry",
+  "starRemovalReason": "Reason: {reason}",
+  "@starRemovalReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  }
 }

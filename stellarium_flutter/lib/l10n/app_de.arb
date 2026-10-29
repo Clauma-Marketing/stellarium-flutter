@@ -180,6 +180,8 @@
   "subscriptionLoading": "Lade Abonnement-Optionen...",
   "subscriptionRequiredMessage": "Ein Abonnement oder eine gültige Sternregistrierung ist erforderlich, um die App weiter zu nutzen.",
   "subscriptionSubscribeButton": "Jetzt abonnieren",
+  "gateWarningMessage": "Deine kostenlose Himmelsvorschau endet in {seconds}s",
+  "gateWarningCta": "Angebote ansehen",
   "manageSubscription": "Abonnement verwalten",
   "upgradeToPremium": "Auf Premium upgraden",
 
@@ -233,6 +235,13 @@
   "notificationVisibility": "Sichtbarkeitshinweise",
   "notificationVisibilityDesc": "Werde benachrichtigt, wenn Planeten am besten sichtbar sind",
   "notificationPrivacyNotice": "Du kannst die Benachrichtigungseinstellungen jederzeit in der App ändern.",
+
+  "consentTitle": "Datenschutz & Daten",
+  "consentMessage": "Um die App zu verbessern und unsere Werbung zu messen, möchten wir und unsere Partner (z. B. Google) Nutzungsdaten erfassen und Kennungen auf deinem Gerät speichern – für Analysen, Werbemessung und personalisierte Werbung. Du kannst deine Auswahl jederzeit in den App-Einstellungen ändern.",
+  "consentAccept": "Alle akzeptieren",
+  "consentDecline": "Ohne Zustimmung fortfahren",
+  "consentSettingsTitle": "Analyse & personalisierte Werbung",
+  "consentSettingsSubtitle": "Erfassung von Nutzungsdaten für Analysen und Werbemessung erlauben",
 
   "attTitle": "Tracking erlauben?",
   "attSubtitle": "Hilf uns, deine kosmische Reise zu verbessern. Wir nutzen Daten, um Einblicke zu personalisieren und relevante Ereignisse vorzuschlagen.",
@@ -395,5 +404,11 @@
   "signInNoAccount": "Noch kein Konto?",
   "signInBackToOptions": "Alle Anmeldeoptionen",
   "signInEmailOptIn": "Halte mich auf dem Laufenden mit Sternenbeobachtungstipps, neuen Funktionen und Angeboten",
-  "signInSkip": "Ohne Konto fortfahren"
+  "signInSkip": "Ohne Konto fortfahren",
+
+  "starRemovedFromRegistryTitle": "Stern aus dem Register entfernt",
+  "starRemovedFromRegistryMessage": "„{name}“ ist nicht mehr im Sternregister eingetragen, daher wird der registrierte Name nicht mehr am Himmel angezeigt.",
+  "starRemovedFromRegistryHint": "Du kannst den Stern in „Meine Sterne“ behalten oder ihn zum Löschen zur Seite wischen.",
+  "starRemovedFromRegistryBadge": "Aus dem Register entfernt",
+  "starRemovalReason": "Grund: {reason}"
 }

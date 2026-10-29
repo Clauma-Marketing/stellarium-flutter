@@ -1,0 +1,421 @@
+{
+  "@@locale": "tr",
+
+  "appTitle": "Star Registration Planetarium",
+
+  "menu": "Menü",
+  "myStars": "Yıldızlarım",
+  "myStarsSubtitle": "Kayıtlı konumlar ve favoriler",
+  "timeLocation": "Zaman ve Konum",
+  "timeLocationSubtitle": "Gözlem zamanını ve yerini ayarla",
+  "visualEffects": "Görsel Efektler",
+  "visualEffectsSubtitle": "Gökyüzü görünümü, nesneler ve ızgaralar",
+  "settings": "Ayarlar",
+  "settingsSubtitle": "Uygulama tercihleri",
+
+  "location": "KONUM",
+  "time": "ZAMAN",
+  "searchCityAddress": "Şehir, adres ara...",
+  "useMyLocation": "Konumumu Kullan",
+  "detecting": "Algılanıyor...",
+  "unknownLocation": "Bilinmeyen konum",
+  "setToNow": "Şimdiye Ayarla",
+  "applyChanges": "Değişiklikleri Uygula",
+  "setTime": "Zamanı Ayarla",
+  "now": "Şimdi",
+  "cancel": "İptal",
+  "apply": "Uygula",
+  "back": "Geri",
+
+  "save": "Kaydet",
+  "saved": "Kaydedildi",
+  "savedToMyStars": "Yıldızlarım'a kaydedildi",
+  "removedFromMyStars": "Yıldızlarım'dan kaldırıldı",
+  "pointAtStar": "Yıldızı Göster",
+  "removeFromMyStars": "Yıldızlarım'dan Kaldır",
+  "saveToMyStars": "Yıldızlarım'a Kaydet",
+
+  "noSavedStarsYet": "Henüz kayıtlı yıldız yok",
+  "tapStarIconHint": "Bir yıldızın bilgi kartındaki yıldız simgesine dokunarak onu buraya kaydedebilirsin",
+  "starRemoved": "{name} kaldırıldı",
+  "@starRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registration": "KAYIT",
+  "registeredTo": "Adına kayıtlı",
+  "registrationDate": "Tarih",
+  "registrationNumber": "Kayıt No",
+  "registry": "Sicil",
+  "properties": "ÖZELLİKLER",
+  "coordinates": "KOORDİNATLAR",
+  "scientificName": "Bilimsel Ad",
+  "magnitude": "Kadir (Parlaklık)",
+  "spectralType": "Tayf Türü",
+  "distance": "Uzaklık",
+  "parallax": "Paralaks",
+  "objectType": "Nesne Türü",
+  "doubleMultipleStar": "Çift/Çoklu Yıldız",
+  "rightAscension": "Sağ Açıklık",
+  "declination": "Dik Açıklık",
+
+  "skyDisplay": "Gökyüzü Görünümü",
+  "celestialObjects": "Gök Cisimleri",
+  "gridLines": "Izgaralar ve Çizgiler",
+  "displayOptions": "Görünüm Seçenekleri",
+
+  "constellationLines": "Takımyıldız Çizgileri",
+  "constellationLinesDesc": "Takımyıldızlardaki yıldızları birleştiren çizgileri göster",
+  "constellationNames": "Takımyıldız Adları",
+  "constellationNamesDesc": "Takımyıldız ad etiketlerini göster",
+  "constellationArt": "Takımyıldız Çizimleri",
+  "constellationArtDesc": "Sanatsal takımyıldız illüstrasyonlarını göster",
+  "atmosphere": "Atmosfer",
+  "atmosphereDesc": "Atmosfer efektlerini ve gök ışımasını göster",
+  "landscape": "Manzara",
+  "landscapeDesc": "Zemin/ufuk manzarasını göster",
+  "landscapeFog": "Manzara Sisi",
+  "landscapeFogDesc": "Manzarada sis efektini göster",
+  "milkyWay": "Samanyolu",
+  "milkyWayDesc": "Samanyolu galaksisini göster",
+  "dssBackground": "DSS Arka Planı",
+  "dssBackgroundDesc": "Digital Sky Survey arka plan görüntülerini göster",
+
+  "stars": "Yıldızlar",
+  "starsDesc": "Gökyüzündeki yıldızları göster",
+  "planets": "Gezegenler",
+  "planetsDesc": "Gezegenleri ve Güneş Sistemi cisimlerini göster",
+  "deepSkyObjects": "Derin Gökyüzü Cisimleri",
+  "deepSkyObjectsDesc": "Bulutsuları, galaksileri ve yıldız kümelerini göster",
+  "satellites": "Uydular",
+  "satellitesDesc": "Yapay uyduları göster",
+
+  "azimuthalGrid": "Azimut Izgarası",
+  "azimuthalGridDesc": "Yükseklik/azimut koordinat ızgarasını göster",
+  "equatorialGrid": "Ekvatoral Izgara",
+  "equatorialGridDesc": "Sağ açıklık/dik açıklık ızgarasını göster",
+  "equatorialJ2000Grid": "Ekvatoral J2000 Izgarası",
+  "equatorialJ2000GridDesc": "J2000 dönemi ekvatoral koordinatlarını göster",
+  "meridianLine": "Meridyen Çizgisi",
+  "meridianLineDesc": "Meridyeni göster (başucundan geçen kuzey-güney çizgisi)",
+  "eclipticLine": "Ekliptik Çizgisi",
+  "eclipticLineDesc": "Ekliptiği göster (Güneş'in görünür yolu)",
+
+  "nightMode": "Gece Modu",
+  "nightModeDesc": "Gece görüşünü korumak için ekranı kırmızı tonlara kaydır",
+
+  "loadingSkyView": "Gökyüzü görünümü yükleniyor...",
+  "failedToLoadSkyView": "Gökyüzü görünümü yüklenemedi",
+
+  "locationPermissionDenied": "Konum izni reddedildi",
+  "locationPermissionPermanentlyDenied": "Konum izni kalıcı olarak reddedildi. Lütfen Ayarlar'dan etkinleştir.",
+  "errorGettingLocation": "Konum alınırken hata oluştu: {error}",
+  "@errorGettingLocation": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registrationNotFound": "\"{number}\" numaralı kayıt bulunamadı",
+  "@registrationNotFound": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSearching": "Arama sırasında hata oluştu: {error}",
+  "@errorSearching": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "recentSearch": "Son arama",
+  "search": "Ara",
+
+  "language": "Dil",
+  "languageSubtitle": "Uygulama dilini seç",
+  "english": "İngilizce",
+  "german": "Almanca",
+  "chinese": "Çince (Basitleştirilmiş)",
+  "systemDefault": "Sistem Varsayılanı",
+
+  "subscription": "Abonelik",
+  "subscriptionSubtitle": "Aboneliğini yönet",
+  "currentPlan": "Mevcut Plan",
+  "freePlan": "Ücretsiz",
+  "premiumPlan": "Premium",
+  "proPlan": "Pro",
+  "subscriptionActive": "Aktif",
+  "subscriptionExpired": "Süresi Doldu",
+  "expiresOn": "{date} tarihinde sona eriyor",
+  "@expiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "restorePurchases": "Satın Alımları Geri Yükle",
+  "restoringPurchases": "Geri yükleniyor...",
+  "purchasesRestored": "Satın alımlar başarıyla geri yüklendi",
+  "noPurchasesToRestore": "Geri yüklenecek satın alım yok",
+  "restoreError": "Satın alımlar geri yüklenirken hata oluştu: {error}",
+  "@restoreError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "subscriptionLoading": "Abonelik seçenekleri yükleniyor...",
+  "subscriptionRequiredMessage": "Uygulamayı kullanmaya devam etmek için abonelik veya geçerli bir yıldız kaydı gerekiyor.",
+  "subscriptionSubscribeButton": "Şimdi Abone Ol",
+  "gateWarningMessage": "Ücretsiz gökyüzü ön izlemen {seconds} sn sonra bitiyor",
+  "@gateWarningMessage": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "gateWarningCta": "Planları gör",
+  "manageSubscription": "Aboneliği Yönet",
+  "upgradeToPremium": "Premium'a Yükselt",
+
+  "tapToChangeLocation": "Konumu değiştirmek için dokun",
+  "currentLocation": "Mevcut Konum",
+
+  "checkingStarRegistry": "Yıldız sicili kontrol ediliyor...",
+  "starNotYetNamed": "Bu yıldız henüz adlandırılmamış",
+  "giveUniqueNameHint": "Ona gökyüzünde görünecek eşsiz bir ad ver",
+  "nameThisStar": "Bu Yıldızı Adlandır",
+  "viewStarIn3D": "3B Görünüm",
+  "catalogId": "Katalog No",
+
+  "atmosphereButton": "Atmosfer",
+  "movementButton": "Hareket",
+  "searchPlaceholder": "Bir yıldız veya nesne ara...",
+
+  "welcomeTitle": "Evreni Keşfet",
+  "onboardingExploreUniverse": "Gece gökyüzünü keşfet, gök olaylarını takip et ve milyonlarca yıldız arasından adını taşıyan yıldızı bul.",
+  "onboardingGetStarted": "Başla",
+  "onboardingContinue": "Devam Et",
+  "onboardingSkip": "Atla",
+  "onboardingSkipForNow": "Şimdilik atla",
+  "onboardingMaybeLater": "Belki Daha Sonra",
+  "onboardingRequesting": "İsteniyor...",
+
+  "locationAccessTitle": "Konuma İzin Verilsin mi?",
+  "locationAccessSubtitle": "Gece gökyüzünü tam olarak bulunduğun yerden göründüğü gibi gör. Konumunu, yıldız konumlarını doğru göstermek için kullanıyoruz.",
+  "locationAllowAccess": "Devam Et",
+  "locationAccuratePositions": "Doğru Yıldız Konumları",
+  "locationAccuratePositionsDesc": "Yıldızları tam bulunduğun yerden göründükleri gibi gör",
+  "locationCompassNav": "Pusula Navigasyonu",
+  "locationCompassNavDesc": "Gökyüzündeki yıldızları bulmak için telefonunu doğrult",
+  "locationRiseSetTimes": "Doğuş ve Batış Zamanları",
+  "locationRiseSetTimesDesc": "Gök cisimlerinin bulunduğun yerden ne zaman görülebileceğini öğren",
+  "locationPrivacyNotice": "Konumun yalnızca cihazında kullanılır ve asla paylaşılmaz.",
+  "locationConfirmedTitle": "Konum Onaylandı",
+  "locationConfirmedSubtitle": "Gökyüzü görünümün konumuna göre özelleştirilecek",
+  "locationOpenSettings": "Ayarları Aç",
+  "locationGettingLocation": "Konum Alınıyor...",
+  "locationServicesDisabled": "Konum servisleri kapalı. Lütfen ayarlardan etkinleştir.",
+  "locationFailedBrowser": "Konum alınamadı. Lütfen tarayıcında konum erişimine izin ver.",
+
+  "notificationTitle": "Bildirimler Açılsın mı?",
+  "notificationSubtitle": "Meteor yağmurlarını ve yıldız gözlemi için en iyi geceleri kaçırma. Sana önceden zamanında uyarılar göndereceğiz.",
+  "notificationAllowNotifications": "Devam Et",
+  "notificationMoonPhase": "Ay Evresi Uyarıları",
+  "notificationMoonPhaseDesc": "Yıldız gözlemi için en iyi geceleri öğren",
+  "notificationCelestialEvents": "Gök Olayları",
+  "notificationCelestialEventsDesc": "Meteor yağmurlarını ve tutulmaları asla kaçırma",
+  "notificationVisibility": "Görünürlük Uyarıları",
+  "notificationVisibilityDesc": "Gezegenler en iyi göründüğünde bildirim al",
+  "notificationPrivacyNotice": "Bildirim ayarlarını istediğin zaman uygulamadan değiştirebilirsin.",
+
+  "consentTitle": "Gizlilik ve Veriler",
+  "consentMessage": "Uygulamayı geliştirmek ve reklamlarımızı ölçmek için biz ve iş ortaklarımız (ör. Google), analiz, reklam ölçümü ve kişiselleştirilmiş reklamlar amacıyla kullanım verileri toplamak ve cihazında tanımlayıcılar saklamak istiyoruz. Seçimini istediğin zaman uygulama ayarlarından değiştirebilirsin.",
+  "consentAccept": "Tümünü Kabul Et",
+  "consentDecline": "Kabul Etmeden Devam Et",
+  "consentSettingsTitle": "Analiz ve Kişiselleştirilmiş Reklamlar",
+  "consentSettingsSubtitle": "Analiz ve reklam ölçümü için kullanım verisi toplanmasına izin ver",
+
+  "attTitle": "Takibe İzin Verilsin mi?",
+  "attSubtitle": "Kozmik yolculuğunu iyileştirmemize yardım et. Verileri, sana özel içgörüler sunmak ve ilgini çekebilecek etkinlikleri önermek için kullanıyoruz.",
+  "attAllowTracking": "Devam Et",
+  "attDontTrack": "Uygulamadan Takip Etmemesini İste",
+  "attImproveApp": "Uygulamayı Geliştir",
+  "attImproveAppDesc": "Uygulamayı nasıl kullandığını anlamamıza yardım et, böylece onu daha iyi hale getirelim",
+  "attRelevantContent": "Sana Uygun İçerik",
+  "attRelevantContentDesc": "İlgi alanlarına göre uyarlanmış öneriler gör",
+  "attPrivacyMatters": "Gizliliğin Önemli",
+  "attPrivacyMattersDesc": "Kişisel verilerini asla üçüncü taraflara satmıyoruz",
+  "attPrivacyNotice": "Bu ayarı istediğin zaman iOS Ayarlar > Gizlilik > Takip bölümünden değiştirebilirsin.",
+
+  "starRegTitle": "Yıldızını Bul",
+  "starRegSubtitle": "Adını taşıyan yıldızı gökyüzünde bulmak için yıldız kayıt numaranı gir",
+  "starRegFindButton": "Yıldızımı Bul",
+  "starRegNoStarYet": "Henüz bir yıldız adlandırmadım",
+  "starRegNameAStar": "Bir Yıldız Adlandır",
+  "starRegQuestionTitle": "Kişisel Planetaryumun",
+  "starRegQuestionSubtitle": "Nasıl başlamak istersin?",
+  "starRegExploreCardTitle": "Gece Gökyüzünü Keşfet",
+  "starRegExploreCardBody": "Üzerindeki yıldızları, gezegenleri ve takımyıldızları keşfet — nerede olursan ol, canlı olarak.",
+  "starRegHaveStarCardTitle": "Adlandırılmış Yıldızını Bul",
+  "starRegHaveStarCardBody": "Örneğin hediye olarak bir yıldız kaydı mı aldın? Kişisel yıldızını gökyüzünde bul.",
+  "starRegStartExploring": "Keşfe Başla",
+  "starRegHaveStar": "Adlandırılmış bir yıldızım var",
+  "starRegEnterNumber": "Lütfen bir kayıt numarası gir",
+  "starRegInvalidFormat": "Geçersiz biçim. Şu biçimi kullan: XXXX-XXXXX-XXXXXXXX",
+  "starRegNotFound": "Yıldız bulunamadı. Lütfen kayıt numaranı kontrol et.",
+  "starRegSearchFailed": "Arama başarısız oldu. Lütfen tekrar dene.",
+  "starRegRemoved": "{reason}",
+  "@starRegRemoved": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+
+  "scanCertificate": "Sertifikayı Tara",
+  "scanningCertificate": "Sertifika taranıyor...",
+  "pointCameraAtCertificate": "Kamerayı sertifikana doğrult",
+  "registrationNumberWillBeDetected": "Kayıt numarası otomatik olarak algılanacak",
+  "registrationNumberFound": "Numara Bulundu",
+  "searchForThisNumber": "Bu kayıt numarası aransın mı?",
+  "scanAgain": "Tekrar Tara",
+  "searchStar": "Yıldızı Ara",
+  "enterManually": "Elle gir",
+  "enterRegistrationNumber": "Kayıt Numarasını Gir",
+  "registrationNumberHint": "ör. 1234-56789-1234567",
+  "noRegistrationNumberFound": "Kayıt numarası bulunamadı. Tekrar dene veya elle gir.",
+  "couldNotCaptureImage": "Görüntü alınamadı. Lütfen tekrar dene.",
+
+  "showStarPath": "24 Saatlik Yolu Göster",
+  "hideStarPath": "24 Saatlik Yolu Gizle",
+
+  "loaderQuote1": "Evrene açılan kişisel penceren",
+  "loaderQuote2": "Her yıldız, verilmeyi bekleyen bir ad taşır",
+  "loaderQuote3": "Üzerindeki gökyüzü, haritalanmış ve seni bekliyor",
+  "loaderQuote4": "Işığa kazınmış bir ad, sonsuza dek senin",
+  "loaderQuote5": "Milyonlarca yıldız — biri sana ait",
+  "loaderQuote6": "Kadim ışığın bakışlarınla buluştuğu yer",
+  "loaderQuote7": "Evren her adı hatırlar",
+  "loaderQuote8": "Yukarı bak. Yıldızlar arasındaki yerini bul.",
+
+  "loaderStatus1": "Koordinatların belirleniyor",
+  "loaderStatus2": "Gök küresi haritalanıyor",
+  "loaderStatus3": "Görünür takımyıldızlar çiziliyor",
+  "loaderStatus4": "Yıldız konumları hesaplanıyor",
+  "loaderStatus5": "Gece gökyüzün hazırlanıyor",
+
+  "visibilityCalculating": "Görünürlük hesaplanıyor...",
+  "visibilityVisibleNow": "Şu An Görünür",
+  "visibilityTonight": "Bu Gece",
+  "visibilityVisible": "görünür",
+  "visibilitySince": "BAŞLADI",
+  "visibilityFrom": "BAŞLANGIÇ",
+  "visibilityUntil": "BİTİŞ",
+
+  "notificationAlertTitle": "Görünürlük Uyarısı",
+  "notificationAlertSubtitle": "Yıldız doğduğunda bildirim al",
+
+  "visibilityStatusNeverVisible": "Hiç görünmez",
+  "visibilityStatusVisibleNow": "Şu an görünür",
+  "visibilityStatusWaitForDark": "Havanın kararmasını bekle",
+  "visibilityStatusBelowHorizon": "Ufkun altında",
+  "visibilityNow": "Şimdi",
+  "visibilityStatusTonight": "Bu gece {time}",
+  "@visibilityStatusTonight": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusTomorrow": "Yarın {time}",
+  "@visibilityStatusTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusInDays": "{days}g {hours}s",
+  "@visibilityStatusInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+
+  "legal": "Yasal",
+  "legalSubtitle": "Kullanım Koşulları ve Gizlilik Politikası",
+  "termsOfUse": "Kullanım Koşulları",
+  "privacyPolicy": "Gizlilik Politikası",
+
+  "ok": "Tamam",
+  "scannerNotAvailable": "Tarayıcı Kullanılamıyor",
+  "scannerNotAvailableOnWeb": "Sertifika tarayıcısı kamera gerektirir ve yalnızca mobil uygulamada kullanılabilir. Lütfen kayıt numaranı elle gir.",
+
+  "skyPreviewTitle": "Üzerindeki Gece Gökyüzü",
+  "skyPreviewTitleWithLocation": "{locationName} Üzerindeki Gece Gökyüzü",
+  "@skyPreviewTitleWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "calculateNightSky": "Gece Gökyüzünü Hesapla",
+  "skyPreviewCalculating": "Gece Gökyüzün Hesaplanıyor",
+  "skyPreviewCalculatingWithLocation": "{locationName} üzerindeki gece gökyüzü hesaplanıyor",
+  "@skyPreviewCalculatingWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "skyPreviewHint": "Keşfetmek için bir yıldıza dokun",
+  "skyPreviewContinue": "Devam Et",
+
+  "signInTitle": "Giriş Yap",
+  "signInSubtitle": "Yıldızlarını tüm cihazlarında sakla",
+  "signInCreateAccount": "Hesap Oluştur",
+  "signInWelcomeBack": "Tekrar Hoş Geldin",
+  "signInWithGoogle": "Google ile devam et",
+  "signInWithApple": "Apple ile devam et",
+  "signInWithEmail": "E-posta ile devam et",
+  "signInOr": "veya",
+  "signInEmail": "E-posta",
+  "signInPassword": "Şifre",
+  "signInForgotPassword": "Şifreni mi unuttun?",
+  "signInSignIn": "Giriş Yap",
+  "signInAlreadyHaveAccount": "Zaten hesabın var mı?",
+  "signInNoAccount": "Hesabın yok mu?",
+  "signInBackToOptions": "Tüm giriş seçenekleri",
+  "signInEmailOptIn": "Yıldız gözlemi ipuçları, yeni özellikler ve özel tekliflerden beni haberdar et",
+  "signInSkip": "Hesap olmadan devam et",
+
+  "starRemovedFromRegistryTitle": "Yıldız kayıttan kaldırıldı",
+  "starRemovedFromRegistryMessage": "\"{name}\" artık yıldız kaydında yer almıyor, bu nedenle kayıtlı adı gökyüzünde gösterilmiyor.",
+  "starRemovedFromRegistryHint": "Yıldızı Yıldızlarım listesinde tutabilir veya silmek için kaydırabilirsiniz.",
+  "starRemovedFromRegistryBadge": "Kayıttan kaldırıldı",
+  "starRemovalReason": "Neden: {reason}"
+}

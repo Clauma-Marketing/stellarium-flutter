@@ -395,6 +395,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get subscriptionSubscribeButton => 'Jetzt abonnieren';
 
   @override
+  String gateWarningMessage(int seconds) {
+    return 'Deine kostenlose Himmelsvorschau endet in ${seconds}s';
+  }
+
+  @override
+  String get gateWarningCta => 'Angebote ansehen';
+
+  @override
   String get manageSubscription => 'Abonnement verwalten';
 
   @override
@@ -549,6 +557,26 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get notificationPrivacyNotice =>
       'Du kannst die Benachrichtigungseinstellungen jederzeit in der App ändern.';
+
+  @override
+  String get consentTitle => 'Datenschutz & Daten';
+
+  @override
+  String get consentMessage =>
+      'Um die App zu verbessern und unsere Werbung zu messen, möchten wir und unsere Partner (z. B. Google) Nutzungsdaten erfassen und Kennungen auf deinem Gerät speichern – für Analysen, Werbemessung und personalisierte Werbung. Du kannst deine Auswahl jederzeit in den App-Einstellungen ändern.';
+
+  @override
+  String get consentAccept => 'Alle akzeptieren';
+
+  @override
+  String get consentDecline => 'Ohne Zustimmung fortfahren';
+
+  @override
+  String get consentSettingsTitle => 'Analyse & personalisierte Werbung';
+
+  @override
+  String get consentSettingsSubtitle =>
+      'Erfassung von Nutzungsdaten für Analysen und Werbemessung erlauben';
 
   @override
   String get attTitle => 'Tracking erlauben?';
@@ -895,4 +923,24 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get signInSkip => 'Ohne Konto fortfahren';
+
+  @override
+  String get starRemovedFromRegistryTitle => 'Stern aus dem Register entfernt';
+
+  @override
+  String starRemovedFromRegistryMessage(String name) {
+    return '„$name“ ist nicht mehr im Sternregister eingetragen, daher wird der registrierte Name nicht mehr am Himmel angezeigt.';
+  }
+
+  @override
+  String get starRemovedFromRegistryHint =>
+      'Du kannst den Stern in „Meine Sterne“ behalten oder ihn zum Löschen zur Seite wischen.';
+
+  @override
+  String get starRemovedFromRegistryBadge => 'Aus dem Register entfernt';
+
+  @override
+  String starRemovalReason(String reason) {
+    return 'Grund: $reason';
+  }
 }

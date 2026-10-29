@@ -13,6 +13,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../services/analytics_service.dart';
+import '../services/consent_service.dart';
 import '../services/locale_service.dart';
 import '../services/firestore_sync_service.dart';
 import '../services/reverse_geocoding.dart';
@@ -1734,6 +1735,8 @@ class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
   }
 
   Widget _buildStarItem(SavedStar star) {
+    final removed = star.removedFromRegistry;
+    final l10n = AppLocalizations.of(context)!;
     return Dismissible(
       key: Key(star.id),
       direction: DismissDirection.endToStart,
@@ -1752,7 +1755,17 @@ class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
           ),
         );
       },
-      child: Material(
+      child: Container(
+        // Highlight stars the registry no longer lists
+        margin: removed ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4) : null,
+        decoration: removed
+            ? BoxDecoration(
+                color: Colors.orangeAccent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
+              )
+            : null,
+        child: Material(
         color: Colors.transparent,
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1760,26 +1773,40 @@ class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.15),
+              color: (removed ? Colors.orangeAccent : Colors.amber).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.star,
-              color: Colors.amber,
+            child: Icon(
+              removed ? Icons.report_problem_outlined : Icons.star,
+              color: removed ? Colors.orangeAccent : Colors.amber,
               size: 24,
             ),
           ),
           title: Text(
             star.displayName,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: removed ? Colors.white60 : Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w500,
+              decoration: removed ? TextDecoration.lineThrough : null,
+              decorationColor: Colors.white60,
             ),
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (removed)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2, bottom: 2),
+                  child: Text(
+                    l10n.starRemovedFromRegistryBadge,
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               if (star.scientificName != null && star.scientificName!.isNotEmpty)
                 Text(
                   star.scientificName!,
@@ -1809,6 +1836,7 @@ class _MyStarsBottomSheetState extends State<MyStarsBottomSheet> {
             widget.onSelectStar?.call(star);
           },
         ),
+      ),
       ),
     );
   }
@@ -2479,30 +2507,16 @@ class _AppSettingsBottomSheetState extends State<AppSettingsBottomSheet> {
             locale: null,
             isSelected: currentLocale == null,
           ),
-          const Divider(height: 1, color: Colors.white12, indent: 56),
-          // English
-          _buildLanguageOption(
-            context: context,
-            title: l10n.english,
-            locale: const Locale('en'),
-            isSelected: currentLocale?.languageCode == 'en',
-          ),
-          const Divider(height: 1, color: Colors.white12, indent: 56),
-          // German
-          _buildLanguageOption(
-            context: context,
-            title: l10n.german,
-            locale: const Locale('de'),
-            isSelected: currentLocale?.languageCode == 'de',
-          ),
-          const Divider(height: 1, color: Colors.white12, indent: 56),
-          // Chinese (Simplified)
-          _buildLanguageOption(
-            context: context,
-            title: l10n.chinese,
-            locale: const Locale('zh'),
-            isSelected: currentLocale?.languageCode == 'zh',
-          ),
+          // One option per supported locale, shown in its own language
+          for (final locale in LocaleService.supportedLocales) ...[
+            const Divider(height: 1, color: Colors.white12, indent: 56),
+            _buildLanguageOption(
+              context: context,
+              title: LocaleService.getLocaleName(locale, context),
+              locale: locale,
+              isSelected: currentLocale?.languageCode == locale.languageCode,
+            ),
+          ],
         ],
       ),
     );
@@ -2805,25 +2819,24 @@ class _SubscriptionUpgradeScreen extends StatefulWidget {
 }
 
 class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
-    implements AdaptyUIPaywallsEventsObserver {
+    implements AdaptyUIFlowsEventsObserver {
   bool _isLoading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    AdaptyUI().setPaywallsEventsObserver(this);
+    AdaptyUI().setFlowsEventsObserver(this);
     _loadPaywall();
   }
 
   Future<void> _loadPaywall() async {
     try {
-      final paywall = await Adapty().getPaywall(
-        placementId: 'night_sky_view',
-      );
+      final flow = await Adapty().getFlow(placementId: 'night_sky_view');
 
-      final view = await AdaptyUI().createPaywallView(
-        paywall: paywall,
+      final view = await AdaptyUI().createFlowView(
+        flow: flow,
+        locale: LocaleService.instance.adaptyLocale,
       );
 
       await view.present();
@@ -2887,10 +2900,10 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
     );
   }
 
-  // AdaptyUIPaywallsEventsObserver implementation
+  // AdaptyUIFlowsEventsObserver implementation
 
   @override
-  void paywallViewDidPerformAction(AdaptyUIPaywallView view, AdaptyUIAction action) {
+  void flowViewDidPerformAction(AdaptyUIFlowView view, AdaptyUIAction action) {
     switch (action) {
       case CloseAction():
       case AndroidSystemBackAction():
@@ -2903,8 +2916,8 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
   }
 
   @override
-  void paywallViewDidFinishPurchase(
-    AdaptyUIPaywallView view,
+  void flowViewDidFinishPurchase(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct product,
     AdaptyPurchaseResult purchaseResult,
   ) {
@@ -2922,8 +2935,8 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
   }
 
   @override
-  void paywallViewDidFailPurchase(
-    AdaptyUIPaywallView view,
+  void flowViewDidFailPurchase(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct product,
     AdaptyError error,
   ) {
@@ -2931,7 +2944,7 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
   }
 
   @override
-  void paywallViewDidFinishRestore(AdaptyUIPaywallView view, AdaptyProfile profile) {
+  void flowViewDidFinishRestore(AdaptyUIFlowView view, AdaptyProfile profile) {
     final hasAccess = profile.accessLevels.values.any((level) => level.isActive);
     if (hasAccess) {
       view.dismiss();
@@ -2940,50 +2953,59 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
   }
 
   @override
-  void paywallViewDidFailRestore(AdaptyUIPaywallView view, AdaptyError error) {
+  void flowViewDidFailRestore(AdaptyUIFlowView view, AdaptyError error) {
     debugPrint('Restore failed: ${error.message}');
   }
 
   @override
-  void paywallViewDidFailRendering(AdaptyUIPaywallView view, AdaptyError error) {
+  void flowViewDidReceiveError(AdaptyUIFlowView view, AdaptyError error) {
     setState(() {
       _error = error.message;
     });
   }
 
   @override
-  void paywallViewDidFailLoadingProducts(AdaptyUIPaywallView view, AdaptyError error) {
+  void flowViewDidFailLoadingProducts(AdaptyUIFlowView view, AdaptyError error) {
     debugPrint('Failed to load products: ${error.message}');
   }
 
   @override
-  void paywallViewDidSelectProduct(AdaptyUIPaywallView view, String productId) {
+  void flowViewDidSelectProduct(AdaptyUIFlowView view, String productId) {
     debugPrint('Selected product: $productId');
   }
 
   @override
-  void paywallViewDidStartPurchase(AdaptyUIPaywallView view, AdaptyPaywallProduct product) {
+  void flowViewDidStartPurchase(AdaptyUIFlowView view, AdaptyPaywallProduct product) {
     debugPrint('Starting purchase: ${product.vendorProductId}');
   }
 
   @override
-  void paywallViewDidStartRestore(AdaptyUIPaywallView view) {
+  void flowViewDidStartRestore(AdaptyUIFlowView view) {
     debugPrint('Starting restore');
   }
 
   @override
-  void paywallViewDidAppear(AdaptyUIPaywallView view) {
+  void flowViewDidAppear(AdaptyUIFlowView view) {
     debugPrint('Paywall appeared');
   }
 
   @override
-  void paywallViewDidDisappear(AdaptyUIPaywallView view) {
+  void flowViewDidDisappear(AdaptyUIFlowView view) {
     debugPrint('Paywall disappeared');
   }
 
   @override
-  void paywallViewDidFinishWebPaymentNavigation(
-    AdaptyUIPaywallView view,
+  void flowViewDidReceiveAnalyticEvent(
+    AdaptyUIFlowView view,
+    String name,
+    Map<String, dynamic> params,
+  ) {
+    debugPrint('Flow analytic event: $name');
+  }
+
+  @override
+  void flowViewDidFinishWebPaymentNavigation(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct? product,
     AdaptyError? error,
   ) {
@@ -3065,6 +3087,10 @@ class LegalBottomSheet extends StatelessWidget {
                       icon: Icons.privacy_tip_outlined,
                       url: 'https://www.star-registration.com/policies/privacy-policy',
                     ),
+                    if (!kIsWeb) ...[
+                      const SizedBox(height: 8),
+                      const _ConsentToggleTile(),
+                    ],
                   ],
                 ),
               ),
@@ -3127,6 +3153,71 @@ class LegalBottomSheet extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Toggle for analytics / ads consent (Google Consent Mode v2), so users can
+/// withdraw or grant consent after the initial banner.
+class _ConsentToggleTile extends StatefulWidget {
+  const _ConsentToggleTile();
+
+  @override
+  State<_ConsentToggleTile> createState() => _ConsentToggleTileState();
+}
+
+class _ConsentToggleTileState extends State<_ConsentToggleTile> {
+  bool _granted = ConsentService.instance.isGranted;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.query_stats,
+            color: Colors.white54,
+            size: 24,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.consentSettingsTitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l10n.consentSettingsSubtitle,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _granted,
+            onChanged: (value) {
+              setState(() => _granted = value);
+              ConsentService.instance.setChoice(granted: value);
+            },
+          ),
+        ],
       ),
     );
   }

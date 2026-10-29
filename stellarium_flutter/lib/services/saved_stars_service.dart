@@ -14,6 +14,8 @@ class SavedStar {
   final double? magnitude;
   final DateTime savedAt;
   final bool notificationsEnabled; // Whether visibility notifications are enabled
+  final bool removedFromRegistry; // Registry no longer lists this registration number
+  final String? removalReason; // Registry's message when it was removed (e.g. "refund")
 
   SavedStar({
     required this.id,
@@ -25,6 +27,8 @@ class SavedStar {
     this.magnitude,
     DateTime? savedAt,
     this.notificationsEnabled = true, // Default: notifications enabled
+    this.removedFromRegistry = false,
+    this.removalReason,
   }) : savedAt = savedAt ?? DateTime.now();
 
   /// Create a search query to find this star
@@ -51,6 +55,8 @@ class SavedStar {
       'magnitude': magnitude,
       'savedAt': savedAt.toIso8601String(),
       'notificationsEnabled': notificationsEnabled,
+      'removedFromRegistry': removedFromRegistry,
+      'removalReason': removalReason,
     };
   }
 
@@ -67,6 +73,8 @@ class SavedStar {
           ? DateTime.parse(json['savedAt'] as String)
           : DateTime.now(),
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+      removedFromRegistry: json['removedFromRegistry'] as bool? ?? false,
+      removalReason: json['removalReason'] as String?,
     );
   }
 
@@ -81,7 +89,10 @@ class SavedStar {
     double? magnitude,
     DateTime? savedAt,
     bool? notificationsEnabled,
+    bool? removedFromRegistry,
+    String? removalReason,
   }) {
+    final removed = removedFromRegistry ?? this.removedFromRegistry;
     return SavedStar(
       id: id ?? this.id,
       displayName: displayName ?? this.displayName,
@@ -92,6 +103,9 @@ class SavedStar {
       magnitude: magnitude ?? this.magnitude,
       savedAt: savedAt ?? this.savedAt,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      removedFromRegistry: removed,
+      // A reinstated star drops its stale removal reason
+      removalReason: removed ? (removalReason ?? this.removalReason) : null,
     );
   }
 }
@@ -123,7 +137,8 @@ class SavedStarsService extends ChangeNotifier {
   bool hasValidRegistration() {
     return _savedStars.any((star) =>
       star.registrationNumber != null &&
-      star.registrationNumber!.isNotEmpty
+      star.registrationNumber!.isNotEmpty &&
+      !star.removedFromRegistry
     );
   }
 
@@ -187,14 +202,44 @@ class SavedStarsService extends ChangeNotifier {
     );
   }
 
-  /// Save a star
-  Future<void> saveStar(SavedStar star) async {
-    // Don't add duplicates - check by ID
-    if (isSaved(star.id)) return;
+  /// Find a saved star by its registry registration number
+  SavedStar? findByRegistrationNumber(String registrationNumber) {
+    final normalized = registrationNumber.trim().toUpperCase();
+    if (normalized.isEmpty) return null;
+    return _savedStars.cast<SavedStar?>().firstWhere(
+      (star) => star?.registrationNumber?.trim().toUpperCase() == normalized,
+      orElse: () => null,
+    );
+  }
 
-    // Also check by scientific name to catch edge cases
-    if (star.scientificName != null && star.scientificName!.isNotEmpty) {
-      if (findByScientificName(star.scientificName!) != null) return;
+  /// Save a star
+  ///
+  /// If the star is already saved and [star] comes from a registry lookup
+  /// (has a registration number), the saved entry is refreshed with the
+  /// current registered name instead of being skipped, so renames in the
+  /// registry reach the list, the sky labels and Firestore.
+  Future<void> saveStar(SavedStar star) async {
+    SavedStar? existing = findById(star.id);
+    if (existing == null &&
+        star.scientificName != null &&
+        star.scientificName!.isNotEmpty) {
+      existing = findByScientificName(star.scientificName!);
+    }
+
+    if (existing != null) {
+      final regNumber = star.registrationNumber;
+      if (regNumber == null || regNumber.isEmpty) return;
+      if (existing.displayName == star.displayName &&
+          existing.registrationNumber == regNumber &&
+          !existing.removedFromRegistry) {
+        return;
+      }
+      await updateStar(existing.copyWith(
+        displayName: star.displayName,
+        registrationNumber: regNumber,
+        removedFromRegistry: false,
+      ));
+      return;
     }
 
     _savedStars.insert(0, star); // Add to beginning
@@ -244,6 +289,19 @@ class SavedStarsService extends ChangeNotifier {
     );
     notifyListeners();
     await _save();
+  }
+
+  /// Flag a saved star as removed from the registry.
+  /// Returns true only when the star was not already flagged, so callers
+  /// can warn the user once per removal.
+  Future<bool> markRemovedFromRegistry(String id, {String? reason}) async {
+    final existing = findById(id);
+    if (existing == null || existing.removedFromRegistry) return false;
+    await updateStar(existing.copyWith(
+      removedFromRegistry: true,
+      removalReason: reason,
+    ));
+    return true;
   }
 
   /// Update a star's data

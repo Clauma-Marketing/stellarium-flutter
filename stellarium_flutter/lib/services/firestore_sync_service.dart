@@ -159,6 +159,7 @@ class FirestoreSyncService {
           'dec': star.dec,
           'magnitude': star.magnitude,
           'notificationsEnabled': star.notificationsEnabled,
+          'removedFromRegistry': star.removedFromRegistry,
           'savedAt': Timestamp.fromDate(star.savedAt),
           'updatedAt': FieldValue.serverTimestamp(),
         };
@@ -191,6 +192,7 @@ class FirestoreSyncService {
         'dec': star.dec,
         'magnitude': star.magnitude,
         'notificationsEnabled': star.notificationsEnabled,
+        'removedFromRegistry': star.removedFromRegistry,
         'savedAt': Timestamp.fromDate(star.savedAt),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));

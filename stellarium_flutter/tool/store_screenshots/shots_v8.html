@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>V8 — Photo Panorama</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,750;9..144,900&family=Outfit:wght@400;500;600&family=Noto+Serif+SC:wght@700;900&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { overflow: hidden; }
+  body {
+    --gold: #e9c476;
+    font-family: 'Outfit', 'PingFang SC', sans-serif;
+    width: var(--W); height: var(--H); position: relative; overflow: hidden;
+    background: #060a16;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  /* the supplied panorama, N screens wide; each shot shows its slice */
+  #pano { position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url('assets/pano.jpg');
+    background-repeat: no-repeat;
+  }
+  /* caption scrim: the photo's sky is bright where the headline sits */
+  .scrim { position: absolute; left: 0; right: 0; top: 0; height: 46%;
+    background: linear-gradient(180deg, rgba(4, 8, 22, .82) 0%, rgba(4, 8, 22, .55) 44%, transparent 100%); }
+  /* film grain to knit the upscaled photo together */
+  #grain { position: absolute; inset: 0; opacity: .42; mix-blend-mode: overlay; }
+
+  .glint { position: absolute; color: #ffe9b8; opacity: .9; z-index: 2;
+           filter: drop-shadow(0 0 14px rgba(255, 224, 160, .85)); }
+  .glint svg { display: block; }
+  .meteor { position: absolute; height: 4px; border-radius: 2px; z-index: 2;
+    background: linear-gradient(90deg, transparent, rgba(255, 238, 205, .08) 30%, rgba(255, 238, 205, .9)); }
+  .meteor::after { content: ''; position: absolute; right: -5px; top: 50%;
+    transform: translateY(-50%); width: 9px; height: 9px; border-radius: 50%;
+    background: #fff8e8; box-shadow: 0 0 20px 7px rgba(255, 242, 214, .85); }
+
+  .cap { text-align: center; position: relative; z-index: 4; padding: 128px 70px 0; }
+  .eyebrow { display: flex; align-items: center; justify-content: center; gap: 34px; margin-bottom: 44px; }
+  .eyebrow .rule { width: 110px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold)); }
+  .eyebrow .rule:last-child { transform: scaleX(-1); }
+  .eyebrow .dia { color: var(--gold); font-size: 34px; }
+  .cap h1 {
+    font-family: 'Fraunces', 'Noto Serif SC', serif;
+    font-size: 132px; line-height: 1.04; font-weight: 800; letter-spacing: -0.01em;
+    background: linear-gradient(180deg, #fdfcf8 30%, #ecd9a8 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 40px;
+    filter: drop-shadow(0 6px 44px rgba(3, 6, 18, .95));
+  }
+  .cap p { font-size: 46px; line-height: 1.4; font-weight: 500; color: #e6eafb;
+    max-width: 1080px; margin: 0 auto; text-shadow: 0 4px 26px rgba(3, 6, 18, .95); }
+
+  .stage { position: relative; z-index: 3; margin-top: 82px; perspective: 2600px; }
+  .phone {
+    position: relative; width: 880px; margin: 0 auto;
+    border-radius: 140px; padding: 19px;
+    background: linear-gradient(155deg, #57536b 0%, #191a2e 38%, #0c0d1c 78%, #3a3450 100%);
+    box-shadow:
+      0 90px 190px rgba(0, 0, 0, .9),
+      0 30px 90px rgba(3, 5, 16, .85),
+      0 0 0 2px rgba(233, 196, 118, .5),
+      0 0 150px rgba(120, 140, 255, .28);
+    transform: rotateX(4deg) rotateZ(var(--tilt));
+    transform-origin: 50% 20%;
+  }
+  .screen { border-radius: 122px; overflow: hidden; position: relative; background: #000; padding-top: 104px; }
+  .screen img { width: 100%; display: block; }
+  .screen.raw { padding-top: 0; }
+  .screen::after { content: ''; position: absolute; inset: 0; border-radius: 122px;
+    background: linear-gradient(118deg, rgba(255,255,255,.13) 0%, rgba(255,255,255,.04) 18%, transparent 32%);
+    pointer-events: none; }
+  .island { position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+    width: 248px; height: 68px; border-radius: 34px; background: #05060c; border: 1px solid #23283e; z-index: 3; }
+  body.fit .phone { width: 820px; }
+
+  .vignette { position: absolute; left: 0; right: 0; bottom: 0; height: 130px; z-index: 6;
+    background: linear-gradient(180deg, transparent 0%, rgba(3, 5, 14, .65) 100%); }
+
+  body.ipad .cap { padding-top: 104px; }
+  body.ipad .cap h1 { font-size: 114px; }
+  body.ipad .cap p { font-size: 42px; max-width: 1240px; }
+  body.ipad .stage { margin-top: 64px; }
+  body.ipad .phone { width: 800px; }
+</style>
+</head>
+<body>
+<div id="pano"></div>
+<div class="scrim"></div>
+<svg id="grain" xmlns="http://www.w3.org/2000/svg">
+  <filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.14"/></feComponentTransfer>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#n)"/>
+</svg>
+
+<div class="cap">
+  <div class="eyebrow"><div class="rule"></div><div class="dia">✦</div><div class="rule"></div></div>
+  <h1 id="h1"></h1>
+  <p id="p"></p>
+</div>
+
+<div class="stage">
+  <div class="phone">
+    <div class="screen"><img id="shot" src=""><div class="island"></div></div>
+  </div>
+</div>
+<div class="vignette"></div>
+
+<script src="captions.js"></script>
+<script>
+const PHONE_ORDER = ['constellations', 'planet', 'hero', 'star', 'search', 'found', 'dusk'];
+const IPAD_ORDER = ['constellations', 'planet', 'star'];
+const TILTS = ['-3.0deg', '2.6deg', '2.4deg', '-2.8deg', '-2.4deg', '2.8deg', '-2.6deg'];
+
+const q = new URLSearchParams(location.search);
+const shot = q.get('shot') || 'hero';
+const lang = q.get('lang') || 'en';
+const fmt = q.get('fmt') || 'phone';
+const dims = fmt === 'ipad' ? [2048, 2732] : [1290, 2796];
+const W = dims[0], H = dims[1];
+document.body.style.setProperty('--W', W + 'px');
+document.body.style.setProperty('--H', H + 'px');
+if (fmt === 'ipad') document.body.classList.add('ipad');
+if (shot === 'search' || shot === 'found') document.body.classList.add('fit');
+
+const order = fmt === 'ipad' ? IPAD_ORDER : PHONE_ORDER;
+const idx = Math.max(0, order.indexOf(shot));
+document.body.style.setProperty('--tilt', TILTS[Math.max(0, PHONE_ORDER.indexOf(shot))]);
+
+const cap = (CAPTIONS[lang] || CAPTIONS.en)[shot];
+document.getElementById('h1').innerHTML = cap[0];
+document.getElementById('p').innerHTML = cap[1];
+document.getElementById('shot').src = 'captures/scene-' + shot + '.png';
+if (shot === 'constellations' || shot === 'planet') document.querySelector('.screen').classList.add('raw');
+
+// ---- slice the supplied panorama across the whole set --------------------
+// source image 2752x1536; cover a strip N screens wide, then pick a vertical
+// window that keeps the peaks and the galactic core (drops dark forest floor
+// and some top sky).
+const IMG_W = 2752, IMG_H = 1536;
+const N = order.length;
+const stripW = N * W;
+const scale = stripW / IMG_W;
+const scaledH = IMG_H * scale;
+// window: start ~24% down the (scaled) image, clamped so it never runs out
+const offY = Math.min(scaledH - H, scaledH * 0.24);
+const pano = document.getElementById('pano');
+pano.style.backgroundSize = `${stripW}px ${scaledH}px`;
+pano.style.backgroundPosition = `${-idx * W}px ${-offY}px`;
+
+// deterministic gold glints + a couple of meteors to tie the set together
+let seed = 424242 + 0; // fixed: continuity across slices comes from the photo
+const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+const GLINT = (sz) => `<svg width="${sz}" height="${sz}" viewBox="0 0 100 100">` +
+  `<path d="M50 0 C54 32 68 46 100 50 C68 54 54 68 50 100 C46 68 32 54 0 50 C32 46 46 32 50 0 Z" fill="currentColor"/></svg>`;
+// advance the stream so each slice gets its own sparkle layout
+for (let i = 0; i < idx * 13; i++) rnd();
+const spots = [[6 + rnd() * 6, 5 + rnd() * 4, 56], [84 + rnd() * 8, 8 + rnd() * 5, 74],
+               [8 + rnd() * 6, 22 + rnd() * 4, 44], [86 + rnd() * 6, 26 + rnd() * 5, 52]];
+for (const [x, y, sz] of spots) {
+  const g = document.createElement('div');
+  g.className = 'glint';
+  g.style.cssText = `left:${x}%;top:${y}%;opacity:${.45 + rnd() * .5}`;
+  g.innerHTML = GLINT(sz);
+  document.body.appendChild(g);
+}
+
+</script>
+</body>
+</html>

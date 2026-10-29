@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../services/analytics_service.dart';
+import '../../../services/locale_service.dart';
 import '../../../services/engagement_tracking_service.dart';
 import '../../../widgets/star_info_sheet.dart';
 import '../../onboarding/onboarding_service.dart';
@@ -25,27 +26,23 @@ class SubscriptionRequiredScreen extends StatefulWidget {
 }
 
 class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
-    implements AdaptyUIPaywallsEventsObserver {
+    implements AdaptyUIFlowsEventsObserver {
   bool _isLoadingPaywall = true;
   bool _paywallDismissed = false;
 
   @override
   void initState() {
     super.initState();
-    AdaptyUI().setPaywallsEventsObserver(this);
+    AdaptyUI().setFlowsEventsObserver(this);
     _loadAndShowPaywall();
   }
 
   Future<void> _loadAndShowPaywall() async {
     try {
-      final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-      final paywall = await Adapty().getPaywall(
-        placementId: 'non_skippable_paywall',
-        locale: deviceLocale,
-      );
+      final flow = await Adapty().getFlow(placementId: 'non_skippable_paywall');
 
-      if (!paywall.hasViewConfiguration) {
-        debugPrint('SubscriptionRequired: Paywall does not have view configuration');
+      if (!flow.hasViewConfiguration) {
+        debugPrint('SubscriptionRequired: Flow does not have view configuration');
         setState(() {
           _isLoadingPaywall = false;
           _paywallDismissed = true;
@@ -57,7 +54,10 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
         _isLoadingPaywall = false;
       });
 
-      final view = await AdaptyUI().createPaywallView(paywall: paywall);
+      final view = await AdaptyUI().createFlowView(
+        flow: flow,
+        locale: LocaleService.instance.adaptyLocale,
+      );
       await view.present();
     } on AdaptyError catch (e) {
       debugPrint('SubscriptionRequired: Adapty error: ${e.message}');
@@ -116,11 +116,11 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
     }
   }
 
-  // AdaptyUIPaywallsEventsObserver implementation
+  // AdaptyUIFlowsEventsObserver implementation
 
   @override
-  void paywallViewDidPerformAction(
-      AdaptyUIPaywallView view, AdaptyUIAction action) {
+  void flowViewDidPerformAction(
+      AdaptyUIFlowView view, AdaptyUIAction action) {
     switch (action) {
       case CloseAction():
       case AndroidSystemBackAction():
@@ -139,8 +139,8 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
   }
 
   @override
-  void paywallViewDidFinishPurchase(
-    AdaptyUIPaywallView view,
+  void flowViewDidFinishPurchase(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct product,
     AdaptyPurchaseResult purchaseResult,
   ) {
@@ -165,8 +165,8 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
   }
 
   @override
-  void paywallViewDidFailPurchase(
-    AdaptyUIPaywallView view,
+  void flowViewDidFailPurchase(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct product,
     AdaptyError error,
   ) {
@@ -174,8 +174,8 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
   }
 
   @override
-  void paywallViewDidFinishRestore(
-    AdaptyUIPaywallView view,
+  void flowViewDidFinishRestore(
+    AdaptyUIFlowView view,
     AdaptyProfile profile,
   ) {
     final hasAccess = profile.accessLevels.values.any((level) => level.isActive);
@@ -189,16 +189,16 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
   }
 
   @override
-  void paywallViewDidFailRestore(
-    AdaptyUIPaywallView view,
+  void flowViewDidFailRestore(
+    AdaptyUIFlowView view,
     AdaptyError error,
   ) {
     debugPrint('SubscriptionRequired: Restore failed: ${error.message}');
   }
 
   @override
-  void paywallViewDidFailRendering(
-    AdaptyUIPaywallView view,
+  void flowViewDidReceiveError(
+    AdaptyUIFlowView view,
     AdaptyError error,
   ) {
     debugPrint('SubscriptionRequired: Rendering failed: ${error.message}');
@@ -209,47 +209,56 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
   }
 
   @override
-  void paywallViewDidFailLoadingProducts(
-    AdaptyUIPaywallView view,
+  void flowViewDidFailLoadingProducts(
+    AdaptyUIFlowView view,
     AdaptyError error,
   ) {
     debugPrint('SubscriptionRequired: Failed to load products: ${error.message}');
   }
 
   @override
-  void paywallViewDidSelectProduct(
-    AdaptyUIPaywallView view,
+  void flowViewDidSelectProduct(
+    AdaptyUIFlowView view,
     String productId,
   ) {
     debugPrint('SubscriptionRequired: Product selected: $productId');
   }
 
   @override
-  void paywallViewDidStartPurchase(
-    AdaptyUIPaywallView view,
+  void flowViewDidStartPurchase(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct product,
   ) {
     debugPrint('SubscriptionRequired: Purchase started: ${product.vendorProductId}');
   }
 
   @override
-  void paywallViewDidStartRestore(AdaptyUIPaywallView view) {
+  void flowViewDidStartRestore(AdaptyUIFlowView view) {
     debugPrint('SubscriptionRequired: Restore started');
   }
 
   @override
-  void paywallViewDidAppear(AdaptyUIPaywallView view) {
+  void flowViewDidAppear(AdaptyUIFlowView view) {
     debugPrint('SubscriptionRequired: Paywall appeared');
   }
 
   @override
-  void paywallViewDidDisappear(AdaptyUIPaywallView view) {
+  void flowViewDidDisappear(AdaptyUIFlowView view) {
     debugPrint('SubscriptionRequired: Paywall disappeared');
   }
 
   @override
-  void paywallViewDidFinishWebPaymentNavigation(
-    AdaptyUIPaywallView view,
+  void flowViewDidReceiveAnalyticEvent(
+    AdaptyUIFlowView view,
+    String name,
+    Map<String, dynamic> params,
+  ) {
+    debugPrint('Flow analytic event: $name');
+  }
+
+  @override
+  void flowViewDidFinishWebPaymentNavigation(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct? product,
     AdaptyError? error,
   ) {

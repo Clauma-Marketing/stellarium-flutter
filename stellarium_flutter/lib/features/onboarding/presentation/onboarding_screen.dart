@@ -6,11 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../services/analytics_service.dart';
+import '../../../../services/consent_service.dart';
 import '../../../../services/firestore_sync_service.dart';
 import '../../../../services/klaviyo_service.dart';
 import '../../../../services/locale_service.dart';
 import '../onboarding_service.dart';
 import 'pages/att_permission_page.dart';
+import 'pages/consent_page.dart';
 import 'pages/location_permission_page.dart';
 import 'pages/notification_permission_page.dart';
 import 'pages/sky_preview_page.dart';
@@ -41,6 +43,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // Check if we should show ATT page (iOS only)
   bool get _showAttPage => !kIsWeb && Platform.isIOS;
 
+  // GDPR consent page (EEA/UK/CH only). Captured once so the page list
+  // doesn't shift mid-flow after the user answers the banner.
+  late final bool _showConsentPage = ConsentService.instance.needsPrompt;
+
   // Sky preview is only available on mobile
   bool get _showSkyPreview => !kIsWeb;
 
@@ -55,6 +61,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _trackPageView(int page) {
     final pageNames = [
       'welcome',
+      if (_showConsentPage) 'consent',
       'location_permission',
       if (_showSkyPreview) 'sky_preview',
       'notification_permission',
@@ -68,9 +75,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  // Total number of pages: Welcome, Location, [Sky Preview on mobile], Notification, [ATT on iOS]
+  // Total number of pages: Welcome, [Consent in EEA/UK/CH], Location,
+  // [Sky Preview on mobile], Notification, [ATT on iOS]
   int get _totalPages {
     int count = 3; // Welcome, Location, Notification
+    if (_showConsentPage) count++;
     if (_showSkyPreview) count++;
     if (_showAttPage) count++;
     return count;
@@ -169,7 +178,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         currentPage: pageIndex++,
         totalPages: _totalPages,
       ),
-      // Page 1: Location Permission
+    ];
+
+    // GDPR consent banner (EEA/UK/CH only)
+    if (_showConsentPage) {
+      pages.add(
+        ConsentPage(
+          onContinue: _goToNextPage,
+          currentPage: pageIndex++,
+          totalPages: _totalPages,
+        ),
+      );
+    }
+
+    // Location Permission
+    pages.add(
       LocationPermissionPage(
         onContinue: _goToNextPage,
         onLocationObtained: _onLocationObtained,
@@ -177,7 +200,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         currentPage: pageIndex++,
         totalPages: _totalPages,
       ),
-    ];
+    );
 
     // Sky Preview (mobile only)
     if (_showSkyPreview) {

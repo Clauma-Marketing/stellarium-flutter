@@ -1,0 +1,55 @@
+{
+  "newListings": {
+    "tr-TR": {
+      "title": "Star Guide: Gece Gökyüzü",
+      "short": "Gerçek zamanlı planetaryum: yıldızları, gezegenleri ve takımyıldızları keşfet."
+    },
+    "it-IT": {
+      "title": "Star Guide: Mappa Stellare",
+      "short": "Planetario in tempo reale: esplora stelle, pianeti e costellazioni dal telefono."
+    },
+    "pl-PL": {
+      "title": "Star Guide: Mapa Nieba",
+      "short": "Planetarium w czasie rzeczywistym: odkrywaj gwiazdy, planety i gwiazdozbiory."
+    },
+    "ro": {
+      "title": "Star Guide: Harta Cerului",
+      "short": "Planetariu în timp real: explorează stele, planete și constelații de pe telefon."
+    },
+    "zh-CN": {
+      "title": "夜空指南：天文馆星图",
+      "short": "实时天文馆：探索星星、行星与星座，随时随地仰望星空。"
+    }
+  },
+  "ascLocaleForFullDescription": {
+    "tr-TR": "tr",
+    "it-IT": "it",
+    "pl-PL": "pl",
+    "ro": "ro"
+  },
+  "screenshotDirs": {
+    "en-US": "en",
+    "de-DE": "de",
+    "es-ES": "es",
+    "fr-FR": "fr",
+    "zh-CN": "zh",
+    "tr-TR": "tr",
+    "it-IT": "it",
+    "pl-PL": "pl",
+    "ro": "ro"
+  },
+  "notesKey": {
+    "en-US": "en",
+    "de-DE": "de",
+    "es-ES": "es",
+    "fr-FR": "fr",
+    "zh-CN": "zh",
+    "tr-TR": "tr",
+    "it-IT": "it",
+    "pl-PL": "pl",
+    "ro": "ro"
+  },
+  "fullDescriptionOverrides": {
+    "zh-CN": "探索夜空，只需移动手机，即可在增强现实中看到真实的夜空星星。\n搜索星星、星座或行星，我们的应用会告诉你应该看向哪里！\n\n在任何时间，从你当前位置查看星座、行星、卫星！\n\t•\t移动手机并使用增强现实技术定位天空中的天体\n\t•\t无论在家还是户外，展示行星、星星和星座\n\t•\t使用 GPS，从你当前位置查看星空\n\t•\t可更改时间，查看过去或未来夜空的样子\n\t•\t搜索天体，并获得实际夜空中观察位置的指引\n\t•\t为夜空中的一颗星星命名\n\t•\t可在 Star-Register.com 找到你命名的星星\n\n最终用户许可协议（EULA）：www.star-registration.com/pages/eula-star-finder-app\n隐私政策：https://www.star-registration.com/policies/privacy-policy"
+  }
+}

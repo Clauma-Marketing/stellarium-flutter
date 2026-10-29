@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>V4 — Vintage Almanac</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Karla:wght@500;700&family=Noto+Serif+SC:wght@700;900&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { overflow: hidden; }
+  body {
+    --paper: #f3ecdb;
+    --ink: #1d2a4d;
+    --gold: #b98a2e;
+    font-family: 'Karla', 'Noto Serif SC', sans-serif;
+    width: var(--W); height: var(--H); position: relative; overflow: hidden;
+    background:
+      radial-gradient(120% 80% at 50% 0%, #f7f1e3 0%, var(--paper) 55%, #eadfc6 100%);
+    color: var(--ink);
+    display: flex; flex-direction: column; align-items: center;
+  }
+  #grain { position: absolute; inset: 0; opacity: .55; mix-blend-mode: multiply; }
+
+  /* engraved celestial frame */
+  #engrave { position: absolute; inset: 0; }
+  #engrave circle, #engrave path, #engrave line { fill: none; stroke: rgba(29, 42, 77, .28); stroke-width: 1.6; }
+  #engrave .bold { stroke: rgba(29, 42, 77, .5); stroke-width: 2.2; }
+  #engrave .goldline { stroke: rgba(185, 138, 46, .65); stroke-width: 2.4; }
+  .border-frame {
+    position: absolute; inset: 40px; border: 2.5px solid rgba(29, 42, 77, .55);
+    outline: 1.5px solid rgba(29, 42, 77, .3); outline-offset: 10px;
+    pointer-events: none;
+  }
+  .ink-star { position: absolute; color: var(--gold); font-size: 46px; }
+
+  .cap { text-align: center; position: relative; z-index: 4; padding: 148px 90px 0; }
+  .eyebrow {
+    font-size: 32px; letter-spacing: .5em; text-transform: uppercase; font-weight: 700;
+    color: var(--gold); margin-bottom: 42px; text-indent: .5em;
+  }
+  .cap h1 {
+    font-family: 'Playfair Display', 'Noto Serif SC', serif;
+    font-size: 126px; line-height: 1.06; font-weight: 800;
+    color: var(--ink); margin-bottom: 36px;
+  }
+  .cap h1 em { font-style: italic; font-weight: 600; color: var(--gold); }
+  .flourish { display: flex; align-items: center; justify-content: center; gap: 26px; margin-bottom: 36px; }
+  .flourish .line { width: 150px; height: 1.5px; background: var(--ink); opacity: .5; }
+  .flourish .star { color: var(--gold); font-size: 30px; }
+  .cap p { font-size: 44px; line-height: 1.45; font-weight: 500; color: #4c5878; max-width: 1060px; margin: 0 auto; }
+
+  .stage { position: relative; z-index: 3; margin-top: 60px; }
+  .arc { /* engraved orbit arcs behind the device */
+    position: absolute; left: 50%; top: 240px; transform: translateX(-50%);
+    width: 1560px; height: 1560px; border-radius: 50%;
+    border: 1.5px solid rgba(29, 42, 77, .35);
+  }
+  .arc.a2 { width: 1720px; height: 1720px; top: 200px; border-color: rgba(185, 138, 46, .5); border-style: dashed; }
+  .phone {
+    position: relative; width: 990px; margin: 0 auto;
+    border-radius: 148px; padding: 20px;
+    background: var(--ink);
+    box-shadow: 0 50px 110px rgba(29, 42, 77, .38), 0 0 0 3px var(--gold), 0 0 0 10px rgba(185, 138, 46, .25);
+  }
+  .screen { border-radius: 128px; overflow: hidden; position: relative; background: #000; padding-top: 116px; }
+  .screen img { width: 100%; display: block; }
+  .island { position: absolute; top: 33px; left: 50%; transform: translateX(-50%);
+    width: 274px; height: 75px; border-radius: 38px; background: #0c1120; z-index: 3; }
+  body.fit .phone { width: 876px; }
+
+  body.ipad .cap { padding-top: 116px; }
+  body.ipad .cap h1 { font-size: 110px; }
+  body.ipad .cap p { font-size: 40px; }
+  body.ipad .phone { width: 850px; }
+</style>
+</head>
+<body>
+<svg id="grain" xmlns="http://www.w3.org/2000/svg">
+  <filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.05"/></feComponentTransfer>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#n)"/>
+</svg>
+<svg id="engrave"></svg>
+<div class="border-frame"></div>
+
+<div class="cap">
+  <div class="eyebrow">✶ Night Sky Guide ✶</div>
+  <h1 id="h1"></h1>
+  <div class="flourish"><div class="line"></div><div class="star">✦</div><div class="line"></div></div>
+  <p id="p"></p>
+</div>
+
+<div class="stage">
+  <div class="arc"></div>
+  <div class="arc a2"></div>
+  <div class="phone">
+    <div class="screen"><img id="shot" src=""><div class="island"></div></div>
+  </div>
+</div>
+
+<script src="captions.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const shot = q.get('shot') || 'hero';
+const lang = q.get('lang') || 'en';
+const fmt = q.get('fmt') || 'phone';
+const dims = fmt === 'ipad' ? [2048, 2732] : [1290, 2796];
+document.body.style.setProperty('--W', dims[0] + 'px');
+document.body.style.setProperty('--H', dims[1] + 'px');
+if (fmt === 'ipad') document.body.classList.add('ipad');
+if (shot === 'search' || shot === 'found') document.body.classList.add('fit');
+
+const cap = (CAPTIONS[lang] || CAPTIONS.en)[shot];
+// italic-gold accent on the second line
+document.getElementById('h1').innerHTML = cap[0].replace(/<br>(.*)$/, '<br><em>$1</em>');
+document.getElementById('p').innerHTML = cap[1];
+document.getElementById('shot').src = 'captures/scene-' + shot + '.png';
+
+let seed = 1846 + shot.length * 733;
+const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+
+// engraved sky: constellation web + zodiac tick ring segment at top
+const eng = document.getElementById('engrave');
+eng.setAttribute('viewBox', `0 0 ${dims[0]} ${dims[1]}`);
+let s = '';
+const cx = dims[0] / 2;
+s += `<circle class="bold" cx="${cx}" cy="${-dims[0] * 0.62}" r="${dims[0] * 0.78}"/>`;
+s += `<circle cx="${cx}" cy="${-dims[0] * 0.62}" r="${dims[0] * 0.72}"/>`;
+for (let i = 0; i < 36; i++) { // tick ring
+  const a = Math.PI * (0.25 + 0.5 * i / 35);
+  const r1 = dims[0] * 0.72, r2 = dims[0] * (i % 3 === 0 ? 0.755 : 0.735);
+  const cy = -dims[0] * 0.62;
+  s += `<line x1="${cx + r1 * Math.cos(a)}" y1="${cy + r1 * Math.sin(a)}" x2="${cx + r2 * Math.cos(a)}" y2="${cy + r2 * Math.sin(a)}"/>`;
+}
+// small constellation webs left/right
+for (const [ox, oy] of [[dims[0] * 0.08, dims[1] * 0.42], [dims[0] * 0.74, dims[1] * 0.5]]) {
+  const pts = [];
+  let px = ox, py = oy;
+  for (let i = 0; i < 5; i++) { pts.push([px, py]); px += 60 + rnd() * 120; py += rnd() * 160 - 60; }
+  for (let i = 0; i < pts.length - 1; i++)
+    s += `<line x1="${pts[i][0]}" y1="${pts[i][1]}" x2="${pts[i+1][0]}" y2="${pts[i+1][1]}"/>`;
+  for (const [x, y] of pts) s += `<circle class="goldline" cx="${x}" cy="${y}" r="7"/>`;
+}
+eng.innerHTML = s;
+
+// scattered ink stars
+for (let i = 0; i < 18; i++) {
+  const d = document.createElement('div');
+  d.className = 'ink-star';
+  d.textContent = rnd() < 0.5 ? '✦' : '✶';
+  d.style.cssText = `left:${rnd() * 92 + 3}%;top:${rnd() * 90 + 4}%;opacity:${0.25 + rnd() * 0.45};font-size:${26 + rnd() * 34}px`;
+  document.body.appendChild(d);
+}
+</script>
+</body>
+</html>

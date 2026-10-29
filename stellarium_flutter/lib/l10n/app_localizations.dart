@@ -9,6 +9,10 @@ import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
 import 'app_localizations_fr.dart';
+import 'app_localizations_it.dart';
+import 'app_localizations_pl.dart';
+import 'app_localizations_ro.dart';
+import 'app_localizations_tr.dart';
 import 'app_localizations_zh.dart';
 
 // ignore_for_file: type=lint
@@ -101,6 +105,10 @@ abstract class AppLocalizations {
     Locale('en'),
     Locale('es'),
     Locale('fr'),
+    Locale('it'),
+    Locale('pl'),
+    Locale('ro'),
+    Locale('tr'),
     Locale('zh'),
   ];
 
@@ -830,6 +838,18 @@ abstract class AppLocalizations {
   /// **'Subscribe Now'**
   String get subscriptionSubscribeButton;
 
+  /// No description provided for @gateWarningMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your free sky preview ends in {seconds}s'**
+  String gateWarningMessage(int seconds);
+
+  /// No description provided for @gateWarningCta.
+  ///
+  /// In en, this message translates to:
+  /// **'See plans'**
+  String get gateWarningCta;
+
   /// No description provided for @manageSubscription.
   ///
   /// In en, this message translates to:
@@ -1111,6 +1131,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You can change notification settings anytime in the app.'**
   String get notificationPrivacyNotice;
+
+  /// No description provided for @consentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & Data'**
+  String get consentTitle;
+
+  /// No description provided for @consentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'To improve the app and measure our advertising, we and our partners (e.g. Google) would like to collect usage data and store identifiers on your device for analytics, ad measurement, and personalized ads. You can change your choice anytime in the app settings.'**
+  String get consentMessage;
+
+  /// No description provided for @consentAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept All'**
+  String get consentAccept;
+
+  /// No description provided for @consentDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Without Accepting'**
+  String get consentDecline;
+
+  /// No description provided for @consentSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics & Personalized Ads'**
+  String get consentSettingsTitle;
+
+  /// No description provided for @consentSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow usage data collection for analytics and ad measurement'**
+  String get consentSettingsSubtitle;
 
   /// No description provided for @attTitle.
   ///
@@ -1741,6 +1797,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Continue without account'**
   String get signInSkip;
+
+  /// No description provided for @starRemovedFromRegistryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Star removed from registry'**
+  String get starRemovedFromRegistryTitle;
+
+  /// No description provided for @starRemovedFromRegistryMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" is no longer listed in the star registry, so its registered name is no longer shown in the sky.'**
+  String starRemovedFromRegistryMessage(String name);
+
+  /// No description provided for @starRemovedFromRegistryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can keep the star in My Stars or swipe it away to delete it.'**
+  String get starRemovedFromRegistryHint;
+
+  /// No description provided for @starRemovedFromRegistryBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from registry'**
+  String get starRemovedFromRegistryBadge;
+
+  /// No description provided for @starRemovalReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason: {reason}'**
+  String starRemovalReason(String reason);
 }
 
 class _AppLocalizationsDelegate
@@ -1753,8 +1839,17 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['de', 'en', 'es', 'fr', 'zh'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>[
+    'de',
+    'en',
+    'es',
+    'fr',
+    'it',
+    'pl',
+    'ro',
+    'tr',
+    'zh',
+  ].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1771,6 +1866,14 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsEs();
     case 'fr':
       return AppLocalizationsFr();
+    case 'it':
+      return AppLocalizationsIt();
+    case 'pl':
+      return AppLocalizationsPl();
+    case 'ro':
+      return AppLocalizationsRo();
+    case 'tr':
+      return AppLocalizationsTr();
     case 'zh':
       return AppLocalizationsZh();
   }

@@ -384,6 +384,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subscriptionSubscribeButton => '立即订阅';
 
   @override
+  String gateWarningMessage(int seconds) {
+    return '您的免费星空预览将在$seconds秒后结束';
+  }
+
+  @override
+  String get gateWarningCta => '查看方案';
+
+  @override
   String get manageSubscription => '管理订阅';
 
   @override
@@ -523,6 +531,25 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notificationPrivacyNotice => '您可以随时在应用中更改通知设置。';
+
+  @override
+  String get consentTitle => '隐私与数据';
+
+  @override
+  String get consentMessage =>
+      '为了改进应用并衡量广告效果，我们及合作伙伴（如 Google）希望收集使用数据并在您的设备上存储标识符，用于分析、广告衡量和个性化广告。您可以随时在应用设置中更改您的选择。';
+
+  @override
+  String get consentAccept => '全部接受';
+
+  @override
+  String get consentDecline => '不接受并继续';
+
+  @override
+  String get consentSettingsTitle => '分析与个性化广告';
+
+  @override
+  String get consentSettingsSubtitle => '允许收集使用数据用于分析和广告衡量';
 
   @override
   String get attTitle => '允许追踪？';
@@ -850,4 +877,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get signInSkip => '不登录继续';
+
+  @override
+  String get starRemovedFromRegistryTitle => '星星已从登记册中移除';
+
+  @override
+  String starRemovedFromRegistryMessage(String name) {
+    return '“$name”已不在星星登记册中，因此其登记名称不再显示在星空中。';
+  }
+
+  @override
+  String get starRemovedFromRegistryHint => '您可以将这颗星保留在“我的星星”中，或滑动将其删除。';
+
+  @override
+  String get starRemovedFromRegistryBadge => '已从登记册中移除';
+
+  @override
+  String starRemovalReason(String reason) {
+    return '原因：$reason';
+  }
 }

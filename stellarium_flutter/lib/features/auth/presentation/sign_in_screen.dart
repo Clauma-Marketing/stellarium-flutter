@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../services/analytics_service.dart';
@@ -51,12 +53,27 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
-  void _onSignInSuccess() {
-    if (_emailOptIn) {
-      final email = AuthService.instance.currentUser?.email;
-      if (email != null && email.isNotEmpty) {
-        KlaviyoService.instance.setEmail(email);
-      }
+  void _onSignInSuccess({required bool isNewUser}) {
+    final user = AuthService.instance.currentUser;
+    if (_emailOptIn && user?.email != null && user!.email!.isNotEmpty) {
+      KlaviyoService.instance.setEmail(user.email!);
+    }
+    if (user != null) {
+      unawaited(Posthog().identify(
+        userId: user.uid,
+        userProperties: {
+          if (user.email != null) 'email': user.email!,
+          if (user.displayName != null) 'name': user.displayName!,
+        },
+      ));
+      unawaited(Posthog().capture(
+        eventName: isNewUser ? 'user_signed_up' : 'user_signed_in',
+        properties: {
+          'provider': user.providerData.isNotEmpty
+              ? user.providerData.first.providerId
+              : 'unknown',
+        },
+      ));
     }
     widget.onSignedIn();
   }
@@ -67,8 +84,8 @@ class _SignInScreenState extends State<SignInScreen> {
       _error = null;
     });
     try {
-      await AuthService.instance.signInWithGoogle();
-      if (mounted) _onSignInSuccess();
+      final cred = await AuthService.instance.signInWithGoogle();
+      if (mounted) _onSignInSuccess(isNewUser: cred.additionalUserInfo?.isNewUser ?? false);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'sign-in-cancelled') return;
       _setError(_friendlyError(e));
@@ -87,8 +104,8 @@ class _SignInScreenState extends State<SignInScreen> {
       _error = null;
     });
     try {
-      await AuthService.instance.signInWithApple();
-      if (mounted) _onSignInSuccess();
+      final cred = await AuthService.instance.signInWithApple();
+      if (mounted) _onSignInSuccess(isNewUser: cred.additionalUserInfo?.isNewUser ?? false);
     } on FirebaseException catch (e) {
       _setError(_friendlyError(e));
     } catch (e) {
@@ -111,13 +128,14 @@ class _SignInScreenState extends State<SignInScreen> {
           _emailController.text,
           _passwordController.text,
         );
+        if (mounted) _onSignInSuccess(isNewUser: true);
       } else {
         await AuthService.instance.signInWithEmail(
           _emailController.text,
           _passwordController.text,
         );
+        if (mounted) _onSignInSuccess(isNewUser: false);
       }
-      if (mounted) _onSignInSuccess();
     } on FirebaseAuthException catch (e) {
       _setError(_friendlyError(e));
     } catch (e) {
@@ -146,6 +164,11 @@ class _SignInScreenState extends State<SignInScreen> {
     } on FirebaseAuthException catch (e) {
       _setError(_friendlyError(e));
     }
+  }
+
+  void _handleSkip() {
+    unawaited(Posthog().capture(eventName: 'sign_in_skipped'));
+    widget.onSkip!();
   }
 
   void _setError(String message) {
@@ -186,7 +209,7 @@ class _SignInScreenState extends State<SignInScreen> {
       subtitle: l10n.signInSubtitle,
       features: const [],
       secondaryButtonText: widget.onSkip != null ? l10n.signInSkip : null,
-      onSecondaryPressed: widget.onSkip,
+      onSecondaryPressed: widget.onSkip != null ? _handleSkip : null,
       customContent: _buildSignInContent(l10n, showApple),
     );
   }

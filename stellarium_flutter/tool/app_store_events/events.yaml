@@ -1,0 +1,251 @@
+# Astronomical in-app events for the App Store product page.
+#
+# Each entry becomes one App Store Connect in-app event. Dates are ISO 8601
+# with timezone. Apple limits: max ~10 approved events, 5 published at once -
+# the sync script only processes events whose publishStart is within
+# --window-days (default 60) and warns if the approved-event budget is tight.
+#
+# badge: one of LIVE_EVENT | SPECIAL_EVENT | CHALLENGE | NEW_SEASON | PREMIERE | MAJOR_UPDATE
+# purpose: one of ATTRACT_NEW_USERS | KEEP_ACTIVE_USERS | BRING_BACK_LAPSED_USERS | NOTIFY_IMPORTANT_UPDATE
+#
+# VERIFY the astronomy dates before submitting - these are examples.
+
+defaults:
+  badge: LIVE_EVENT
+  # Broadest audience - shown to existing users on the product page too.
+  # ATTRACT_NEW_USERS restricts the card to non-users (search/browse only).
+  purpose: APPROPRIATE_FOR_ALL_USERS
+  priority: HIGH
+  deepLink: "starguide://screen/sky"
+  # Style prompt appended to every image prompt for a consistent look
+  imageStyle: >-
+    photorealistic wide-angle night sky photography, deep blues and blacks,
+    no text, no logos, no people in the foreground, cinematic, awe-inspiring
+
+events:
+  - id: perseids-2026
+    name:
+      en: "Perseid Meteor Shower"
+      de: "Perseiden-Sternschnuppen"
+      es: "Lluvia de Perseidas"
+      fr: "Pluie des Perséides"
+      zh: "英仙座流星雨"
+    shortDescription:
+      en: "Up to 100 shooting stars per hour - find the best viewing time for your location."
+      de: "Bis zu 100 Sternschnuppen pro Stunde - finde die beste Zeit für deinen Standort."
+      es: "Hasta 100 estrellas fugaces por hora: encuentra la mejor hora para tu ubicación."
+      fr: "Jusqu'à 100 étoiles filantes par heure - trouvez le meilleur moment pour votre position."
+      zh: "每小时多达100颗流星——查找您所在位置的最佳观测时间。"
+    longDescription:
+      en: "The Perseids peak on the night of August 12-13. Open the live sky view to see where the radiant rises above your horizon and get the best viewing window for your exact location."
+      de: "Die Perseiden erreichen ihren Höhepunkt in der Nacht vom 12. auf den 13. August. Öffne die Live-Himmelsansicht, um zu sehen, wo der Radiant über deinem Horizont aufgeht."
+      es: "Las Perseidas alcanzan su máximo la noche del 12 al 13 de agosto. Abre la vista del cielo en vivo para ver dónde sale el radiante sobre tu horizonte."
+      fr: "Les Perséides culminent dans la nuit du 12 au 13 août. Ouvrez la vue du ciel en direct pour voir où le radiant se lève au-dessus de votre horizon."
+      zh: "英仙座流星雨将于8月12日至13日夜间达到峰值。打开实时星空视图，查看辐射点在您地平线上升起的位置。"
+    publishStart: "2026-07-29T00:00:00Z"
+    eventStart: "2026-08-11T20:00:00Z"
+    eventEnd: "2026-08-14T06:00:00Z"
+    imagePrompt: >-
+      A meteor shower over a mountain lake at night, several bright meteor
+      streaks radiating from one point in a star-filled sky, Milky Way visible
+
+  - id: solar-eclipse-2026
+    name:
+      en: "Total Solar Eclipse"
+      de: "Totale Sonnenfinsternis"
+      es: "Eclipse Solar Total"
+      fr: "Éclipse Solaire Totale"
+      zh: "日全食"
+    shortDescription:
+      en: "A total solar eclipse crosses Europe on August 12 - track it live in the app."
+      de: "Am 12. August zieht eine totale Sonnenfinsternis über Europa - verfolge sie live."
+      es: "Un eclipse solar total cruza Europa el 12 de agosto: síguelo en directo."
+      fr: "Une éclipse solaire totale traverse l'Europe le 12 août - suivez-la en direct."
+      zh: "8月12日日全食横跨欧洲——在应用中实时追踪。"
+    longDescription:
+      en: "On August 12, 2026 a total solar eclipse is visible from Iceland and Spain, with a deep partial eclipse across Europe. See exactly how much of the sun is covered from your location and when."
+      de: "Am 12. August 2026 ist eine totale Sonnenfinsternis von Island und Spanien aus sichtbar, mit einer starken partiellen Finsternis in ganz Europa. Sieh genau, wie viel der Sonne an deinem Standort bedeckt wird."
+      es: "El 12 de agosto de 2026 un eclipse solar total será visible desde Islandia y España, con un eclipse parcial profundo en toda Europa. Mira exactamente cuánto sol se cubre desde tu ubicación."
+      fr: "Le 12 août 2026, une éclipse solaire totale sera visible depuis l'Islande et l'Espagne, avec une éclipse partielle profonde dans toute l'Europe. Voyez exactement quelle part du soleil est couverte depuis votre position."
+      zh: "2026年8月12日，冰岛和西班牙可见日全食，欧洲大部分地区可见深度日偏食。查看您所在位置的日食覆盖程度和时间。"
+    publishStart: "2026-07-22T00:00:00Z"
+    eventStart: "2026-08-12T15:00:00Z"
+    eventEnd: "2026-08-12T21:00:00Z"
+    imagePrompt: >-
+      A total solar eclipse at the moment of totality, black moon disk with a
+      glowing white corona, dark blue twilight sky, silhouetted landscape below
+
+  - id: geminids-2026
+    name:
+      en: "Geminid Meteor Shower"
+      de: "Geminiden-Sternschnuppen"
+      es: "Lluvia de Gemínidas"
+      fr: "Pluie des Géminides"
+      zh: "双子座流星雨"
+    shortDescription:
+      en: "The year's strongest meteor shower peaks December 13-14."
+      de: "Der stärkste Meteorstrom des Jahres - Höhepunkt am 13./14. Dezember."
+      es: "La lluvia de meteoros más intensa del año alcanza su máximo el 13-14 de diciembre."
+      fr: "La plus forte pluie de météores de l'année culmine les 13-14 décembre."
+      zh: "年度最强流星雨将于12月13日至14日达到峰值。"
+    longDescription:
+      en: "The Geminids deliver up to 150 meteors per hour under dark skies. Open the app to find the radiant in Gemini and check the best viewing hours for your location."
+      de: "Die Geminiden liefern unter dunklem Himmel bis zu 150 Meteore pro Stunde. Öffne die App, um den Radianten in den Zwillingen zu finden und die besten Beobachtungszeiten zu sehen."
+      es: "Las Gemínidas ofrecen hasta 150 meteoros por hora bajo cielos oscuros. Abre la app para encontrar el radiante en Géminis y consultar las mejores horas."
+      fr: "Les Géminides offrent jusqu'à 150 météores par heure sous un ciel sombre. Ouvrez l'app pour trouver le radiant dans les Gémeaux et les meilleures heures d'observation."
+      zh: "在黑暗的天空下，双子座流星雨每小时可产生多达150颗流星。打开应用，在双子座中找到辐射点。"
+    publishStart: "2026-11-30T00:00:00Z"
+    eventStart: "2026-12-13T18:00:00Z"
+    eventEnd: "2026-12-15T06:00:00Z"
+    imagePrompt: >-
+      A winter meteor shower over a snowy pine forest at night, bright meteor
+      streaks in a crisp star-filled sky, Orion constellation visible
+
+  - id: comet-tempel-2026
+    name:
+      en: "Comet Tempel Passes By!"
+      de: "Komet Tempel zieht vorbei!"
+      es: "¡El cometa Tempel pasa cerca!"
+      fr: "La comète Tempel passe près de nous !"
+      zh: "坦普尔彗星飞掠而过！"
+    shortDescription:
+      en: "Comet 10P/Tempel 2 makes its closest pass on August 3 - find it in your sky."
+      de: "Komet 10P/Tempel 2 ist am 3. August der Erde am nächsten - finde ihn am Himmel."
+      es: "El cometa 10P/Tempel 2 hace su máximo acercamiento el 3 de agosto: encuéntralo."
+      fr: "La comète 10P/Tempel 2 est au plus près de la Terre le 3 août - trouvez-la."
+      zh: "坦普尔2号彗星将于8月3日最接近地球——在星空中找到它。"
+    longDescription:
+      en: "Comet 10P/Tempel 2 reaches perihelion on August 2 and passes closest to Earth a day later. At magnitude 8-10 it's a great binocular target - open the live sky view to see exactly where to look from your location."
+      de: "Komet 10P/Tempel 2 erreicht am 2. August sein Perihel und passiert einen Tag später die Erde. Mit Magnitude 8-10 ist er ein tolles Fernglas-Ziel - öffne die Live-Himmelsansicht, um zu sehen, wo du suchen musst."
+      es: "El cometa 10P/Tempel 2 alcanza el perihelio el 2 de agosto y pasa más cerca de la Tierra un día después. Con magnitud 8-10 es un gran objetivo para binoculares: abre la vista del cielo en vivo para saber dónde mirar."
+      fr: "La comète 10P/Tempel 2 atteint son périhélie le 2 août et passe au plus près de la Terre un jour plus tard. De magnitude 8-10, c'est une belle cible aux jumelles - ouvrez la vue du ciel en direct pour savoir où regarder."
+      zh: "坦普尔2号彗星将于8月2日到达近日点，一天后最接近地球。亮度8-10等，是双筒望远镜的绝佳目标——打开实时星空视图，查看您所在位置的观测方向。"
+    publishStart: "2026-07-20T00:00:00Z"
+    eventStart: "2026-07-20T00:00:00Z"
+    eventEnd: "2026-08-03T23:59:00Z"
+    imagePrompt: >-
+      A comet with a glowing greenish coma and long dust tail crossing a
+      star-filled night sky above a silhouetted mountain ridge, Milky Way
+      faintly visible
+
+  - id: orionids-2026
+    name:
+      en: Orionid Meteor Shower
+      de: Orioniden-Meteorschauer
+      es: Lluvia de meteoros Oriónidas
+      fr: Pluie de météores Orionides
+      zh: 猎户座流星雨
+    shortDescription:
+      en: Up to 20 meteors/hour — find best local time.
+      de: Bis zu 20 Meteore/Stunde – beste Zeit für dich.
+      es: Hasta 20 meteoros/hora — mejor hora local.
+      fr: Jusqu'à 20 météores/heure — meilleure heure locale.
+      zh: 每小时多达20颗流星，查看本地最佳观测时间。
+    longDescription:
+      en: >-
+        Orionids peak around 2026-10-21. Open live sky view to locate the radiant above your
+        horizon and the best viewing window for your exact location.
+      de: >-
+        Orioniden: Maximum um 21.10.2026. Öffne die Live‑Ansicht, um Radiant und beste
+        Sichtzeit für deinen Standort zu ermitteln.
+      es: >-
+        Las Oriónidas alcanzan su máximo el 21.10.2026. Abre la vista del cielo en directo
+        para ver el radiante sobre tu horizonte y la mejor hora de observación.
+      fr: >-
+        Les Orionides culminent vers le 21/10/2026. Ouvre la vue du ciel en direct pour
+        localiser le radiant au‑dessus de ton horizon et la meilleure période d'observation.
+      zh: 猎户座流星雨于2026-10-21前后达到极大。打开实时星空视图，查找位于地平线上方的辐射点及你所在位置的最佳观测时段。
+    publishStart: '2026-10-06T00:00:00Z'
+    eventStart: '2026-10-20T18:00:00Z'
+    eventEnd: '2026-10-22T06:00:00Z'
+    imagePrompt: >-
+      A meteor shower over a dramatic dark landscape at night, several bright meteor streaks
+      radiating from one point in a star-filled sky, Milky Way visible
+
+  - id: ursids-2026
+    name:
+      en: "Ursid Meteor Shower"
+      de: "Ursiden-Sternschnuppen"
+      es: "Lluvia de Úrsidas"
+      fr: "Pluie des Ursides"
+      zh: "小熊座流星雨"
+    shortDescription:
+      en: "The year's last meteor shower peaks December 22 - catch it near the Little Dipper."
+      de: "Der letzte Meteorstrom des Jahres - Höhepunkt am 22. Dezember beim Kleinen Wagen."
+      es: "La última lluvia de meteoros del año alcanza su máximo el 22 de diciembre."
+      fr: "La dernière pluie de météores de l'année culmine le 22 décembre."
+      zh: "年度最后一场流星雨将于12月22日达到峰值——在小北斗附近观测。"
+    longDescription:
+      en: "The Ursids peak on the night of December 22-23, radiating from the Little Dipper near Polaris. Around 10 meteors per hour under dark skies - open the live sky view to find the radiant and the best viewing window for your location."
+      de: "Die Ursiden erreichen ihren Höhepunkt in der Nacht vom 22. auf den 23. Dezember, mit Radiant im Kleinen Wagen nahe dem Polarstern. Rund 10 Meteore pro Stunde unter dunklem Himmel - öffne die Live-Himmelsansicht für die beste Beobachtungszeit."
+      es: "Las Úrsidas alcanzan su máximo la noche del 22 al 23 de diciembre, con el radiante en la Osa Menor cerca de la Polar. Unos 10 meteoros por hora bajo cielos oscuros: abre la vista del cielo en vivo para encontrar el mejor momento."
+      fr: "Les Ursides culminent dans la nuit du 22 au 23 décembre, avec un radiant dans la Petite Ourse près de l'étoile Polaire. Environ 10 météores par heure sous un ciel sombre - ouvrez la vue du ciel en direct pour trouver le meilleur créneau."
+      zh: "小熊座流星雨将于12月22日至23日夜间达到峰值，辐射点位于北极星附近的小熊座。黑暗天空下每小时约10颗流星——打开实时星空视图，查找最佳观测时间。"
+    publishStart: "2026-12-08T00:00:00Z"
+    eventStart: "2026-12-21T18:00:00Z"
+    eventEnd: "2026-12-23T06:00:00Z"
+    imagePrompt: >-
+      A quiet winter meteor shower above a snow-covered valley at night, a few
+      bright meteor streaks near the Little Dipper and Polaris in a crisp
+      star-filled sky
+
+  - id: quadrantids-2027
+    name:
+      en: "Quadrantid Meteor Shower"
+      de: "Quadrantiden-Sternschnuppen"
+      es: "Lluvia de Cuadrántidas"
+      fr: "Pluie des Quadrantides"
+      zh: "象限仪座流星雨"
+    shortDescription:
+      en: "Start the year with up to 110 meteors per hour - peak night January 3-4."
+      de: "Starte das Jahr mit bis zu 110 Meteoren pro Stunde - Höhepunkt am 3./4. Januar."
+      es: "Empieza el año con hasta 110 meteoros por hora: máximo la noche del 3 al 4 de enero."
+      fr: "Commencez l'année avec jusqu'à 110 météores par heure - pic les 3-4 janvier."
+      zh: "以每小时多达110颗流星开启新年——1月3日至4日夜间达到峰值。"
+    longDescription:
+      en: "The Quadrantids are one of the year's strongest meteor showers, but the peak lasts only a few hours on the night of January 3-4. Open the live sky view to find the radiant near the Big Dipper and the exact best viewing window for your location."
+      de: "Die Quadrantiden gehören zu den stärksten Meteorströmen des Jahres, doch der Höhepunkt dauert nur wenige Stunden in der Nacht vom 3. auf den 4. Januar. Öffne die Live-Himmelsansicht, um den Radianten nahe dem Großen Wagen und die beste Beobachtungszeit für deinen Standort zu finden."
+      es: "Las Cuadrántidas son una de las lluvias de meteoros más intensas del año, pero su máximo dura solo unas horas la noche del 3 al 4 de enero. Abre la vista del cielo en vivo para encontrar el radiante cerca de la Osa Mayor y tu mejor ventana de observación."
+      fr: "Les Quadrantides comptent parmi les plus fortes pluies de météores de l'année, mais le pic ne dure que quelques heures dans la nuit du 3 au 4 janvier. Ouvrez la vue du ciel en direct pour trouver le radiant près de la Grande Ourse et votre meilleur créneau d'observation."
+      zh: "象限仪座流星雨是年度最强的流星雨之一，但峰值仅持续数小时，出现在1月3日至4日夜间。打开实时星空视图，在北斗七星附近找到辐射点，查看您所在位置的最佳观测时间。"
+    publishStart: "2026-12-21T00:00:00Z"
+    eventStart: "2027-01-03T18:00:00Z"
+    eventEnd: "2027-01-04T12:00:00Z"
+    imagePrompt: >-
+      An intense winter meteor shower over a frozen mountain landscape at night,
+      many bright meteor streaks radiating from one point near the Big Dipper,
+      brilliant star-filled sky
+
+  - id: leonids-2026
+    name:
+      en: Leonid Meteor Shower
+      de: Leoniden-Meteorschauer
+      es: Lluvia de meteoros Leónidas
+      fr: Pluie de météores des Léonides
+      zh: 狮子座流星雨
+    shortDescription:
+      en: Up to 15 meteors/hr — best time for your location
+      de: Bis zu 15 Meteore/h — beste Zeit für deinen Ort
+      es: Hasta 15 meteoros/h — mejor hora para tu ubicación
+      fr: Jusqu'à 15 météores/h — meilleur horaire local
+      zh: 每小时最多15颗流星 — 查找适合你位置的最佳观测时间
+    longDescription:
+      en: >-
+        Leonids peak around 2026-11-17. Use live sky view to locate the radiant and the best
+        viewing window for your location.
+      de: >-
+        Leoniden max. 2026-11-17. Öffne Live‑Himmel, zeige Radiant über deinem Horizont &
+        bestes Zeitfenster für deinen Ort.
+      es: >-
+        Leónidas: pico ~2026-11-17. Abre la vista en vivo para localizar el radiante y el
+        mejor momento según tu ubicación.
+      fr: >-
+        Léonides pic ~2026-11-17. Ouvrez la vue live pour localiser le radiant et la
+        meilleure fenêtre d'observation selon votre position.
+      zh: 狮子座流星雨在2026-11-17前后达到峰值。打开实时天空视图，查找位于你地平线上方的放射点及适合你确切位置的最佳观测时间窗口。
+    publishStart: '2026-11-02T00:00:00Z'
+    eventStart: '2026-11-16T18:00:00Z'
+    eventEnd: '2026-11-18T06:00:00Z'
+    imagePrompt: >-
+      A meteor shower over a dramatic dark landscape at night, several bright meteor streaks
+      radiating from one point in a star-filled sky, Milky Way visible

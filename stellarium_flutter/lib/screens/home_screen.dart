@@ -8,11 +8,13 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../features/onboarding/onboarding_service.dart';
 import '../features/subscription/presentation/subscription_required_screen.dart';
+import '../features/subscription/presentation/subscription_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../services/analytics_service.dart';
 import '../services/app_review_service.dart';
 import '../services/engagement_tracking_service.dart';
 import '../services/locale_service.dart';
+import '../services/registry_sync_service.dart';
 import '../services/reverse_geocoding.dart';
 import '../services/subscription_availability_service.dart';
 import '../services/saved_stars_service.dart';
@@ -76,6 +78,8 @@ class _HomeScreenState extends State<HomeScreen>
     await EngagementTrackingService.instance.load();
     // Set up paywall callback
     EngagementTrackingService.instance.onPaywallTrigger = _showEngagementPaywall;
+    // Warn shortly before the free-time gate so the paywall isn't a surprise
+    EngagementTrackingService.instance.onPaywallWarning = _showEngagementWarning;
     // Tracking starts when engine is ready (in _onEngineReady)
 
     // If paywall was previously triggered, check if user still needs to see it
@@ -146,6 +150,63 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// Show a warning banner shortly before the free-time paywall triggers
+  Future<void> _showEngagementWarning() async {
+    if (kIsWeb) return;
+    if (!mounted) return;
+
+    // Same bypass checks as the paywall itself, but without marking the
+    // trigger as handled - that stays owned by _showEngagementPaywall.
+    if (SavedStarsService.instance.hasValidRegistration()) return;
+    final isSubscribed = await _isUserSubscribed();
+    if (isSubscribed) return;
+    if (!mounted) return;
+
+    AnalyticsService.instance.logEngagementGateWarningShown();
+
+    setState(() {
+      _showGateWarning = true;
+      _gateWarningSecondsLeft = EngagementTrackingService.instance.secondsUntilPaywall;
+    });
+
+    // Tick the countdown every second; the service is the source of truth so
+    // the display stays correct across pause/resume. The banner stays until
+    // dismissed or the paywall takes over.
+    _gateWarningTimer?.cancel();
+    _gateWarningTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final secondsLeft = EngagementTrackingService.instance.secondsUntilPaywall;
+      setState(() {
+        _gateWarningSecondsLeft = secondsLeft;
+      });
+      if (secondsLeft <= 0) timer.cancel();
+    });
+  }
+
+  void _dismissGateWarning() {
+    _gateWarningTimer?.cancel();
+    setState(() {
+      _showGateWarning = false;
+    });
+  }
+
+  void _onGateWarningCtaTap() {
+    AnalyticsService.instance.logEngagementGateWarningCta();
+    _dismissGateWarning();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SubscriptionScreen(
+          onComplete: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
+  }
+
   /// Show engagement paywall after 2 minutes of cumulative sky viewing
   Future<void> _showEngagementPaywall() async {
     if (kIsWeb) return;
@@ -172,6 +233,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Navigate to SubscriptionRequiredScreen
     if (!mounted) return;
+    if (_showGateWarning) _dismissGateWarning();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => SubscriptionRequiredScreen(
@@ -257,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen>
     AppReviewService.instance.stopTracking();
     EngagementTrackingService.instance.stopTracking();
     _timeUpdateTimer?.cancel();
+    _gateWarningTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -327,6 +390,9 @@ class _HomeScreenState extends State<HomeScreen>
   String _lastDisplayedTime = ''; // Track last displayed time to avoid unnecessary rebuilds
   bool _starTrackEnabled = false; // Track if star 24h path is visible
   bool _isEngineReady = false; // Track if Stellarium engine has loaded
+  bool _showGateWarning = false; // Free-preview-ending warning banner visibility
+  int _gateWarningSecondsLeft = 0; // Countdown shown in the gate warning banner
+  Timer? _gateWarningTimer; // 1s ticker updating the banner countdown
 
 
   /// Get current time from engine, falling back to observer or system time
@@ -419,6 +485,15 @@ class _HomeScreenState extends State<HomeScreen>
               child: _buildTopBar(context),
             ),
 
+          // Free-preview-ending warning banner (below top bar)
+          if (_isEngineReady && _showGateWarning)
+            Positioned(
+              left: 16,
+              right: 16,
+              top: MediaQuery.of(context).padding.top + 60,
+              child: _buildGateWarningBanner(context),
+            ),
+
           // Time slider (appears below top bar when time is tapped)
           if (_isEngineReady && _showTimeSlider)
             Positioned(
@@ -483,6 +558,88 @@ class _HomeScreenState extends State<HomeScreen>
               child: _buildStarInfoPanelWithToggles(),
             ),
         ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGateWarningBanner(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, -12 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF33B4E8).withValues(alpha: 0.5),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.hourglass_bottom,
+              color: Color(0xFF33B4E8),
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                l10n?.gateWarningMessage(_gateWarningSecondsLeft) ??
+                    'Your free sky preview ends in ${_gateWarningSecondsLeft}s',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  fontFeatures: [ui.FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: _onGateWarningCtaTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF33B4E8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  l10n?.gateWarningCta ?? 'See plans',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: _dismissGateWarning,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.close,
+                  color: Colors.white.withValues(alpha: 0.6),
+                  size: 18,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1093,6 +1250,19 @@ class _HomeScreenState extends State<HomeScreen>
   void _onEngineReady(bool ready) {
     if (!ready) return;
 
+    // Partner embeds deep-link a star with /?rn=<registration number>. Route it
+    // through the same path as the search box instead of pointing the engine
+    // from JS, so the star is genuinely selected — registry lookup, selection
+    // marker, custom label and the star info panel all follow from here.
+    if (kIsWeb) {
+      final rn = Uri.base.queryParameters['rn']?.trim();
+      if (rn != null && rn.isNotEmpty) {
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (mounted) _searchRegistrationNumber(rn);
+        });
+      }
+    }
+
     // Update engine ready state
     setState(() {
       _isEngineReady = true;
@@ -1125,6 +1295,120 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Check if there's a star found during onboarding to show
     _checkOnboardingFoundStar();
+
+    // Pick up registry renames/removals made since the stars were saved
+    unawaited(_refreshRegisteredStars());
+  }
+
+  /// Re-check saved registered stars against the registry, update their sky
+  /// labels and warn about stars that were removed from the registry.
+  Future<void> _refreshRegisteredStars() async {
+    final result = await RegistrySyncService.instance.refreshSavedStars();
+    if (!mounted || !result.hasChanges) return;
+
+    for (final star in [...result.renamed, ...result.reinstated]) {
+      _setPersistentLabel(star);
+    }
+    for (final star in result.newlyRemoved) {
+      _removePersistentLabel(star);
+    }
+    if (result.newlyRemoved.isNotEmpty) {
+      _showRemovedFromRegistryWarning(result.newlyRemoved);
+    }
+  }
+
+  /// Engine label key for a saved star - HIP when available (engine looks up by HIP)
+  String? _persistentLabelIdFor(SavedStar star) {
+    final hipRe = RegExp(r'^HIP\s*(\d+)', caseSensitive: false);
+    final hipMatch = hipRe.firstMatch(star.id) ??
+        (star.scientificName != null
+            ? hipRe.firstMatch(star.scientificName!)
+            : null);
+    if (hipMatch != null) return 'HIP ${hipMatch.group(1)}';
+    return star.scientificName;
+  }
+
+  void _setPersistentLabel(SavedStar star) {
+    final labelId = _persistentLabelIdFor(star);
+    if (labelId == null || star.displayName == star.scientificName) return;
+    _skyViewKey.currentState?.webView?.addPersistentLabel(labelId, star.displayName);
+    if (kIsWeb) {
+      final engine = _skyViewKey.currentState?.engine;
+      if (engine != null) {
+        (engine as dynamic).addPersistentLabel(labelId, star.displayName);
+      }
+    }
+  }
+
+  void _removePersistentLabel(SavedStar star) {
+    final labelId = _persistentLabelIdFor(star);
+    if (labelId == null) return;
+    _skyViewKey.currentState?.webView?.removePersistentLabel(labelId);
+    if (kIsWeb) {
+      final engine = _skyViewKey.currentState?.engine;
+      if (engine != null) {
+        (engine as dynamic).removePersistentLabel(labelId);
+      }
+    }
+  }
+
+  /// Warn that saved stars are no longer in the registry
+  void _showRemovedFromRegistryWarning(List<SavedStar> stars) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1a2e),
+        icon: const Icon(Icons.report_problem_outlined,
+            color: Colors.orangeAccent, size: 36),
+        title: Text(
+          l10n.starRemovedFromRegistryTitle,
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final star in stars) ...[
+              Text(
+                l10n.starRemovedFromRegistryMessage(star.displayName),
+                style: const TextStyle(color: Colors.white70, fontSize: 15),
+              ),
+              if (star.removalReason != null && star.removalReason!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    l10n.starRemovalReason(star.removalReason!),
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                ),
+              const SizedBox(height: 12),
+            ],
+            Text(
+              l10n.starRemovedFromRegistryHint,
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.ok, style: const TextStyle(color: Colors.amber)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Flag a saved star as removed after a lookup by its registration number
+  /// came back empty, and warn the first time it happens.
+  Future<void> _handleSavedStarRemoved(SavedStar saved, StarInfo result) async {
+    final flagged = await SavedStarsService.instance
+        .markRemovedFromRegistry(saved.id, reason: result.removalReason);
+    if (!flagged || !mounted) return;
+    _removePersistentLabel(saved);
+    final updated = SavedStarsService.instance.findById(saved.id) ?? saved;
+    _showRemovedFromRegistryWarning([updated]);
   }
 
   /// Set the correct current time to the engine
@@ -1178,39 +1462,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Load all saved stars with custom names as persistent labels
   void _loadPersistentLabels() {
-    final savedStars = SavedStarsService.instance.savedStars;
-    for (final star in savedStars) {
-      // Only add persistent label if displayName is different from scientificName
-      if (star.displayName != star.scientificName && star.scientificName != null) {
-        // Try to use HIP identifier if available (engine looks up by HIP)
-        String labelId = star.scientificName!;
-        final hipMatch = RegExp(r'^HIP\s*(\d+)', caseSensitive: false).firstMatch(star.id);
-        if (hipMatch != null) {
-          labelId = 'HIP ${hipMatch.group(1)}';
-        } else {
-          final hipMatch2 = RegExp(r'^HIP\s*(\d+)', caseSensitive: false).firstMatch(star.scientificName!);
-          if (hipMatch2 != null) {
-            labelId = 'HIP ${hipMatch2.group(1)}';
-          }
-        }
-        // Debug: print hex bytes of the label to verify encoding
-        final bytes = star.displayName.codeUnits;
-        debugPrint('_loadPersistentLabels: Adding label with ID: $labelId');
-        debugPrint('  displayName: "${star.displayName}"');
-        debugPrint('  codeUnits: $bytes');
-        debugPrint('  hex: ${bytes.map((b) => '0x${b.toRadixString(16)}').join(' ')}');
-        _skyViewKey.currentState?.webView?.addPersistentLabel(
-          labelId,
-          star.displayName,
-        );
-        // Web support
-        if (kIsWeb) {
-          final engine = _skyViewKey.currentState?.engine;
-          if (engine != null) {
-            (engine as dynamic).addPersistentLabel(labelId, star.displayName);
-          }
-        }
-      }
+    for (final star in SavedStarsService.instance.savedStars) {
+      // Removed stars no longer carry their registered name in the sky
+      if (star.removedFromRegistry) continue;
+      _setPersistentLabel(star);
     }
   }
 
@@ -1571,6 +1826,14 @@ class _HomeScreenState extends State<HomeScreen>
         // Show star info panel
         _showStarInfo(starInfo);
       } else if (mounted) {
+        final saved = starInfo != null
+            ? SavedStarsService.instance.findByRegistrationNumber(registrationNumber)
+            : null;
+        if (saved != null) {
+          // One of the user's saved stars was removed from the registry
+          await _handleSavedStarRemoved(saved, starInfo!);
+          return;
+        }
         // Show not found message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1679,6 +1942,12 @@ class _HomeScreenState extends State<HomeScreen>
         if (result != null && result.found) {
           _handleRegisteredStar(result);
           return result;
+        }
+        if (result != null && !result.found) {
+          // Registration no longer valid - flag it, then fall through to a
+          // plain catalog lookup so the sheet still shows the star's data
+          await _handleSavedStarRemoved(saved, result);
+          break;
         }
       }
     }

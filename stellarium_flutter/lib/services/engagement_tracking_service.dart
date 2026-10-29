@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Callback type for triggering paywall
@@ -18,6 +19,9 @@ class EngagementTrackingService {
   /// Milestone at which to trigger paywall (in minutes)
   static const int paywallMinutes = 2;
 
+  /// How long before the paywall the warning callback fires (in seconds)
+  static const int warningSecondsBeforePaywall = 30;
+
   static EngagementTrackingService? _instance;
 
   Duration _accumulatedTime = Duration.zero;
@@ -26,9 +30,15 @@ class EngagementTrackingService {
   bool _isLoaded = false;
   bool _isTracking = false;
   bool _paywallTriggered = false;
+  // Not persisted: if the user is still inside the warning window on next
+  // launch, warning again is intended.
+  bool _warningFired = false;
 
   /// Callback to trigger when paywall should be shown
   PaywallCallback? onPaywallTrigger;
+
+  /// Callback to trigger shortly before the paywall milestone is reached
+  VoidCallback? onPaywallWarning;
 
   EngagementTrackingService._();
 
@@ -159,8 +169,17 @@ class EngagementTrackingService {
     }
 
     final totalMinutes = totalTime.inMinutes;
+    final totalSeconds = totalTime.inSeconds;
 
-    debugPrint('EngagementTrackingService: total time = ${totalTime.inSeconds}s (${totalMinutes}min)');
+    debugPrint('EngagementTrackingService: total time = ${totalSeconds}s (${totalMinutes}min)');
+
+    if (!_warningFired &&
+        totalSeconds >= paywallMinutes * 60 - warningSecondsBeforePaywall &&
+        totalSeconds < paywallMinutes * 60) {
+      _warningFired = true;
+      debugPrint('EngagementTrackingService: firing paywall warning');
+      onPaywallWarning?.call();
+    }
 
     if (totalMinutes >= paywallMinutes) {
       _triggerPaywall();
@@ -174,6 +193,10 @@ class EngagementTrackingService {
 
     _paywallTriggered = true;
     _cancelCheckTimer();
+    unawaited(Posthog().capture(
+      eventName: 'engagement_paywall_triggered',
+      properties: {'free_minutes': paywallMinutes},
+    ));
 
     // Persist that paywall was triggered
     final prefs = await SharedPreferences.getInstance();
@@ -213,10 +236,17 @@ class EngagementTrackingService {
   /// Check if paywall was already triggered
   bool get paywallTriggered => _paywallTriggered;
 
+  /// Seconds of free viewing time left before the paywall milestone
+  int get secondsUntilPaywall {
+    final remaining = paywallMinutes * 60 - accumulatedTime.inSeconds;
+    return remaining > 0 ? remaining : 0;
+  }
+
   /// Reset all tracking data (for testing purposes)
   Future<void> resetForTesting() async {
     _accumulatedTime = Duration.zero;
     _paywallTriggered = false;
+    _warningFired = false;
     _sessionStart = null;
     _isTracking = false;
     _cancelCheckTimer();

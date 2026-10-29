@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 
 /// Service for tracking analytics events with Firebase Analytics.
 class AnalyticsService {
@@ -53,11 +56,13 @@ class AnalyticsService {
   /// Log when user completes onboarding
   Future<void> logOnboardingComplete() async {
     await logEvent(name: 'onboarding_complete');
+    unawaited(Posthog().capture(eventName: 'onboarding_completed'));
   }
 
   /// Log when user views subscription screen
   Future<void> logSubscriptionScreenView() async {
     await logScreenView(screenName: 'subscription_screen');
+    unawaited(Posthog().capture(eventName: 'subscription_screen_viewed'));
   }
 
   /// Log when user starts a subscription
@@ -66,6 +71,26 @@ class AnalyticsService {
       name: 'subscription_start',
       parameters: productId != null ? {'product_id': productId} : null,
     );
+    unawaited(Posthog().capture(
+      eventName: 'subscription_purchased',
+      properties: productId != null ? {'product_id': productId} : null,
+    ));
+  }
+
+  /// Log when user dismisses the subscription paywall without subscribing
+  Future<void> logSubscriptionDismissed() async {
+    await logEvent(name: 'subscription_dismissed');
+    unawaited(Posthog().capture(eventName: 'subscription_dismissed'));
+  }
+
+  /// Log when the free-preview-ending warning banner is shown
+  Future<void> logEngagementGateWarningShown() async {
+    await logEvent(name: 'engagement_gate_warning_shown');
+  }
+
+  /// Log when user taps the warning banner's CTA to see plans
+  Future<void> logEngagementGateWarningCta() async {
+    await logEvent(name: 'engagement_gate_warning_cta_tapped');
   }
 
   /// Log when user searches for a star
@@ -74,6 +99,10 @@ class AnalyticsService {
       name: 'star_search',
       parameters: {'query': query},
     );
+    unawaited(Posthog().capture(
+      eventName: 'star_searched',
+      properties: {'query': query},
+    ));
   }
 
   /// Log when user selects a star
@@ -90,6 +119,10 @@ class AnalyticsService {
       name: 'star_save',
       parameters: {'star_name': starName},
     );
+    unawaited(Posthog().capture(
+      eventName: 'star_saved',
+      properties: {'star_name': starName},
+    ));
   }
 
   /// Log when user changes location
@@ -129,6 +162,13 @@ class AnalyticsService {
         if (starName != null) 'star_name': starName,
       },
     );
+    unawaited(Posthog().capture(
+      eventName: 'registration_found',
+      properties: {
+        'registration_number': registrationNumber,
+        if (starName != null) 'star_name': starName,
+      },
+    ));
   }
 
   /// Log when registration search fails
@@ -137,6 +177,10 @@ class AnalyticsService {
       name: 'registration_not_found',
       parameters: {'registration_number': registrationNumber},
     );
+    unawaited(Posthog().capture(
+      eventName: 'registration_not_found',
+      properties: {'registration_number': registrationNumber},
+    ));
   }
 
   // ==================== Certificate Scanner ====================
@@ -175,6 +219,10 @@ class AnalyticsService {
       name: 'star_point_at',
       parameters: {'star_name': starName},
     );
+    unawaited(Posthog().capture(
+      eventName: 'star_pointed_at',
+      properties: {'star_name': starName},
+    ));
   }
 
   /// Log when user views star in 3D

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>V3 — Cosmic Pop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Nunito+Sans:wght@600;800&family=Noto+Sans+SC:wght@900&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { overflow: hidden; }
+  body {
+    font-family: 'Nunito Sans', 'Noto Sans SC', sans-serif;
+    width: var(--W); height: var(--H); position: relative; overflow: hidden;
+    background:
+      radial-gradient(85% 55% at 18% 0%, var(--g1) 0%, transparent 62%),
+      radial-gradient(90% 60% at 95% 22%, var(--g2) 0%, transparent 60%),
+      linear-gradient(168deg, #131347 0%, #1b1060 42%, #0c0a2e 100%);
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  /* oversized outlined star doodles */
+  .doodle { position: absolute; opacity: .8; }
+  .doodle svg { display: block; }
+  .doodle path { fill: none; stroke: var(--pop); stroke-width: 7; stroke-linejoin: round; }
+  .doodle.fill path { fill: #ffd43b; stroke: none; }
+  .dots { position: absolute; width: 420px; height: 300px; opacity: .5;
+    background-image: radial-gradient(circle, rgba(255,255,255,.75) 5px, transparent 6px);
+    background-size: 60px 60px; }
+
+  #stars { position: absolute; inset: 0; }
+  .st { position: absolute; background: #fff; border-radius: 50%; }
+
+  .cap { text-align: center; position: relative; z-index: 4; padding: 120px 60px 0; }
+  .badge {
+    display: inline-block; font-weight: 800; font-size: 34px; letter-spacing: .14em;
+    color: #14103a; background: #ffd43b; border-radius: 999px;
+    padding: 18px 44px; margin-bottom: 46px; transform: rotate(-2deg);
+    box-shadow: 6px 8px 0 rgba(10, 8, 40, .55);
+  }
+  .cap h1 {
+    font-family: 'Anton', 'Noto Sans SC', sans-serif;
+    font-size: 152px; line-height: 1.02; font-weight: 400;
+    letter-spacing: .012em; text-transform: uppercase; color: #ffffff;
+    text-shadow: 8px 10px 0 rgba(12, 8, 48, .6);
+    margin-bottom: 38px;
+  }
+  .cap h1 .pop { color: var(--pop); }
+  .cap p { font-size: 46px; line-height: 1.4; font-weight: 600; color: #e7e3ff; max-width: 1080px; margin: 0 auto; }
+
+  .stage { position: relative; z-index: 3; margin-top: 64px; }
+  .blob { /* punchy color pool behind the phone */
+    position: absolute; left: 50%; top: 8%; transform: translateX(-50%) rotate(-6deg);
+    width: 1350px; height: 1150px; border-radius: 46% 54% 52% 48% / 55% 47% 53% 45%;
+    background: linear-gradient(150deg, var(--pop) 0%, var(--g2s) 100%);
+    opacity: .85;
+  }
+  .phone {
+    position: relative; width: 1010px; margin: 0 auto;
+    border-radius: 150px; padding: 18px;
+    background: #14103a;
+    border: 6px solid #ffffff;
+    box-shadow: 22px 26px 0 rgba(12, 8, 48, .65);
+    transform: rotate(-2deg);
+  }
+  .screen { border-radius: 128px; overflow: hidden; position: relative; background: #000; padding-top: 116px; }
+  .screen img { width: 100%; display: block; }
+  .island { position: absolute; top: 33px; left: 50%; transform: translateX(-50%);
+    width: 276px; height: 75px; border-radius: 38px; background: #0a0820; z-index: 3; }
+  body.fit .phone { width: 884px; }
+
+  body.ipad .cap { padding-top: 100px; }
+  body.ipad .cap h1 { font-size: 130px; }
+  body.ipad .cap p { font-size: 42px; }
+  body.ipad .phone { width: 860px; }
+  body.ipad .blob { width: 1200px; height: 1000px; }
+</style>
+</head>
+<body>
+<div id="stars"></div>
+
+<div class="cap">
+  <div class="badge" id="badge">★ NIGHT SKY GUIDE</div>
+  <h1 id="h1"></h1>
+  <p id="p"></p>
+</div>
+
+<div class="stage">
+  <div class="blob"></div>
+  <div class="phone">
+    <div class="screen"><img id="shot" src=""><div class="island"></div></div>
+  </div>
+</div>
+
+<script src="captions.js"></script>
+<script>
+const MOOD = {
+  hero:           { g1: 'rgba(255, 84, 160, .55)', g2: 'rgba(90, 120, 255, .5)',  pop: '#ff54a0', g2s: '#5a78ff' },
+  star:           { g1: 'rgba(255, 190, 60, .55)', g2: 'rgba(255, 100, 90, .45)', pop: '#ffd43b', g2s: '#ff645a' },
+  search:         { g1: 'rgba(70, 220, 220, .5)',  g2: 'rgba(120, 90, 255, .5)',  pop: '#46dcdc', g2s: '#785aff' },
+  found:          { g1: 'rgba(255, 190, 60, .5)',  g2: 'rgba(255, 84, 160, .45)', pop: '#ffd43b', g2s: '#ff54a0' },
+  constellations: { g1: 'rgba(90, 200, 255, .5)',  g2: 'rgba(255, 84, 160, .4)',  pop: '#5ac8ff', g2s: '#ff54a0' },
+  planet:         { g1: 'rgba(255, 150, 70, .55)', g2: 'rgba(160, 90, 255, .5)',  pop: '#ff9646', g2s: '#a05aff' },
+  dusk:           { g1: 'rgba(255, 110, 130, .55)',g2: 'rgba(120, 90, 255, .5)',  pop: '#ff6e82', g2s: '#785aff' },
+};
+
+const q = new URLSearchParams(location.search);
+const shot = q.get('shot') || 'hero';
+const lang = q.get('lang') || 'en';
+const fmt = q.get('fmt') || 'phone';
+const dims = fmt === 'ipad' ? [2048, 2732] : [1290, 2796];
+document.body.style.setProperty('--W', dims[0] + 'px');
+document.body.style.setProperty('--H', dims[1] + 'px');
+if (fmt === 'ipad') document.body.classList.add('ipad');
+if (shot === 'search' || shot === 'found') document.body.classList.add('fit');
+
+const m = MOOD[shot] || MOOD.hero;
+for (const k of ['g1', 'g2', 'pop']) document.body.style.setProperty('--' + k, m[k]);
+document.body.style.setProperty('--g2s', m.g2s);
+
+const cap = (CAPTIONS[lang] || CAPTIONS.en)[shot];
+// pop-color the second line
+document.getElementById('h1').innerHTML = cap[0].replace(/<br>(.*)$/, '<br><span class="pop">$1</span>');
+document.getElementById('p').innerHTML = cap[1];
+document.getElementById('shot').src = 'captures/scene-' + shot + '.png';
+
+let seed = 555777 + shot.length * 271;
+const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+
+const STAR = (sz, cls) => {
+  const d = document.createElement('div');
+  d.className = 'doodle' + (cls ? ' ' + cls : '');
+  d.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 100 100">` +
+    `<path d="M50 6 L61 38 L95 38 L67 58 L78 92 L50 71 L22 92 L33 58 L5 38 L39 38 Z"/></svg>`;
+  return d;
+};
+const spots = [[4, 22, 150, ''], [82, 8, 190, 'fill'], [86, 46, 120, ''], [3, 62, 130, 'fill'], [88, 78, 160, '']];
+for (const [x, y, sz, cls] of spots) {
+  const d = STAR(sz, cls);
+  d.style.cssText = `left:${x}%;top:${y}%;transform:rotate(${rnd() * 40 - 20}deg);z-index:${y > 40 ? 5 : 1}`;
+  document.body.appendChild(d);
+}
+const dots1 = document.createElement('div');
+dots1.className = 'dots';
+dots1.style.cssText = 'left:-60px;top:34%';
+document.body.appendChild(dots1);
+const dots2 = document.createElement('div');
+dots2.className = 'dots';
+dots2.style.cssText = 'right:-80px;bottom:6%';
+document.body.appendChild(dots2);
+
+const field = document.getElementById('stars');
+for (let i = 0; i < 70; i++) {
+  const st = document.createElement('div');
+  const size = 3 + rnd() * 5;
+  st.className = 'st';
+  st.style.cssText = `left:${rnd() * 100}%;top:${rnd() * 100}%;width:${size}px;height:${size}px;opacity:${0.3 + rnd() * 0.6}`;
+  field.appendChild(st);
+}
+</script>
+</body>
+</html>

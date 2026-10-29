@@ -2073,23 +2073,49 @@ void core_add_font(renderer_t *rend, const char *name,
     }
 }
 
+// Create a font from an asset url and attach it as a fallback of the given
+// face.
+//
+// NOTE: we must NOT route fallbacks through core_add_font(). That helper
+// treats a font id of 0 as "no font set" (`!rend->fonts[font].id`), but
+// NanoVG's first-created font legitimately has id 0 - which is the regular
+// face (created first in set_default_fonts). A second core_add_font("regular")
+// would therefore REPLACE the regular face with the fallback font instead of
+// adding it, turning all regular text into tofu boxes. Attach fallbacks
+// directly instead; id 0 is a valid base for nvgAddFallbackFontId.
+static int add_font_fallback(renderer_t *rend, const char *name,
+                             const char *url, int font)
+{
+    int size = 0, id;
+    const void *data = asset_get_data(url, &size, NULL);
+    if (!data) return -1;
+    id = nvgCreateFontMem(rend->vg, name, (unsigned char*)data, size, 0);
+    if (id >= 0)
+        nvgAddFallbackFontId(rend->vg, rend->fonts[font].id, id);
+    return id;
+}
+
 static void set_default_fonts(renderer_t *rend)
 {
-    core_add_font(rend, "regular", "asset://font/NotoSans-Regular.ttf",
+    // Primary faces: Noto Sans subset covering Latin (incl. Ext-A/B and
+    // Ext Additional), Greek and Cyrillic, so European names with
+    // diacritics (e.g. "Živilė") render correctly.
+    core_add_font(rend, "regular", "asset://font/NotoSansLatin-Regular.ttf",
                   NULL, 0);
-    core_add_font(rend, "bold", "asset://font/NotoSans-Bold.ttf",
+    core_add_font(rend, "bold", "asset://font/NotoSansLatin-Bold.ttf",
                   NULL, 0);
+
+    // CJK fallback: NotoSans-*.ttf is actually Noto Sans SC (full CJK
+    // coverage but NO Latin Ext-A/B, Greek or Cyrillic - which is why the
+    // Latin subset above is the primary face).
+    add_font_fallback(rend, "cjk-regular", "asset://font/NotoSans-Regular.ttf",
+                      FONT_REGULAR);
+    add_font_fallback(rend, "cjk-bold", "asset://font/NotoSans-Bold.ttf",
+                      FONT_BOLD);
+
     // Monochrome emoji/symbol fallback (Noto Sans has no emoji glyphs). The
     // renderer rasterizes glyf outlines only (no COLR/sbix), so this must be
     // the monochrome Noto Emoji.
-    //
-    // NOTE: we must NOT route this through core_add_font(). That helper treats
-    // a font id of 0 as "no font set" (`!rend->fonts[font].id`), but NanoVG's
-    // first-created font legitimately has id 0 - which is the regular face
-    // (NotoSans-Regular, created first above). A second core_add_font("regular")
-    // would therefore REPLACE the regular face with the emoji font instead of
-    // adding a fallback, turning all regular text into tofu boxes. Attach the
-    // fallback directly instead; id 0 is a valid base for nvgAddFallbackFontId.
     {
         int emoji_size = 0;
         const void *emoji_data = asset_get_data(

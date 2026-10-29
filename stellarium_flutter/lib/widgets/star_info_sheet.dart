@@ -867,9 +867,12 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
   }
 
   /// Check if this star is saved - always reads fresh from service
-  bool get _isSaved {
+  bool get _isSaved => _savedEntry != null;
+
+  /// The saved entry matching this star, if any
+  SavedStar? get _savedEntry {
     final service = SavedStarsService.instance;
-    if (!service.isLoaded) return false;
+    if (!service.isLoaded) return null;
 
     final starInfo = _effectiveStarInfo;
     final id = _getStarId();
@@ -877,11 +880,13 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
     final shortName = starInfo.shortName;
 
     // Check by ID
-    if (service.isSaved(id)) return true;
+    final byId = service.findById(id);
+    if (byId != null) return byId;
 
     // Check by scientific name
     if (scientificName != null && scientificName.isNotEmpty) {
-      if (service.findByScientificName(scientificName) != null) return true;
+      final byName = service.findByScientificName(scientificName);
+      if (byName != null) return byName;
     }
 
     // Check by HIP identifier (most reliable for matching)
@@ -892,15 +897,13 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
         final savedHip = _extractHip(saved.id) ?? _extractHip(saved.scientificName ?? '');
         final currentHip = _extractHip(hipId);
         if (savedHip != null && currentHip != null && savedHip == currentHip) {
-          return true;
+          return saved;
         }
       }
     }
 
     // Check by short name as last resort
-    if (service.findByScientificName(shortName) != null) return true;
-
-    return false;
+    return service.findByScientificName(shortName);
   }
 
   /// Extract HIP number from string like "HIP90156" or "HIP 90156"
@@ -1056,6 +1059,12 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
                     _buildSkeletonCoordinates(),
                     const SizedBox(height: 16),
                   ] else ...[
+                    // Warning if this saved star was removed from the registry
+                    if (_savedEntry?.removedFromRegistry == true) ...[
+                      _buildRemovedFromRegistryCard(context, _savedEntry!),
+                      const SizedBox(height: 20),
+                    ],
+
                     // Quick Stats Row
                     if (modelData != null) ...[
                       _buildQuickStatsRow(context, modelData),
@@ -1602,6 +1611,56 @@ class _StarInfoBottomSheetState extends State<StarInfoBottomSheet> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRemovedFromRegistryCard(BuildContext context, SavedStar saved) {
+    final l10n = AppLocalizations.of(context)!;
+    final reason = saved.removalReason;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orangeAccent.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.report_problem_outlined,
+              color: Colors.orangeAccent, size: 26),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.starRemovedFromRegistryTitle,
+                  style: const TextStyle(
+                    color: Colors.orangeAccent,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l10n.starRemovedFromRegistryMessage(saved.displayName),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                if (reason != null && reason.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.starRemovalReason(reason),
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

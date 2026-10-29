@@ -400,6 +400,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get subscriptionSubscribeButton => 'Suscribirse ahora';
 
   @override
+  String gateWarningMessage(int seconds) {
+    return 'Tu vista previa gratuita del cielo termina en ${seconds}s';
+  }
+
+  @override
+  String get gateWarningCta => 'Ver planes';
+
+  @override
   String get manageSubscription => 'Gestionar suscripción';
 
   @override
@@ -554,6 +562,26 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get notificationPrivacyNotice =>
       'Puedes cambiar la configuración de notificaciones en cualquier momento en la aplicación.';
+
+  @override
+  String get consentTitle => 'Privacidad y datos';
+
+  @override
+  String get consentMessage =>
+      'Para mejorar la aplicación y medir nuestra publicidad, nosotros y nuestros socios (p. ej., Google) queremos recopilar datos de uso y almacenar identificadores en tu dispositivo para análisis, medición de anuncios y publicidad personalizada. Puedes cambiar tu elección en cualquier momento en los ajustes de la aplicación.';
+
+  @override
+  String get consentAccept => 'Aceptar todo';
+
+  @override
+  String get consentDecline => 'Continuar sin aceptar';
+
+  @override
+  String get consentSettingsTitle => 'Análisis y anuncios personalizados';
+
+  @override
+  String get consentSettingsSubtitle =>
+      'Permitir la recopilación de datos de uso para análisis y medición de anuncios';
 
   @override
   String get attTitle => '¿Permitir seguimiento?';
@@ -900,4 +928,24 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get signInSkip => 'Continuar sin cuenta';
+
+  @override
+  String get starRemovedFromRegistryTitle => 'Estrella eliminada del registro';
+
+  @override
+  String starRemovedFromRegistryMessage(String name) {
+    return '\"$name\" ya no figura en el registro de estrellas, por lo que su nombre registrado ya no se muestra en el cielo.';
+  }
+
+  @override
+  String get starRemovedFromRegistryHint =>
+      'Puedes conservar la estrella en Mis estrellas o deslizarla para eliminarla.';
+
+  @override
+  String get starRemovedFromRegistryBadge => 'Eliminada del registro';
+
+  @override
+  String starRemovalReason(String reason) {
+    return 'Motivo: $reason';
+  }
 }

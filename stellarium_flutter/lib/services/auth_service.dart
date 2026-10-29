@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -198,6 +199,7 @@ class AuthService {
     await GoogleSignIn().signOut();
     await _auth.signOut();
     await OnboardingService.resetSignInCompleted();
+    await Posthog().reset();
     debugPrint('[AUTH:signOut] done');
   }
 

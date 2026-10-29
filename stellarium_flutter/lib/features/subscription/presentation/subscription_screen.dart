@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../services/analytics_service.dart';
+import '../../../services/locale_service.dart';
 import '../../onboarding/onboarding_service.dart';
 
 /// Screen that displays the Adapty paywall after onboarding
@@ -19,14 +20,14 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen>
-    implements AdaptyUIPaywallsEventsObserver {
+    implements AdaptyUIFlowsEventsObserver {
   bool _isLoading = true;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    AdaptyUI().setPaywallsEventsObserver(this);
+    AdaptyUI().setFlowsEventsObserver(this);
     // Track subscription screen view
     AnalyticsService.instance.logSubscriptionScreenView();
     _loadAndShowPaywall();
@@ -34,23 +35,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
   Future<void> _loadAndShowPaywall() async {
     try {
-      // Get the paywall for the night_sky_view placement
-      // Use device locale for paywall localization
-      final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-      final paywall = await Adapty().getPaywall(
-        placementId: 'night_sky_view',
-        locale: deviceLocale,
-      );
+      // Get the flow for the night_sky_view placement
+      final flow = await Adapty().getFlow(placementId: 'night_sky_view');
 
-      // Check if it has a view configuration (created in Paywall Builder)
-      if (!paywall.hasViewConfiguration) {
-        debugPrint('Paywall does not have view configuration');
+      // Check if it has a view configuration (created in Flow Builder)
+      if (!flow.hasViewConfiguration) {
+        debugPrint('Flow does not have view configuration');
         _completeAndContinue();
         return;
       }
 
-      // Create the paywall view
-      final view = await AdaptyUI().createPaywallView(paywall: paywall);
+      // Create the flow view in the app language
+      final view = await AdaptyUI().createFlowView(
+        flow: flow,
+        locale: LocaleService.instance.adaptyLocale,
+      );
 
       setState(() {
         _isLoading = false;
@@ -97,16 +96,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     }
   }
 
-  // AdaptyUIPaywallsEventsObserver implementation
+  // AdaptyUIFlowsEventsObserver implementation
 
   @override
-  void paywallViewDidPerformAction(
-      AdaptyUIPaywallView view, AdaptyUIAction action) {
+  void flowViewDidPerformAction(
+      AdaptyUIFlowView view, AdaptyUIAction action) {
     switch (action) {
       case CloseAction():
       case AndroidSystemBackAction():
-        // Track paywall dismissal
-        AnalyticsService.instance.logEvent(name: 'subscription_dismissed');
+        AnalyticsService.instance.logSubscriptionDismissed();
         view.dismiss();
         _completeAndContinue();
         break;
@@ -119,8 +117,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }
 
   @override
-  void paywallViewDidFinishPurchase(
-    AdaptyUIPaywallView view,
+  void flowViewDidFinishPurchase(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct product,
     AdaptyPurchaseResult purchaseResult,
   ) {
@@ -143,8 +141,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }
 
   @override
-  void paywallViewDidFailPurchase(
-    AdaptyUIPaywallView view,
+  void flowViewDidFailPurchase(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct product,
     AdaptyError error,
   ) {
@@ -153,8 +151,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }
 
   @override
-  void paywallViewDidFinishRestore(
-    AdaptyUIPaywallView view,
+  void flowViewDidFinishRestore(
+    AdaptyUIFlowView view,
     AdaptyProfile profile,
   ) {
     final hasAccess = profile.accessLevels.values.any((level) => level.isActive);
@@ -168,8 +166,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }
 
   @override
-  void paywallViewDidFailRestore(
-    AdaptyUIPaywallView view,
+  void flowViewDidFailRestore(
+    AdaptyUIFlowView view,
     AdaptyError error,
   ) {
     debugPrint('Restore failed: ${error.message}');
@@ -177,8 +175,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }
 
   @override
-  void paywallViewDidFailRendering(
-    AdaptyUIPaywallView view,
+  void flowViewDidReceiveError(
+    AdaptyUIFlowView view,
     AdaptyError error,
   ) {
     debugPrint('Paywall rendering failed: ${error.message}');
@@ -187,8 +185,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }
 
   @override
-  void paywallViewDidFailLoadingProducts(
-    AdaptyUIPaywallView view,
+  void flowViewDidFailLoadingProducts(
+    AdaptyUIFlowView view,
     AdaptyError error,
   ) {
     debugPrint('Failed to load products: ${error.message}');
@@ -196,39 +194,48 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }
 
   @override
-  void paywallViewDidSelectProduct(
-    AdaptyUIPaywallView view,
+  void flowViewDidSelectProduct(
+    AdaptyUIFlowView view,
     String productId,
   ) {
     debugPrint('Product selected: $productId');
   }
 
   @override
-  void paywallViewDidStartPurchase(
-    AdaptyUIPaywallView view,
+  void flowViewDidStartPurchase(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct product,
   ) {
     debugPrint('Purchase started: ${product.vendorProductId}');
   }
 
   @override
-  void paywallViewDidStartRestore(AdaptyUIPaywallView view) {
+  void flowViewDidStartRestore(AdaptyUIFlowView view) {
     debugPrint('Restore started');
   }
 
   @override
-  void paywallViewDidAppear(AdaptyUIPaywallView view) {
+  void flowViewDidAppear(AdaptyUIFlowView view) {
     debugPrint('Paywall appeared');
   }
 
   @override
-  void paywallViewDidDisappear(AdaptyUIPaywallView view) {
+  void flowViewDidDisappear(AdaptyUIFlowView view) {
     debugPrint('Paywall disappeared');
   }
 
   @override
-  void paywallViewDidFinishWebPaymentNavigation(
-    AdaptyUIPaywallView view,
+  void flowViewDidReceiveAnalyticEvent(
+    AdaptyUIFlowView view,
+    String name,
+    Map<String, dynamic> params,
+  ) {
+    debugPrint('Flow analytic event: $name');
+  }
+
+  @override
+  void flowViewDidFinishWebPaymentNavigation(
+    AdaptyUIFlowView view,
     AdaptyPaywallProduct? product,
     AdaptyError? error,
   ) {

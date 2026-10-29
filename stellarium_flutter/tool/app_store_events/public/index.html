@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Celestial Almanac — In-App Events</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700&family=Azeret+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #e8e4d8;
+    --ink-dim: #9a958a;
+    --gold: #d4a94e;
+    --gold-soft: rgba(212, 169, 78, 0.14);
+    --sky: #33b4e8;
+    --bg: #07080f;
+    --panel: rgba(20, 23, 38, 0.72);
+    --line: rgba(212, 169, 78, 0.22);
+    --danger: #d46a4e;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { background: var(--bg); }
+  body {
+    font-family: "Azeret Mono", monospace;
+    color: var(--ink);
+    min-height: 100vh;
+    background:
+      radial-gradient(1px 1px at 12% 22%, #fff8 0 1px, transparent 1.5px),
+      radial-gradient(1px 1px at 68% 12%, #fff6 0 1px, transparent 1.5px),
+      radial-gradient(1.5px 1.5px at 84% 64%, #ffd98a88 0 1px, transparent 2px),
+      radial-gradient(1px 1px at 34% 78%, #fff5 0 1px, transparent 1.5px),
+      radial-gradient(1px 1px at 52% 42%, #fff7 0 1px, transparent 1.5px),
+      radial-gradient(1.5px 1.5px at 92% 30%, #9ad4ff77 0 1px, transparent 2px),
+      radial-gradient(1px 1px at 8% 88%, #fff6 0 1px, transparent 1.5px),
+      radial-gradient(ellipse 120% 60% at 50% -10%, #141c38 0%, var(--bg) 65%);
+    background-attachment: fixed;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 48px 28px 120px; }
+
+  header { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 8px; }
+  .kicker {
+    letter-spacing: 0.32em; text-transform: uppercase; font-size: 11px;
+    color: var(--gold); margin-bottom: 14px;
+  }
+  h1 {
+    font-family: "Fraunces", serif; font-weight: 300; font-size: clamp(38px, 6vw, 62px);
+    line-height: 1.02; letter-spacing: -0.01em;
+  }
+  h1 em { font-style: italic; font-weight: 600; color: var(--gold); }
+  .env { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .chip {
+    font-size: 11px; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--ink-dim);
+  }
+  .chip.ok { color: #8fd48f; border-color: #8fd48f44; }
+  .chip.bad { color: var(--danger); border-color: #d46a4e44; }
+
+  .toolbar {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 18px 0 30px; position: sticky; top: 0; z-index: 5;
+    background: linear-gradient(var(--bg) 78%, transparent);
+  }
+  button {
+    font-family: inherit; font-size: 12px; cursor: pointer;
+    background: var(--gold-soft); color: var(--gold);
+    border: 1px solid var(--line); border-radius: 4px; padding: 9px 16px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  button:hover { background: rgba(212, 169, 78, 0.26); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--gold); color: #17130a; font-weight: 500; }
+  button.primary:hover { background: #e6be66; }
+  button:disabled { opacity: 0.45; cursor: wait; }
+  input {
+    font-family: inherit; font-size: 12px; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 4px; padding: 9px 12px; width: 250px;
+  }
+  input::placeholder { color: var(--ink-dim); }
+  input.year { width: 76px; }
+
+  .timeline { position: relative; padding-left: 34px; }
+  .timeline::before {
+    content: ""; position: absolute; left: 6px; top: 0; bottom: 0;
+    width: 1px; background: linear-gradient(var(--line), transparent);
+  }
+  .event {
+    position: relative; display: grid; grid-template-columns: 300px 1fr;
+    gap: 0; margin-bottom: 34px; border: 1px solid var(--line);
+    background: var(--panel); backdrop-filter: blur(6px);
+    animation: rise 0.5s ease both;
+  }
+  .event:nth-child(2) { animation-delay: 0.06s; }
+  .event:nth-child(3) { animation-delay: 0.12s; }
+  .event:nth-child(4) { animation-delay: 0.18s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+  .event::before {
+    content: ""; position: absolute; left: -31.5px; top: 30px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gold); box-shadow: 0 0 12px 2px #d4a94e66;
+  }
+  .event.past { opacity: 0.45; }
+  .event.past::before { background: var(--ink-dim); box-shadow: none; }
+
+  .art { position: relative; min-height: 170px; background: #0b0e1a; overflow: hidden; }
+  .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .art .empty {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    color: var(--ink-dim); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; text-align: center; padding: 12px;
+    background:
+      repeating-linear-gradient(-45deg, transparent 0 10px, rgba(212,169,78,0.05) 10px 11px);
+  }
+  .body { padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .dates { font-size: 11px; color: var(--gold); letter-spacing: 0.08em; }
+  .name { font-family: "Fraunces", serif; font-size: 26px; font-weight: 600; line-height: 1.1; }
+  .desc { font-size: 12.5px; color: var(--ink-dim); line-height: 1.55; }
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag {
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    border: 1px solid var(--line); border-radius: 3px; padding: 3px 8px; color: var(--ink-dim);
+  }
+  .tag.live { color: var(--sky); border-color: #33b4e844; }
+  .actions { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; }
+
+  #log {
+    display: none; white-space: pre-wrap; font-size: 11.5px; line-height: 1.6;
+    color: var(--ink-dim); background: #0b0e1acc; border: 1px solid var(--line);
+    border-radius: 4px; padding: 16px 18px; margin: 0 0 30px; max-height: 260px; overflow: auto;
+  }
+  #log.open { display: block; }
+  #log strong { color: var(--gold); }
+
+  @media (max-width: 760px) {
+    .event { grid-template-columns: 1fr; }
+    .art { min-height: 150px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Night Sky Guide — App Store In-App Events</div>
+    <h1>Celestial <em>Almanac</em></h1>
+    <div class="env" id="env"></div>
+  </header>
+
+  <div class="toolbar">
+    <input class="year" id="year" type="number" placeholder="2026">
+    <button id="import">Import meteor showers</button>
+    <input id="ics" placeholder="…or ICS calendar URL">
+    <button id="importIcs">Import ICS</button>
+    <span style="flex:1"></span>
+    <button id="dry">Dry-run sync</button>
+    <button id="sync" class="primary">Sync to App Store</button>
+  </div>
+
+  <pre id="log"></pre>
+  <div class="timeline" id="timeline"></div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const log = (text) => { const el = $('#log'); el.classList.add('open'); el.textContent = text; };
+const fmt = (iso) => new Date(iso).toLocaleDateString('en-GB',
+  { day: '2-digit', month: 'short', year: 'numeric' });
+
+async function api(path, body) {
+  const res = await fetch(path, body
+    ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    : undefined);
+  return res.json();
+}
+
+async function refresh() {
+  const { events, env } = await api('/api/state');
+  $('#year').value ||= new Date().getFullYear();
+
+  $('#env').innerHTML = [
+    ['OpenAI ' + env.imageModel, env.openai],
+    ['Apple key (.p8)', env.ascKey],
+    ['ASC issuer + app id', env.ascReady],
+  ].map(([label, ok]) =>
+    `<span class="chip ${ok ? 'ok' : 'bad'}">${ok ? '●' : '○'} ${label}</span>`).join('');
+
+  $('#timeline').innerHTML = events
+    .sort((a, b) => new Date(a.eventStart) - new Date(b.eventStart))
+    .map((e) => `
+    <div class="event ${e.past ? 'past' : ''}">
+      <div class="art">
+        ${e.hasCard
+          ? `<img src="/assets/${e.id}-event_card.png?${Date.now()}" alt="">`
+          : `<div class="empty">no artwork yet</div>`}
+      </div>
+      <div class="body">
+        <div class="dates">${fmt(e.eventStart)} → ${fmt(e.eventEnd)} · publishes ${fmt(e.publishStart)}</div>
+        <div class="name">${e.name.en}</div>
+        <div class="desc">${e.shortDescription.en}</div>
+        <div class="meta">
+          <span class="tag live">${e.badge}</span>
+          <span class="tag">${Object.keys(e.name).length} locales</span>
+          <span class="tag">${e.hasCard && e.hasDetails ? 'art ready' : 'art missing'}</span>
+        </div>
+        <div class="actions">
+          <button data-art="${e.id}">${e.hasCard ? 'Regenerate art' : 'Generate art'}</button>
+          <button data-sync="${e.id}">Sync this event</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  document.querySelectorAll('[data-art]').forEach((b) => b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Generating…';
+    const r = await fetch(`/api/events/${b.dataset.art}/art?force=1`, { method: 'POST' })
+      .then((r) => r.json());
+    if (r.error) log(`Art generation failed: ${r.error}`);
+    refresh();
+  });
+  document.querySelectorAll('[data-sync]').forEach((b) => b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Syncing…';
+    const r = await api('/api/sync', { only: b.dataset.sync, windowDays: 3650 });
+    log(r.output ?? r.error); refresh();
+  });
+}
+
+$('#import').onclick = async () => {
+  $('#import').disabled = true;
+  const r = await api('/api/import', { year: Number($('#year').value) });
+  log(r.error ? `Import failed: ${r.error}`
+    : r.added.length ? `Imported: ${r.added.join(', ')}` : 'Nothing new to import.');
+  $('#import').disabled = false; refresh();
+};
+$('#importIcs').onclick = async () => {
+  if (!$('#ics').value) return log('Enter an ICS URL first.');
+  $('#importIcs').disabled = true;
+  const r = await api('/api/import', { icsUrl: $('#ics').value });
+  log(r.error ? `Import failed: ${r.error}`
+    : r.added.length ? `Imported: ${r.added.join(', ')}` : 'Nothing new to import.');
+  $('#importIcs').disabled = false; refresh();
+};
+$('#dry').onclick = async () => {
+  $('#dry').disabled = true;
+  const r = await api('/api/sync', { dryRun: true });
+  log(r.output); $('#dry').disabled = false;
+};
+$('#sync').onclick = async () => {
+  if (!confirm('Create and submit due events in App Store Connect?')) return;
+  $('#sync').disabled = true;
+  const r = await api('/api/sync', {});
+  log(r.output); $('#sync').disabled = false; refresh();
+};
+
+refresh();
+</script>
+</body>
+</html>

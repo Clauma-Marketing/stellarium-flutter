@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>V2 — Observatory Minimal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;700&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { overflow: hidden; }
+  body {
+    --line: rgba(148, 196, 224, .22);
+    --acc: #7fd4ff;
+    --ink: #eef4f8;
+    font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+    width: var(--W); height: var(--H); position: relative;
+    background:
+      radial-gradient(120% 55% at 50% -8%, #101722 0%, #0a0e15 55%, #07090e 100%);
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  /* graticule: meridian arcs + declination rings, like a star chart */
+  #chart { position: absolute; inset: 0; }
+  #chart path, #chart circle, #chart line { fill: none; stroke: var(--line); stroke-width: 1.5; }
+  #chart .tick { stroke: rgba(148, 196, 224, .45); }
+  .corner { position: absolute; width: 56px; height: 56px; border: 2px solid var(--line); }
+  .corner.tl { top: 44px; left: 44px; border-right: 0; border-bottom: 0; }
+  .corner.tr { top: 44px; right: 44px; border-left: 0; border-bottom: 0; }
+  .corner.bl { bottom: 44px; left: 44px; border-right: 0; border-top: 0; }
+  .corner.br { bottom: 44px; right: 44px; border-left: 0; border-top: 0; }
+
+  #stars { position: absolute; inset: 0; }
+  .st { position: absolute; background: #cfe2ef; border-radius: 50%; }
+
+  .cap { text-align: center; position: relative; z-index: 4; padding: 158px 80px 0; }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 30px; letter-spacing: .42em;
+    color: var(--acc); margin-bottom: 52px; text-transform: uppercase;
+  }
+  .cap h1 {
+    font-size: 118px; line-height: 1.1; font-weight: 300; letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+  .cap h1 b, .cap h1 strong { font-weight: 600; }
+  .cap .keyline { width: 120px; height: 2px; background: var(--acc); margin: 46px auto; }
+  .cap p { font-size: 43px; line-height: 1.5; font-weight: 400; color: #9db2c2; max-width: 1060px; margin: 0 auto; }
+
+  .stage { position: relative; z-index: 3; margin-top: 72px; }
+  .reticle { /* thin instrument circle behind the device */
+    position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%);
+    width: 1440px; height: 1440px; border-radius: 50%;
+    border: 1.5px solid var(--line);
+  }
+  .reticle::before, .reticle::after {
+    content: ''; position: absolute; background: var(--acc); opacity: .8;
+  }
+  .reticle::before { left: 50%; top: -16px; width: 2px; height: 32px; transform: translateX(-50%); }
+  .reticle::after { left: 50%; bottom: -16px; width: 2px; height: 32px; transform: translateX(-50%); }
+  .phone {
+    position: relative; width: 980px; margin: 0 auto;
+    border-radius: 146px; padding: 16px;
+    background: #1a2029;
+    outline: 1.5px solid rgba(148, 196, 224, .35);
+    box-shadow: 0 70px 160px rgba(0, 0, 0, .8);
+  }
+  .screen { border-radius: 130px; overflow: hidden; position: relative; background: #000; padding-top: 114px; }
+  .screen img { width: 100%; display: block; }
+  .island { position: absolute; top: 32px; left: 50%; transform: translateX(-50%);
+    width: 272px; height: 74px; border-radius: 37px; background: #05070b; border: 1px solid #202835; z-index: 3; }
+  body.fit .phone { width: 880px; }
+
+  .vignette { position: absolute; left: 0; right: 0; bottom: 0; height: 200px; z-index: 6;
+    background: linear-gradient(180deg, transparent, #07090e 92%); }
+
+  body.ipad .cap { padding-top: 120px; }
+  body.ipad .cap h1 { font-size: 104px; }
+  body.ipad .cap p { font-size: 40px; }
+  body.ipad .phone { width: 840px; }
+  body.ipad .reticle { width: 1240px; height: 1240px; }
+</style>
+</head>
+<body>
+<svg id="chart"></svg>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+<div id="stars"></div>
+
+<div class="cap">
+  <div class="eyebrow">40.7°N&nbsp;&nbsp;74.0°W&nbsp;&nbsp;·&nbsp;&nbsp;22:30</div>
+  <h1 id="h1"></h1>
+  <div class="keyline"></div>
+  <p id="p"></p>
+</div>
+
+<div class="stage">
+  <div class="reticle"></div>
+  <div class="phone">
+    <div class="screen"><img id="shot" src=""><div class="island"></div></div>
+  </div>
+</div>
+<div class="vignette"></div>
+
+<script src="captions.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const shot = q.get('shot') || 'hero';
+const lang = q.get('lang') || 'en';
+const fmt = q.get('fmt') || 'phone';
+const dims = fmt === 'ipad' ? [2048, 2732] : [1290, 2796];
+document.body.style.setProperty('--W', dims[0] + 'px');
+document.body.style.setProperty('--H', dims[1] + 'px');
+if (fmt === 'ipad') document.body.classList.add('ipad');
+if (shot === 'search' || shot === 'found') document.body.classList.add('fit');
+
+const cap = (CAPTIONS[lang] || CAPTIONS.en)[shot];
+// light/bold split: last word group bold for hierarchy without color
+document.getElementById('h1').innerHTML = cap[0].replace(/<br>(.*)$/, '<br><b>$1</b>');
+document.getElementById('p').innerHTML = cap[1];
+document.getElementById('shot').src = 'captures/scene-' + shot + '.png';
+
+let seed = 24601 + shot.length * 131;
+const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+
+// star chart: two declination arcs + meridians + tick marks
+const chart = document.getElementById('chart');
+chart.setAttribute('viewBox', `0 0 ${dims[0]} ${dims[1]}`);
+let s = '';
+const cx = dims[0] / 2, topY = dims[1] * 0.62;
+for (const r of [dims[0] * 0.85, dims[0] * 1.12, dims[0] * 1.4]) {
+  s += `<circle cx="${cx}" cy="${topY + r * 0.92}" r="${r}"/>`;
+}
+for (let i = -3; i <= 3; i++) {
+  const x1 = cx + i * dims[0] * 0.17;
+  s += `<line x1="${x1}" y1="0" x2="${cx + i * dims[0] * 0.34}" y2="${dims[1]}"/>`;
+}
+for (let i = 0; i < 24; i++) { // tick marks along the top
+  const x = dims[0] * (0.06 + 0.88 * i / 23);
+  s += `<line class="tick" x1="${x}" y1="86" x2="${x}" y2="${i % 4 === 0 ? 116 : 102}"/>`;
+}
+chart.innerHTML = s;
+
+const field = document.getElementById('stars');
+for (let i = 0; i < 90; i++) {
+  const st = document.createElement('div');
+  const size = 2 + rnd() * 3.5;
+  st.className = 'st';
+  st.style.cssText = `left:${rnd() * 100}%;top:${rnd() * 100}%;width:${size}px;height:${size}px;opacity:${0.15 + rnd() * 0.5}`;
+  field.appendChild(st);
+}
+</script>
+</body>
+</html>

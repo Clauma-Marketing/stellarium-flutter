@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>V7 — Alpine Aurora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,750;9..144,900&family=Outfit:wght@400;500;600&family=Noto+Serif+SC:wght@700;900&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { overflow: hidden; }
+  body {
+    --gold: #e9c476;
+    font-family: 'Outfit', 'PingFang SC', sans-serif;
+    width: var(--W); height: var(--H); position: relative; overflow: hidden;
+    background: #05070f;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  /* the panorama canvas is N screens wide; each shot shows its slice */
+  #pano { position: absolute; top: 0; }
+
+  .cap { text-align: center; position: relative; z-index: 4; padding: 128px 70px 0; }
+  .eyebrow { display: flex; align-items: center; justify-content: center; gap: 34px; margin-bottom: 44px; }
+  .eyebrow .rule { width: 110px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold)); }
+  .eyebrow .rule:last-child { transform: scaleX(-1); }
+  .eyebrow .dia { color: var(--gold); font-size: 34px; }
+  .cap h1 {
+    font-family: 'Fraunces', 'Noto Serif SC', serif;
+    font-size: 128px; line-height: 1.04; font-weight: 750; letter-spacing: -0.01em;
+    background: linear-gradient(180deg, #fdfcf8 30%, #ecd9a8 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 40px;
+    filter: drop-shadow(0 6px 50px rgba(4, 7, 20, .95));
+  }
+  .cap p { font-size: 46px; line-height: 1.4; font-weight: 500; color: #dde3f6;
+    max-width: 1080px; margin: 0 auto; text-shadow: 0 4px 30px rgba(4, 7, 20, .95); }
+
+  .stage { position: relative; z-index: 3; margin-top: 90px; perspective: 2600px; }
+  .phone {
+    position: relative; width: 850px; margin: 0 auto;
+    border-radius: 152px; padding: 20px;
+    background: linear-gradient(155deg, #57536b 0%, #191a2e 38%, #0c0d1c 78%, #3a3450 100%);
+    box-shadow:
+      0 90px 200px rgba(0, 0, 0, .88),
+      0 30px 90px rgba(4, 6, 20, .8),
+      0 0 0 1.5px rgba(233, 196, 118, .38),
+      0 0 150px rgba(90, 120, 220, .22);
+    transform: rotateX(4.5deg) rotateZ(var(--tilt));
+    transform-origin: 50% 20%;
+  }
+  .screen { border-radius: 132px; overflow: hidden; position: relative; background: #000; padding-top: 118px; }
+  .screen img { width: 100%; display: block; }
+  .screen.raw { padding-top: 0; }
+  .screen::after { content: ''; position: absolute; inset: 0; border-radius: 132px;
+    background: linear-gradient(118deg, rgba(255,255,255,.13) 0%, rgba(255,255,255,.04) 18%, transparent 32%);
+    pointer-events: none; }
+  .island { position: absolute; top: 34px; left: 50%; transform: translateX(-50%);
+    width: 280px; height: 76px; border-radius: 38px; background: #05060c; border: 1px solid #23283e; z-index: 3; }
+  body.fit .phone { width: 800px; }
+
+  .vignette { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; z-index: 6;
+    background: linear-gradient(180deg, transparent 0%, rgba(4, 6, 15, .55) 100%); }
+
+  body.ipad .cap { padding-top: 104px; }
+  body.ipad .cap h1 { font-size: 112px; }
+  body.ipad .cap p { font-size: 42px; max-width: 1240px; }
+  body.ipad .stage { margin-top: 58px; }
+  body.ipad .phone { width: 780px; }
+</style>
+</head>
+<body>
+<canvas id="pano"></canvas>
+
+<div class="cap">
+  <div class="eyebrow"><div class="rule"></div><div class="dia">✦</div><div class="rule"></div></div>
+  <h1 id="h1"></h1>
+  <p id="p"></p>
+</div>
+
+<div class="stage">
+  <div class="phone">
+    <div class="screen"><img id="shot" src=""><div class="island"></div></div>
+  </div>
+</div>
+<div class="vignette"></div>
+
+<script src="captions.js"></script>
+<script>
+const PHONE_ORDER = ['constellations', 'planet', 'hero', 'star', 'search', 'found', 'dusk'];
+const IPAD_ORDER = ['constellations', 'planet', 'star'];
+const TILTS = ['-3.2deg', '2.8deg', '2.6deg', '-3.0deg', '-2.6deg', '3.0deg', '-2.8deg'];
+
+const q = new URLSearchParams(location.search);
+const shot = q.get('shot') || 'hero';
+const lang = q.get('lang') || 'en';
+const fmt = q.get('fmt') || 'phone';
+const dims = fmt === 'ipad' ? [2048, 2732] : [1290, 2796];
+const W = dims[0], H = dims[1];
+document.body.style.setProperty('--W', W + 'px');
+document.body.style.setProperty('--H', H + 'px');
+if (fmt === 'ipad') document.body.classList.add('ipad');
+if (shot === 'search' || shot === 'found') document.body.classList.add('fit');
+
+const order = fmt === 'ipad' ? IPAD_ORDER : PHONE_ORDER;
+const idx = Math.max(0, order.indexOf(shot));
+document.body.style.setProperty('--tilt', TILTS[Math.max(0, PHONE_ORDER.indexOf(shot))]);
+
+const cap = (CAPTIONS[lang] || CAPTIONS.en)[shot];
+document.getElementById('h1').innerHTML = cap[0];
+document.getElementById('p').innerHTML = cap[1];
+document.getElementById('shot').src = 'captures/scene-' + shot + '.png';
+if (shot === 'constellations' || shot === 'planet') document.querySelector('.screen').classList.add('raw');
+
+// ---------------- continuous panorama: one sky, N slices ----------------
+const N = order.length;
+const PW = N * W;
+const canvas = document.getElementById('pano');
+canvas.width = PW; canvas.height = H;
+canvas.style.width = PW + 'px'; canvas.style.height = H + 'px';
+canvas.style.left = (-idx * W) + 'px';
+const ctx = canvas.getContext('2d');
+
+// seeded RNG — MUST stay fixed so every slice renders the identical panorama
+let seed = 20260823;
+const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+const gauss = () => (rnd() + rnd() + rnd()) / 1.5 - 1; // ~[-1,1], center-weighted
+
+// 1) sky gradient
+let g = ctx.createLinearGradient(0, 0, 0, H);
+g.addColorStop(0, '#04060e');
+g.addColorStop(0.42, '#0a1026');
+g.addColorStop(0.72, '#141f42');
+g.addColorStop(0.9, '#1d2b55');
+ctx.fillStyle = g;
+ctx.fillRect(0, 0, PW, H);
+
+// milky way arc: high mid-strip, dipping toward both ends
+const bandY = (x) => {
+  const t = x / PW;
+  return H * (0.60 - 0.30 * Math.sin(Math.PI * t));
+};
+const bandAngle = (x) => Math.atan2(bandY(x + 40) - bandY(x - 40), 80);
+
+// 2) galactic haze
+for (let i = 0; i < 900; i++) {
+  const x = rnd() * PW;
+  const y = bandY(x) + gauss() * H * 0.085;
+  const r = 50 + rnd() * 190;
+  const warm = Math.abs(y - bandY(x)) < H * 0.035 && rnd() < 0.55;
+  const a = 0.03 + rnd() * 0.065;
+  const gg = ctx.createRadialGradient(x, y, 0, x, y, r);
+  gg.addColorStop(0, warm ? `rgba(226,212,180,${a * 1.5})` : `rgba(165,180,225,${a})`);
+  gg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gg;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+// dark dust lane along the core
+for (let i = 0; i < 240; i++) {
+  const x = rnd() * PW;
+  const y = bandY(x) + gauss() * H * 0.02;
+  const r = 30 + rnd() * 110;
+  const gg = ctx.createRadialGradient(x, y, 0, x, y, r);
+  gg.addColorStop(0, `rgba(6,9,20,${0.10 + rnd() * 0.13})`);
+  gg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gg;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
+// 2b) colorful nebulosity hugging the core: magenta + amber patches
+for (let i = 0; i < 300; i++) {
+  const x = rnd() * PW;
+  const y = bandY(x) + gauss() * H * 0.045;
+  const r = 40 + rnd() * 130;
+  const a = 0.025 + rnd() * 0.05;
+  const warmish = rnd() < 0.5;
+  const gg = ctx.createRadialGradient(x, y, 0, x, y, r);
+  gg.addColorStop(0, warmish ? `rgba(255,150,200,${a})` : `rgba(255,170,95,${a})`);
+  gg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gg;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
+// 3) stars: band-concentrated + full-sky
+for (let i = 0; i < 5200; i++) {
+  const x = rnd() * PW;
+  const y = bandY(x) + gauss() * H * 0.09;
+  const s = 0.4 + rnd() * 1.3;
+  ctx.fillStyle = `rgba(235,240,255,${0.25 + rnd() * 0.6})`;
+  ctx.fillRect(x, y, s, s);
+}
+for (let i = 0; i < 2600; i++) {
+  const x = rnd() * PW, y = rnd() * H * 0.86;
+  const s = 0.4 + rnd() * 1.8;
+  ctx.fillStyle = `rgba(220,230,252,${0.15 + rnd() * 0.55})`;
+  ctx.fillRect(x, y, s, s);
+}
+// bright stars with glow + cross flares
+for (let i = 0; i < 6 * N; i++) {
+  const x = rnd() * PW, y = rnd() * H * 0.78;
+  const r = 2 + rnd() * 2.6;
+  ctx.save();
+  ctx.shadowColor = 'rgba(210,225,255,.95)';
+  ctx.shadowBlur = 14 + rnd() * 18;
+  ctx.fillStyle = '#f4f7ff';
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  if (rnd() < 0.5) {
+    ctx.strokeStyle = 'rgba(228,236,255,.55)';
+    ctx.lineWidth = 1.4;
+    const L = r * (5 + rnd() * 4);
+    ctx.beginPath();
+    ctx.moveTo(x - L, y); ctx.lineTo(x + L, y);
+    ctx.moveTo(x, y - L); ctx.lineTo(x, y + L);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// 4) meteors: a few per slice zone, kept out of the caption band (top 8–17%)
+for (let i = 0; i < 3 * N; i++) {
+  const x = rnd() * PW;
+  const y = H * (rnd() < 0.6 ? 0.015 + rnd() * 0.05 : 0.17 + rnd() * 0.06);
+  const len = 180 + rnd() * 260, ang = (20 + rnd() * 18) * Math.PI / 180;
+  const x2 = x + len * Math.cos(ang), y2 = y + len * Math.sin(ang);
+  const mg = ctx.createLinearGradient(x, y, x2, y2);
+  mg.addColorStop(0, 'rgba(255,240,210,0)');
+  mg.addColorStop(1, 'rgba(255,244,220,.9)');
+  ctx.strokeStyle = mg; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,244,214,.9)'; ctx.shadowBlur = 14;
+  ctx.fillStyle = '#fff8e8';
+  ctx.beginPath(); ctx.arc(x2, y2, 3.4, 0, 7); ctx.fill();
+  ctx.restore();
+}
+
+// 5) mountains: smooth continuous ridges from summed sines (same phase everywhere)
+const ridge = (x, base, amp, k) => {
+  let y = 0;
+  for (let o = 0; o < 5; o++) {
+    y += Math.sin(x * k * (o + 1) * 0.9 + PHASES[o]) * amp / (o + 1);
+  }
+  return base + y;
+};
+const PHASES = [rnd() * 7, rnd() * 7, rnd() * 7, rnd() * 7, rnd() * 7];
+
+// horizon glow above the far ridge
+const hg = ctx.createLinearGradient(0, H * 0.62, 0, H * 0.8);
+hg.addColorStop(0, 'rgba(120,150,225,0)');
+hg.addColorStop(1, 'rgba(130,160,235,.16)');
+ctx.fillStyle = hg;
+ctx.fillRect(0, H * 0.62, PW, H * 0.18);
+
+const drawRidge = (base, amp, k, fill, fog) => {
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let x = 0; x <= PW; x += 6) ctx.lineTo(x, ridge(x, base, amp, k));
+  ctx.lineTo(PW, H);
+  ctx.closePath();
+  if (fog) { // faint rim light on the crest
+    ctx.save();
+    ctx.strokeStyle = fog; ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.fillStyle = fill;
+  ctx.fill();
+};
+// aurora curtains dancing above the ridge line (drawn just before the ridges
+// so the mountains silhouette against them)
+ctx.save();
+ctx.globalCompositeOperation = 'destination-over';
+ctx.restore();
+const curtains = [];
+for (let c = 0; c < 2 * N; c++) curtains.push([rnd() * PW, 560 + rnd() * 950, rnd() * 7, .11 + rnd() * .13, rnd() < .4]);
+for (const [cx, cw, ph, alpha, purple] of curtains) {
+  for (let x = cx - cw / 2; x < cx + cw / 2; x += 7) {
+    const t = (x - cx) / cw * 2;
+    const env = Math.max(0, 1 - t * t);
+    const topY = H * (0.56 + 0.06 * Math.sin(x * 0.004 + ph) + 0.035 * Math.sin(x * 0.013 + ph * 2));
+    const botY = H * 0.82;
+    const gg = ctx.createLinearGradient(0, topY, 0, botY);
+    const a = alpha * env;
+    gg.addColorStop(0, purple ? `rgba(185,110,255,${a * 0.4})` : `rgba(140,120,255,${a * 0.3})`);
+    gg.addColorStop(0.72, `rgba(88,240,190,${a})`);
+    gg.addColorStop(1, `rgba(120,255,205,${a * 1.15})`);
+    ctx.fillStyle = gg;
+    ctx.fillRect(x, topY, 7, botY - topY);
+  }
+}
+
+drawRidge(H * 0.80, H * 0.045, 0.0011, '#111b36', 'rgba(150,175,240,.3)');
+drawRidge(H * 0.845, H * 0.05, 0.0017, '#0a1120', 'rgba(120,145,205,.22)');
+drawRidge(H * 0.878, H * 0.035, 0.0026, '#04070f', null);
+
+// pine silhouettes along the near crest
+const pineRidge = (x) => ridge(x, H * 0.878, H * 0.035, 0.0026);
+for (let x = 0; x < PW; x += 14) {
+  if (Math.sin(x * 0.0009 + PHASES[1]) + Math.sin(x * 0.0031 + PHASES[3]) < 0.15) continue;
+  const base = pineRidge(x) + 4;
+  const h = 26 + rnd() * 46, w = h * 0.42;
+  ctx.fillStyle = '#03050b';
+  ctx.beginPath();
+  ctx.moveTo(x, base - h);
+  ctx.lineTo(x - w / 2, base);
+  ctx.lineTo(x + w / 2, base);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// mirror lake: reflect everything above the waterline, then tint + ripple
+const waterY = Math.round(H * 0.90), RH = H - waterY;
+ctx.save();
+ctx.globalAlpha = 0.38;
+ctx.translate(0, 2 * waterY);
+ctx.scale(1, -1);
+ctx.drawImage(canvas, 0, waterY - RH, PW, RH, 0, waterY - RH, PW, RH);
+ctx.restore();
+const wt = ctx.createLinearGradient(0, waterY, 0, H);
+wt.addColorStop(0, 'rgba(10, 18, 44, .45)');
+wt.addColorStop(1, 'rgba(3, 6, 16, .85)');
+ctx.fillStyle = wt;
+ctx.fillRect(0, waterY, PW, RH);
+for (let i = 0; i < 40 * N; i++) {
+  const y = waterY + 6 + rnd() * (RH - 12);
+  const x = rnd() * PW, len = 30 + rnd() * 170;
+  ctx.fillStyle = `rgba(150, 180, 235, ${0.03 + rnd() * 0.08})`;
+  ctx.fillRect(x, y, len, 1.6);
+}
+// crisp waterline
+ctx.fillStyle = 'rgba(160, 190, 245, .28)';
+ctx.fillRect(0, waterY - 1, PW, 2);
+</script>
+</body>
+</html>

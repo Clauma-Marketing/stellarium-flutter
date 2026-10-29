@@ -66,6 +66,14 @@ class LocaleService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Locale tag for Adapty paywalls: the in-app language override when set,
+  /// otherwise the device language, mapped to Adapty's tags (zh -> zh-hans).
+  String get adaptyLocale {
+    final code = _locale?.languageCode ??
+        WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    return code == 'zh' ? 'zh-hans' : code;
+  }
+
   /// Get display name for a locale
   static String getLocaleName(Locale? locale, BuildContext context) {
     if (locale == null) {
@@ -76,6 +84,18 @@ class LocaleService extends ChangeNotifier {
         return 'English';
       case 'de':
         return 'Deutsch';
+      case 'es':
+        return 'Español';
+      case 'fr':
+        return 'Français';
+      case 'it':
+        return 'Italiano';
+      case 'pl':
+        return 'Polski';
+      case 'ro':
+        return 'Română';
+      case 'tr':
+        return 'Türkçe';
       case 'zh':
         return '中文';
       default:
@@ -87,6 +107,12 @@ class LocaleService extends ChangeNotifier {
   static const List<Locale> supportedLocales = [
     Locale('en'),
     Locale('de'),
+    Locale('es'),
+    Locale('fr'),
+    Locale('it'),
+    Locale('pl'),
+    Locale('ro'),
+    Locale('tr'),
     Locale('zh'),
   ];
 }

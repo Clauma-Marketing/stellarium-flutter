@@ -1,0 +1,421 @@
+{
+  "@@locale": "it",
+
+  "appTitle": "Star Registration Planetarium",
+
+  "menu": "Menu",
+  "myStars": "Le mie stelle",
+  "myStarsSubtitle": "Posizioni salvate e preferiti",
+  "timeLocation": "Ora e posizione",
+  "timeLocationSubtitle": "Imposta ora e luogo di osservazione",
+  "visualEffects": "Effetti visivi",
+  "visualEffectsSubtitle": "Visualizzazione del cielo, oggetti e griglie",
+  "settings": "Impostazioni",
+  "settingsSubtitle": "Preferenze dell'app",
+
+  "location": "POSIZIONE",
+  "time": "ORA",
+  "searchCityAddress": "Cerca città, indirizzo...",
+  "useMyLocation": "Usa la mia posizione",
+  "detecting": "Rilevamento...",
+  "unknownLocation": "Posizione sconosciuta",
+  "setToNow": "Imposta su Adesso",
+  "applyChanges": "Applica modifiche",
+  "setTime": "Imposta ora",
+  "now": "Adesso",
+  "cancel": "Annulla",
+  "apply": "Applica",
+  "back": "Indietro",
+
+  "save": "Salva",
+  "saved": "Salvata",
+  "savedToMyStars": "Salvata in Le mie stelle",
+  "removedFromMyStars": "Rimossa da Le mie stelle",
+  "pointAtStar": "Punta alla stella",
+  "removeFromMyStars": "Rimuovi da Le mie stelle",
+  "saveToMyStars": "Salva in Le mie stelle",
+
+  "noSavedStarsYet": "Nessuna stella salvata",
+  "tapStarIconHint": "Tocca l'icona a stella nella scheda info di una stella per salvarla qui",
+  "starRemoved": "{name} rimossa",
+  "@starRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registration": "REGISTRAZIONE",
+  "registeredTo": "Registrata a",
+  "registrationDate": "Data",
+  "registrationNumber": "N. registrazione",
+  "registry": "Registro",
+  "properties": "PROPRIETÀ",
+  "coordinates": "COORDINATE",
+  "scientificName": "Nome scientifico",
+  "magnitude": "Magnitudine",
+  "spectralType": "Tipo spettrale",
+  "distance": "Distanza",
+  "parallax": "Parallasse",
+  "objectType": "Tipo di oggetto",
+  "doubleMultipleStar": "Stella doppia/multipla",
+  "rightAscension": "Ascensione retta",
+  "declination": "Declinazione",
+
+  "skyDisplay": "Visualizzazione del cielo",
+  "celestialObjects": "Oggetti celesti",
+  "gridLines": "Griglie e linee",
+  "displayOptions": "Opzioni di visualizzazione",
+
+  "constellationLines": "Linee delle costellazioni",
+  "constellationLinesDesc": "Mostra le linee che collegano le stelle delle costellazioni",
+  "constellationNames": "Nomi delle costellazioni",
+  "constellationNamesDesc": "Mostra le etichette con i nomi delle costellazioni",
+  "constellationArt": "Illustrazioni delle costellazioni",
+  "constellationArtDesc": "Mostra le raffigurazioni artistiche delle costellazioni",
+  "atmosphere": "Atmosfera",
+  "atmosphereDesc": "Mostra gli effetti atmosferici e il bagliore del cielo",
+  "landscape": "Paesaggio",
+  "landscapeDesc": "Mostra il paesaggio del terreno e dell'orizzonte",
+  "landscapeFog": "Nebbia del paesaggio",
+  "landscapeFogDesc": "Mostra l'effetto nebbia sul paesaggio",
+  "milkyWay": "Via Lattea",
+  "milkyWayDesc": "Mostra la galassia della Via Lattea",
+  "dssBackground": "Sfondo DSS",
+  "dssBackgroundDesc": "Mostra le immagini di sfondo del Digital Sky Survey",
+
+  "stars": "Stelle",
+  "starsDesc": "Mostra le stelle nel cielo",
+  "planets": "Pianeti",
+  "planetsDesc": "Mostra i pianeti e i corpi del sistema solare",
+  "deepSkyObjects": "Oggetti del cielo profondo",
+  "deepSkyObjectsDesc": "Mostra nebulose, galassie e ammassi stellari",
+  "satellites": "Satelliti",
+  "satellitesDesc": "Mostra i satelliti artificiali",
+
+  "azimuthalGrid": "Griglia azimutale",
+  "azimuthalGridDesc": "Mostra la griglia di coordinate altezza/azimut",
+  "equatorialGrid": "Griglia equatoriale",
+  "equatorialGridDesc": "Mostra la griglia di ascensione retta/declinazione",
+  "equatorialJ2000Grid": "Griglia equatoriale J2000",
+  "equatorialJ2000GridDesc": "Mostra le coordinate equatoriali dell'epoca J2000",
+  "meridianLine": "Linea del meridiano",
+  "meridianLineDesc": "Mostra il meridiano (nord-sud attraverso lo zenit)",
+  "eclipticLine": "Linea dell'eclittica",
+  "eclipticLineDesc": "Mostra l'eclittica (il percorso apparente del Sole)",
+
+  "nightMode": "Modalità notturna",
+  "nightModeDesc": "Visualizzazione in rosso per preservare la visione notturna",
+
+  "loadingSkyView": "Caricamento della vista del cielo...",
+  "failedToLoadSkyView": "Impossibile caricare la vista del cielo",
+
+  "locationPermissionDenied": "Autorizzazione alla posizione negata",
+  "locationPermissionPermanentlyDenied": "Autorizzazione alla posizione negata in modo permanente. Attivala nelle Impostazioni.",
+  "errorGettingLocation": "Errore nel rilevare la posizione: {error}",
+  "@errorGettingLocation": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "registrationNotFound": "Numero di registrazione \"{number}\" non trovato",
+  "@registrationNotFound": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSearching": "Errore durante la ricerca: {error}",
+  "@errorSearching": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "recentSearch": "Ricerca recente",
+  "search": "Cerca",
+
+  "language": "Lingua",
+  "languageSubtitle": "Scegli la lingua dell'app",
+  "english": "Inglese",
+  "german": "Tedesco",
+  "chinese": "Cinese (semplificato)",
+  "systemDefault": "Predefinita di sistema",
+
+  "subscription": "Abbonamento",
+  "subscriptionSubtitle": "Gestisci il tuo abbonamento",
+  "currentPlan": "Piano attuale",
+  "freePlan": "Gratuito",
+  "premiumPlan": "Premium",
+  "proPlan": "Pro",
+  "subscriptionActive": "Attivo",
+  "subscriptionExpired": "Scaduto",
+  "expiresOn": "Scade il {date}",
+  "@expiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "restorePurchases": "Ripristina acquisti",
+  "restoringPurchases": "Ripristino in corso...",
+  "purchasesRestored": "Acquisti ripristinati con successo",
+  "noPurchasesToRestore": "Nessun acquisto da ripristinare",
+  "restoreError": "Errore nel ripristino degli acquisti: {error}",
+  "@restoreError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "subscriptionLoading": "Caricamento delle opzioni di abbonamento...",
+  "subscriptionRequiredMessage": "Per continuare a usare l'app è necessario un abbonamento o una registrazione stellare valida.",
+  "subscriptionSubscribeButton": "Abbonati ora",
+  "gateWarningMessage": "La tua anteprima gratuita del cielo termina tra {seconds} s",
+  "@gateWarningMessage": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "gateWarningCta": "Vedi i piani",
+  "manageSubscription": "Gestisci abbonamento",
+  "upgradeToPremium": "Passa a Premium",
+
+  "tapToChangeLocation": "Tocca per cambiare posizione",
+  "currentLocation": "Posizione attuale",
+
+  "checkingStarRegistry": "Verifica del registro stellare...",
+  "starNotYetNamed": "Questa stella non ha ancora un nome",
+  "giveUniqueNameHint": "Dalle un nome unico che sarà visibile nel cielo",
+  "nameThisStar": "Dai un nome a questa stella",
+  "viewStarIn3D": "Vista 3D",
+  "catalogId": "ID catalogo",
+
+  "atmosphereButton": "Atmosfera",
+  "movementButton": "Movimento",
+  "searchPlaceholder": "Cerca una stella o un oggetto...",
+
+  "welcomeTitle": "Scopri il cosmo",
+  "onboardingExploreUniverse": "Esplora il cielo notturno, segui gli eventi celesti e trova la tua stella con nome tra milioni di altre.",
+  "onboardingGetStarted": "Inizia",
+  "onboardingContinue": "Continua",
+  "onboardingSkip": "Salta",
+  "onboardingSkipForNow": "Salta per ora",
+  "onboardingMaybeLater": "Forse più tardi",
+  "onboardingRequesting": "Richiesta in corso...",
+
+  "locationAccessTitle": "Consentire la posizione?",
+  "locationAccessSubtitle": "Guarda il cielo notturno esattamente come appare dal luogo in cui ti trovi. Usiamo la tua posizione per mostrarti le stelle nel punto giusto.",
+  "locationAllowAccess": "Continua",
+  "locationAccuratePositions": "Posizioni stellari precise",
+  "locationAccuratePositionsDesc": "Guarda le stelle come appaiono esattamente da dove ti trovi",
+  "locationCompassNav": "Navigazione con bussola",
+  "locationCompassNavDesc": "Punta il telefono per trovare le stelle nel cielo",
+  "locationRiseSetTimes": "Orari di alba e tramonto",
+  "locationRiseSetTimesDesc": "Scopri quando gli oggetti celesti sono visibili dalla tua posizione",
+  "locationPrivacyNotice": "La tua posizione viene usata solo localmente e non viene mai condivisa.",
+  "locationConfirmedTitle": "Posizione confermata",
+  "locationConfirmedSubtitle": "La tua vista del cielo sarà personalizzata in base alla tua posizione",
+  "locationOpenSettings": "Apri Impostazioni",
+  "locationGettingLocation": "Rilevamento della posizione...",
+  "locationServicesDisabled": "I servizi di localizzazione sono disattivati. Attivali nelle impostazioni.",
+  "locationFailedBrowser": "Impossibile rilevare la posizione. Consenti l'accesso alla posizione nel tuo browser.",
+
+  "notificationTitle": "Attivare le notifiche?",
+  "notificationSubtitle": "Non perderti le piogge di meteore e le notti migliori per osservare le stelle. Ti invieremo avvisi puntuali prima che accadano.",
+  "notificationAllowNotifications": "Continua",
+  "notificationMoonPhase": "Avvisi sulle fasi lunari",
+  "notificationMoonPhaseDesc": "Scopri le notti migliori per osservare le stelle",
+  "notificationCelestialEvents": "Eventi celesti",
+  "notificationCelestialEventsDesc": "Non perderti piogge di meteore ed eclissi",
+  "notificationVisibility": "Avvisi di visibilità",
+  "notificationVisibilityDesc": "Ricevi una notifica quando i pianeti sono meglio visibili",
+  "notificationPrivacyNotice": "Puoi modificare le impostazioni delle notifiche in qualsiasi momento nell'app.",
+
+  "consentTitle": "Privacy e dati",
+  "consentMessage": "Per migliorare l'app e misurare la nostra pubblicità, noi e i nostri partner (ad es. Google) vorremmo raccogliere dati di utilizzo e memorizzare identificatori sul tuo dispositivo per analisi, misurazione degli annunci e annunci personalizzati. Puoi modificare la tua scelta in qualsiasi momento nelle impostazioni dell'app.",
+  "consentAccept": "Accetta tutto",
+  "consentDecline": "Continua senza accettare",
+  "consentSettingsTitle": "Analisi e annunci personalizzati",
+  "consentSettingsSubtitle": "Consenti la raccolta dei dati di utilizzo per analisi e misurazione degli annunci",
+
+  "attTitle": "Consentire il tracciamento?",
+  "attSubtitle": "Aiutaci a migliorare il tuo viaggio nel cosmo. Usiamo i dati per personalizzare i contenuti e suggerirti eventi rilevanti.",
+  "attAllowTracking": "Continua",
+  "attDontTrack": "Chiedi all'app di non tracciare",
+  "attImproveApp": "Migliora l'app",
+  "attImproveAppDesc": "Aiutaci a capire come usi l'app per renderla migliore",
+  "attRelevantContent": "Contenuti rilevanti",
+  "attRelevantContentDesc": "Ricevi consigli su misura per i tuoi interessi",
+  "attPrivacyMatters": "La tua privacy conta",
+  "attPrivacyMattersDesc": "Non vendiamo mai i tuoi dati personali a terzi",
+  "attPrivacyNotice": "Puoi modificare questa impostazione in qualsiasi momento in Impostazioni iOS > Privacy > Tracciamento.",
+
+  "starRegTitle": "Trova la tua stella",
+  "starRegSubtitle": "Inserisci il tuo numero di registrazione per localizzare la tua stella con nome nel cielo",
+  "starRegFindButton": "Trova la mia stella",
+  "starRegNoStarYet": "Non ho ancora dato un nome a una stella",
+  "starRegNameAStar": "Dai un nome a una stella",
+  "starRegQuestionTitle": "Il tuo planetario personale",
+  "starRegQuestionSubtitle": "Come vuoi iniziare?",
+  "starRegExploreCardTitle": "Esplora il cielo notturno",
+  "starRegExploreCardBody": "Scopri stelle, pianeti e costellazioni sopra di te — in diretta, ovunque tu sia.",
+  "starRegHaveStarCardTitle": "Trova la tua stella con nome",
+  "starRegHaveStarCardBody": "Hai ricevuto una registrazione stellare — ad esempio come regalo? Localizza la tua stella personale nel cielo.",
+  "starRegStartExploring": "Inizia a esplorare",
+  "starRegHaveStar": "Ho una stella con nome",
+  "starRegEnterNumber": "Inserisci un numero di registrazione",
+  "starRegInvalidFormat": "Formato non valido. Usa: XXXX-XXXXX-XXXXXXXX",
+  "starRegNotFound": "Stella non trovata. Controlla il tuo numero di registrazione.",
+  "starRegSearchFailed": "Ricerca non riuscita. Riprova.",
+  "starRegRemoved": "{reason}",
+  "@starRegRemoved": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+
+  "scanCertificate": "Scansiona certificato",
+  "scanningCertificate": "Scansione del certificato...",
+  "pointCameraAtCertificate": "Inquadra il tuo certificato con la fotocamera",
+  "registrationNumberWillBeDetected": "Il numero di registrazione verrà rilevato automaticamente",
+  "registrationNumberFound": "Numero trovato",
+  "searchForThisNumber": "Cercare questo numero di registrazione?",
+  "scanAgain": "Scansiona di nuovo",
+  "searchStar": "Cerca stella",
+  "enterManually": "Inserisci manualmente",
+  "enterRegistrationNumber": "Inserisci il numero di registrazione",
+  "registrationNumberHint": "es. 1234-56789-1234567",
+  "noRegistrationNumberFound": "Nessun numero di registrazione trovato. Riprova o inseriscilo manualmente.",
+  "couldNotCaptureImage": "Impossibile acquisire l'immagine. Riprova.",
+
+  "showStarPath": "Mostra percorso 24h",
+  "hideStarPath": "Nascondi percorso 24h",
+
+  "loaderQuote1": "La tua finestra personale sul cosmo",
+  "loaderQuote2": "Ogni stella custodisce un nome in attesa di essere donato",
+  "loaderQuote3": "Il cielo sopra di te, mappato e in attesa",
+  "loaderQuote4": "Un nome inciso nella luce, tuo per sempre",
+  "loaderQuote5": "Milioni di stelle — una appartiene a te",
+  "loaderQuote6": "Dove la luce antica incontra il tuo sguardo",
+  "loaderQuote7": "L'universo ricorda ogni nome",
+  "loaderQuote8": "Guarda in alto. Trova il tuo posto tra le stelle.",
+
+  "loaderStatus1": "Localizzazione delle tue coordinate",
+  "loaderStatus2": "Mappatura della sfera celeste",
+  "loaderStatus3": "Tracciamento delle costellazioni visibili",
+  "loaderStatus4": "Calcolo delle posizioni stellari",
+  "loaderStatus5": "Preparazione del tuo cielo notturno",
+
+  "visibilityCalculating": "Calcolo della visibilità...",
+  "visibilityVisibleNow": "Visibile ora",
+  "visibilityTonight": "Stanotte",
+  "visibilityVisible": "visibile",
+  "visibilitySince": "DA",
+  "visibilityFrom": "DALLE",
+  "visibilityUntil": "FINO ALLE",
+
+  "notificationAlertTitle": "Avviso di visibilità",
+  "notificationAlertSubtitle": "Ricevi una notifica quando la stella sorge",
+
+  "visibilityStatusNeverVisible": "Mai visibile",
+  "visibilityStatusVisibleNow": "Visibile ora",
+  "visibilityStatusWaitForDark": "Attendi il buio",
+  "visibilityStatusBelowHorizon": "Sotto l'orizzonte",
+  "visibilityNow": "Ora",
+  "visibilityStatusTonight": "Stanotte {time}",
+  "@visibilityStatusTonight": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusTomorrow": "Domani {time}",
+  "@visibilityStatusTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "visibilityStatusInDays": "{days}g {hours}h",
+  "@visibilityStatusInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+
+  "legal": "Note legali",
+  "legalSubtitle": "Termini di utilizzo e Informativa sulla privacy",
+  "termsOfUse": "Termini di utilizzo",
+  "privacyPolicy": "Informativa sulla privacy",
+
+  "ok": "OK",
+  "scannerNotAvailable": "Scanner non disponibile",
+  "scannerNotAvailableOnWeb": "Lo scanner di certificati richiede una fotocamera ed è disponibile solo nell'app mobile. Inserisci manualmente il tuo numero di registrazione.",
+
+  "skyPreviewTitle": "Il cielo notturno sopra di te",
+  "skyPreviewTitleWithLocation": "Il cielo notturno sopra {locationName}",
+  "@skyPreviewTitleWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "calculateNightSky": "Calcola il cielo notturno",
+  "skyPreviewCalculating": "Calcolo del tuo cielo notturno",
+  "skyPreviewCalculatingWithLocation": "Calcolo del cielo notturno sopra {locationName}",
+  "@skyPreviewCalculatingWithLocation": {
+    "placeholders": {
+      "locationName": {
+        "type": "String"
+      }
+    }
+  },
+  "skyPreviewHint": "Tocca una stella per scoprirla",
+  "skyPreviewContinue": "Continua",
+
+  "signInTitle": "Accedi",
+  "signInSubtitle": "Salva le tue stelle su tutti i dispositivi",
+  "signInCreateAccount": "Crea account",
+  "signInWelcomeBack": "Bentornato",
+  "signInWithGoogle": "Continua con Google",
+  "signInWithApple": "Continua con Apple",
+  "signInWithEmail": "Continua con l'email",
+  "signInOr": "oppure",
+  "signInEmail": "Email",
+  "signInPassword": "Password",
+  "signInForgotPassword": "Password dimenticata?",
+  "signInSignIn": "Accedi",
+  "signInAlreadyHaveAccount": "Hai già un account?",
+  "signInNoAccount": "Non hai un account?",
+  "signInBackToOptions": "Tutte le opzioni di accesso",
+  "signInEmailOptIn": "Tienimi aggiornato con consigli per osservare le stelle, nuove funzioni e offerte speciali",
+  "signInSkip": "Continua senza account",
+
+  "starRemovedFromRegistryTitle": "Stella rimossa dal registro",
+  "starRemovedFromRegistryMessage": "\"{name}\" non è più presente nel registro delle stelle, quindi il suo nome registrato non viene più mostrato nel cielo.",
+  "starRemovedFromRegistryHint": "Puoi tenere la stella in Le mie stelle oppure scorrerla per eliminarla.",
+  "starRemovedFromRegistryBadge": "Rimossa dal registro",
+  "starRemovalReason": "Motivo: {reason}"
+}
