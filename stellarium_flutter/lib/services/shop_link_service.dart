@@ -1,5 +1,10 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
+
+import 'consent_service.dart';
 import 'locale_service.dart';
 
 /// Where in the app a "Name a star" button lives. Sent as `utm_content` and
@@ -29,6 +34,13 @@ class ShopLinkService {
   static const String utmMedium = 'app';
   static const String utmCampaign = 'name-a-star';
 
+  /// Query parameter that carries the app's PostHog ID to the shop. The shop
+  /// theme starts PostHog as that person, so the shop visit and the order
+  /// are attributed to the app user instead of a new anonymous visitor.
+  static const String analyticsIdParameter = 'ph_did';
+
+  static final RegExp _shareableAnalyticsId = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
+
   static final Uri _germanShop =
       Uri.parse('https://www.sterntaufe-deutschland.de/products/sterntaufe');
   static final Uri _internationalShop =
@@ -42,15 +54,41 @@ class ShopLinkService {
     return locale.languageCode;
   }
 
+  /// The user's PostHog ID to pass to the shop, or null when it must not be
+  /// shared: analytics consent missing, web build, or no usable ID. For a
+  /// signed-in user this is their account ID, otherwise the anonymous ID of
+  /// this install. Never throws and never waits long - a "Name a star" tap
+  /// must open the shop either way.
+  static Future<String?> analyticsId() async {
+    if (kIsWeb || !ConsentService.instance.isGranted) return null;
+    try {
+      final id = await Posthog()
+          .getDistinctId()
+          .timeout(const Duration(seconds: 1));
+      return isShareableAnalyticsId(id) ? id : null;
+    } catch (e) {
+      debugPrint('ShopLinkService: no analytics ID for shop link: $e');
+      return null;
+    }
+  }
+
+  /// Whether [id] looks like a PostHog/Firebase ID. Anything else (an email
+  /// used as an ID, say) is kept out of the URL.
+  @visibleForTesting
+  static bool isShareableAnalyticsId(String? id) =>
+      id != null && _shareableAnalyticsId.hasMatch(id);
+
   /// Product page a user should land on to name a star.
   ///
   /// German goes to the German store; every other language goes to the
   /// international store. [hipNumber] preselects the star the user was
-  /// looking at. [placement] is one of [ShopLinkPlacement].
+  /// looking at. [placement] is one of [ShopLinkPlacement]. [analyticsId]
+  /// comes from [ShopLinkService.analyticsId].
   static Uri nameStarUri({
     required String languageCode,
     required String placement,
     String? hipNumber,
+    String? analyticsId,
   }) {
     final base = languageCode == 'de' ? _germanShop : _internationalShop;
     final hip = hipNumber?.trim();
@@ -62,6 +100,8 @@ class ShopLinkService {
         'utm_medium': utmMedium,
         'utm_campaign': utmCampaign,
         'utm_content': placement,
+        if (isShareableAnalyticsId(analyticsId))
+          analyticsIdParameter: analyticsId!,
       },
     );
   }

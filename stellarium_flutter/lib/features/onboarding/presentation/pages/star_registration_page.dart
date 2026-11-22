@@ -189,6 +189,7 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
     final uri = ShopLinkService.nameStarUri(
       languageCode: languageCode,
       placement: widget.placement,
+      analyticsId: await ShopLinkService.analyticsId(),
     );
     AnalyticsService.instance.logNameStarClicked(
       placement: widget.placement,

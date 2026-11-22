@@ -742,6 +742,7 @@ class _HomeScreenState extends State<HomeScreen>
                 languageCode: languageCode,
                 placement: ShopLinkPlacement.starSheet,
                 hipNumber: hipNumber,
+                analyticsId: await ShopLinkService.analyticsId(),
               );
               AnalyticsService.instance.logNameStarClicked(
                 placement: ShopLinkPlacement.starSheet,
