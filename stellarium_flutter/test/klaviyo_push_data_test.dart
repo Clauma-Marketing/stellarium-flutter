@@ -32,6 +32,17 @@ void main() {
       expect(data, {'_k': 'x'});
     });
 
+    test('drops the deep-link url, which the native side already opened', () {
+      final data = KlaviyoService.routingDataFromKlaviyoPush({
+        '_k': 'x',
+        'url': 'https://www.star-registration.com/',
+        'key_value_pairs': '{"screen":"subscription"}',
+      });
+
+      expect(data.containsKey('url'), isFalse);
+      expect(data['screen'], 'subscription');
+    });
+
     test('ignores key-value pairs that are not a JSON object', () {
       final data = KlaviyoService.routingDataFromKlaviyoPush({
         '_k': 'x',

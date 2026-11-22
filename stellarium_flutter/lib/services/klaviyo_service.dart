@@ -295,10 +295,14 @@ class KlaviyoService {
   /// Flatten a Klaviyo push payload into the keys notification routing reads
   /// (`link`, `registration_number`, `screen`, ...). The key-value pairs set
   /// on a push in Klaviyo arrive as one JSON string under `key_value_pairs`.
+  ///
+  /// Klaviyo's own `url` (its deep-link field) is dropped: the native side
+  /// has already opened it by the time the payload gets here, and routing it
+  /// again would open the link twice.
   @visibleForTesting
   static Map<String, dynamic> routingDataFromKlaviyoPush(
       Map<String, String> payload) {
-    final data = <String, dynamic>{...payload};
+    final data = <String, dynamic>{...payload}..remove('url');
     final rawPairs = payload['key_value_pairs'];
     if (rawPairs == null || rawPairs.isEmpty) return data;
 

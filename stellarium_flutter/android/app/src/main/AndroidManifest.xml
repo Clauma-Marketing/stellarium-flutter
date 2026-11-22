@@ -33,6 +33,24 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Klaviyo push notifications with a web link in the "Android deep
+                 link" field. Klaviyo opens that link as a VIEW intent aimed at
+                 this app, so without this filter tapping such a push does
+                 nothing. MainActivity records the tap and passes the link on to
+                 the browser.
+                 BROWSABLE is left out on purpose: links tapped in a browser
+                 carry that category and therefore never match, and it lets
+                 MainActivity hand the link to the browser without it coming
+                 straight back here. Add a host here before using it in a push. -->
+            <intent-filter tools:ignore="AppLinkUrlError">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="https"/>
+                <data android:host="www.star-registration.com"/>
+                <data android:host="star-registration.com"/>
+                <data android:host="www.sterntaufe-deutschland.de"/>
+                <data android:host="sterntaufe-deutschland.de"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
