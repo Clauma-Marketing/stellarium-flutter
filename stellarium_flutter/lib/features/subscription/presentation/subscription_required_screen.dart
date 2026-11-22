@@ -6,6 +6,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../services/analytics_service.dart';
 import '../../../services/locale_service.dart';
 import '../../../services/engagement_tracking_service.dart';
+import '../../../services/shop_link_service.dart';
 import '../../../widgets/star_info_sheet.dart';
 import '../../onboarding/onboarding_service.dart';
 import '../../onboarding/presentation/pages/star_registration_page.dart';
@@ -398,6 +399,7 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
                 onSkip: _onStarRegistrationSkip,
                 onStarFound: _onStarFound,
                 startInRegistrationMode: true,
+                placement: ShopLinkPlacement.paywallGate,
               ),
             ),
           ],

@@ -372,8 +372,23 @@ class AnalyticsService {
   }
 
   /// Log when user clicks to name a star (external link)
-  Future<void> logNameStarClicked() async {
-    await logEvent(name: 'name_star_clicked');
+  ///
+  /// [placement] is one of `ShopLinkPlacement`, [destination] the shop URL
+  /// being opened and [hipNumber] the star the user was looking at, if any.
+  Future<void> logNameStarClicked({
+    required String placement,
+    required String languageCode,
+    required Uri destination,
+    String? hipNumber,
+  }) async {
+    final properties = <String, Object>{
+      'placement': placement,
+      'language': languageCode,
+      'destination_host': destination.host,
+      if (hipNumber != null && hipNumber.isNotEmpty) 'hip': hipNumber,
+    };
+    // logEvent mirrors this to PostHog as well.
+    await logEvent(name: 'name_star_clicked', parameters: properties);
   }
 
   /// Log when user indicates they already have a named star
