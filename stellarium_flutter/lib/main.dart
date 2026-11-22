@@ -41,8 +41,9 @@ import 'web_utils.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  // Handle push notification for Klaviyo tracking
-  await KlaviyoService.instance.handlePush(message.data);
+  // Nothing to track here: a message arriving is not an open. Klaviyo opens
+  // are tracked when the notification is tapped (natively on iOS, through
+  // MainActivity on Android).
 }
 
 /// Global navigator key for handling deep links from notifications
@@ -66,6 +67,36 @@ Future<void> _handleNotificationTap(RemoteMessage message) async {
   // Track Klaviyo push open
   await KlaviyoService.instance.handlePush(data);
 
+  final type = data['type'];
+  final title = message.notification?.title;
+  unawaited(AnalyticsService.instance.logPushOpened(
+    source: 'firebase',
+    properties: {
+      if (type is String && type.isNotEmpty) 'message_type': type,
+      if (title != null && title.isNotEmpty) 'title': title,
+    },
+  ));
+
+  await _routeNotificationData(data);
+}
+
+/// A Klaviyo push was tapped (see [KlaviyoService.onPushOpened]).
+Future<void> _handleKlaviyoPushOpened(Map<String, dynamic> data) async {
+  unawaited(AnalyticsService.instance.logPushOpened(
+    source: 'klaviyo',
+    properties: KlaviyoService.pushOpenProperties(data),
+  ));
+
+  // On iOS the Klaviyo SDK opens the push's link itself; routing it here as
+  // well would open it twice.
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    await _routeNotificationData(data);
+  }
+}
+
+/// Open whatever a tapped notification points at. Shared by Firebase
+/// notifications and Klaviyo pushes.
+Future<void> _routeNotificationData(Map<String, dynamic> data) async {
   // Check for external URL (supports multiple key names)
   final link = data['link'] ?? data['url'] ?? data['deep_link'];
   if (link != null && link.isNotEmpty) {
@@ -161,11 +192,6 @@ void _startReturningUserServices() {
       FirebaseMessaging.onBackgroundMessage(
           _firebaseMessagingBackgroundHandler);
 
-      // Handle foreground messages for Klaviyo tracking (if initialized)
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        KlaviyoService.instance.handlePush(message.data);
-      });
-
       // Handle notification tap when app is in background
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
@@ -187,6 +213,8 @@ void _startReturningUserServices() {
           .initialize(languageCode)
           .timeout(const Duration(seconds: 8));
       KlaviyoService.instance.setupTokenRefreshListener();
+      // Re-send the push token on every launch (no-op without permission).
+      unawaited(KlaviyoService.instance.registerPushTokenIfPermitted());
 
       // Initialize star visibility notification services
       await _initializeStarNotificationServices()
@@ -200,6 +228,9 @@ void _startReturningUserServices() {
 void main() async {
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Tapped Klaviyo pushes: record the open, and on Android follow its link.
+    KlaviyoService.instance.onPushOpened = _handleKlaviyoPushOpened;
 
     // Initialize PostHog
     final posthogConfig = PostHogConfig(posthogApiKey)

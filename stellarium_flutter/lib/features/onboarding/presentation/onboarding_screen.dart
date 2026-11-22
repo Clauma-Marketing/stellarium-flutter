@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -112,11 +111,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // Initialize services that were deferred from startup to avoid
     // triggering notification permission dialogs for new users
     if (!kIsWeb) {
-      // Set up Firebase Messaging foreground handler
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        KlaviyoService.instance.handlePush(message.data);
-      });
-
       // Initialize Klaviyo if not already initialized (must not block onboarding transition)
       if (!KlaviyoService.instance.isInitialized) {
         try {

@@ -1,7 +1,10 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:klaviyo_flutter/klaviyo_flutter.dart';
 
 /// Service for managing Klaviyo email marketing integration.
@@ -15,9 +18,20 @@ class KlaviyoService {
   static const String _apiKeyEnglish = 'YjQbgj';
   static const String _apiKeyGerman = 'Y9TagB';
 
+  /// Channel to MainActivity / AppDelegate, which hold the payload of a tapped
+  /// Klaviyo notification until Dart collects it.
+  static const MethodChannel _pushOpenChannel =
+      MethodChannel('com.starregistration.planetarium/klaviyo_push');
+
   bool _isInitialized = false;
   String? _currentLocale;
   bool _pushTokenRegistered = false;
+  bool _pushOpenChannelReady = false;
+  StreamSubscription<String>? _tokenRefreshSubscription;
+
+  /// Called with the data of a tapped Klaviyo notification, after Klaviyo has
+  /// been told about the open. Set once at startup.
+  Future<void> Function(Map<String, dynamic> data)? onPushOpened;
 
   /// Initialize Klaviyo with the appropriate API key based on locale.
   /// [languageCode] should be 'de' for German or any other value for English.
@@ -31,6 +45,7 @@ class KlaviyoService {
       await Klaviyo.instance.initialize(apiKey);
       _isInitialized = true;
       debugPrint('Klaviyo initialized for locale: $languageCode');
+      _setupPushOpenChannel();
     } catch (e) {
       debugPrint('Klaviyo initialization error: $e');
     }
@@ -125,17 +140,7 @@ class KlaviyoService {
     if (!_isInitialized || kIsWeb) return false;
 
     try {
-      final firebaseMessaging = FirebaseMessaging.instance;
-
-      // Get the appropriate token based on platform
-      String? token;
-      if (Platform.isIOS) {
-        // For iOS, we need the APNS token
-        token = await firebaseMessaging.getAPNSToken();
-      } else {
-        // For Android, we use the FCM token
-        token = await firebaseMessaging.getToken();
-      }
+      final token = await _platformPushToken();
 
       if (token != null && token.isNotEmpty) {
         await Klaviyo.instance.sendTokenToKlaviyo(token);
@@ -152,10 +157,51 @@ class KlaviyoService {
     }
   }
 
+  /// Register the push token if the user has already allowed notifications.
+  ///
+  /// Call on every launch: the token is otherwise only sent once, at the
+  /// moment permission is granted during onboarding, so a failed first
+  /// attempt or a permission granted later in system settings would leave the
+  /// device unregistered. Never shows a permission prompt.
+  Future<bool> registerPushTokenIfPermitted() async {
+    if (!_isInitialized || kIsWeb) return false;
+
+    try {
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      final permitted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+      if (!permitted) return false;
+    } catch (e) {
+      debugPrint('Klaviyo: could not read notification settings: $e');
+      return false;
+    }
+
+    return registerPushToken();
+  }
+
+  /// The token Klaviyo needs on this platform: the APNs token on iOS (Klaviyo
+  /// sends through APNs directly), the FCM token on Android.
+  Future<String?> _platformPushToken() async {
+    final firebaseMessaging = FirebaseMessaging.instance;
+    if (!Platform.isIOS) return firebaseMessaging.getToken();
+
+    // APNs can take a moment to hand out the token after launch.
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final token = await firebaseMessaging.getAPNSToken();
+      if (token != null && token.isNotEmpty) return token;
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+    return null;
+  }
+
   /// Check if push token is registered
   bool get isPushTokenRegistered => _pushTokenRegistered;
 
-  /// Handle incoming push notification (for tracking opens)
+  /// Track a Klaviyo push open from its data payload. Only call this for a
+  /// notification the user actually tapped - Klaviyo records every call that
+  /// carries a Klaviyo payload as "Opened Push".
   Future<void> handlePush(Map<String, dynamic> data) async {
     if (!_isInitialized) return;
 
@@ -168,17 +214,104 @@ class KlaviyoService {
 
   /// Listen for token refresh and update Klaviyo
   void setupTokenRefreshListener() {
-    if (kIsWeb) return;
+    if (kIsWeb || _tokenRefreshSubscription != null) return;
 
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-      if (_isInitialized && newToken.isNotEmpty) {
-        try {
-          await Klaviyo.instance.sendTokenToKlaviyo(newToken);
-          debugPrint('Klaviyo: Token refreshed and sent');
-        } catch (e) {
-          debugPrint('Klaviyo token refresh error: $e');
-        }
+    // The stream carries the FCM token, which is only what Klaviyo wants on
+    // Android. Re-read the platform token instead of forwarding the value, so
+    // iOS keeps sending its APNs token.
+    _tokenRefreshSubscription =
+        FirebaseMessaging.instance.onTokenRefresh.listen((_) async {
+      if (!_isInitialized) return;
+      final sent = await registerPushTokenIfPermitted();
+      if (sent) debugPrint('Klaviyo: Token refreshed and sent');
+    });
+  }
+
+  /// Start collecting tapped Klaviyo notifications from the native side.
+  ///
+  /// Android: Klaviyo's SDK shows the notification itself and reopens the app
+  /// with the payload as intent extras, which firebase_messaging does not
+  /// report as an opened message. iOS: the app delegate handles the tap
+  /// natively and passes the payload on. Both keep it until it is taken
+  /// here, so cold starts are covered as well.
+  void _setupPushOpenChannel() {
+    if (kIsWeb || _pushOpenChannelReady) return;
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+    _pushOpenChannelReady = true;
+
+    _pushOpenChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onPushOpened') {
+        await _takePendingPushOpen();
       }
     });
+    unawaited(_takePendingPushOpen());
+  }
+
+  Future<void> _takePendingPushOpen() async {
+    try {
+      final payload = await _pushOpenChannel
+          .invokeMapMethod<String, String>('takePendingPush');
+      if (payload == null || !payload.containsKey('_k')) return;
+
+      // On iOS the Klaviyo SDK has already recorded the open natively.
+      if (Platform.isAndroid) {
+        await handlePush(Map<String, dynamic>.from(payload));
+      }
+      await onPushOpened?.call(routingDataFromKlaviyoPush(payload));
+    } catch (e) {
+      debugPrint('Klaviyo push open handling error: $e');
+    }
+  }
+
+  /// What analytics should record about a tapped Klaviyo push, read from
+  /// Klaviyo's tracking block (`_k`): which campaign or flow message it was.
+  static Map<String, Object> pushOpenProperties(Map<String, dynamic> payload) {
+    final properties = <String, Object>{};
+
+    void put(String key, Object? value) {
+      if (value == null) return;
+      final text = '$value';
+      if (text.isNotEmpty) properties[key] = text;
+    }
+
+    put('title', payload['title']);
+
+    final rawTracking = payload['_k'];
+    if (rawTracking is! String || rawTracking.isEmpty) return properties;
+    try {
+      final tracking = jsonDecode(rawTracking);
+      if (tracking is Map) {
+        put('campaign_name', tracking['Message Name']);
+        put('message_type', tracking['Message Type']);
+        put('message_id', tracking[r'$message']);
+        put('flow_id', tracking[r'$flow']);
+      }
+    } catch (e) {
+      debugPrint('Klaviyo: unreadable push tracking block: $e');
+    }
+    return properties;
+  }
+
+  /// Flatten a Klaviyo push payload into the keys notification routing reads
+  /// (`link`, `registration_number`, `screen`, ...). The key-value pairs set
+  /// on a push in Klaviyo arrive as one JSON string under `key_value_pairs`.
+  @visibleForTesting
+  static Map<String, dynamic> routingDataFromKlaviyoPush(
+      Map<String, String> payload) {
+    final data = <String, dynamic>{...payload};
+    final rawPairs = payload['key_value_pairs'];
+    if (rawPairs == null || rawPairs.isEmpty) return data;
+
+    try {
+      final decoded = jsonDecode(rawPairs);
+      if (decoded is Map) {
+        decoded.forEach((key, value) {
+          if (value != null) data['$key'] = '$value';
+        });
+      }
+    } catch (e) {
+      debugPrint('Klaviyo: unreadable key_value_pairs: $e');
+    }
+    return data;
   }
 }
