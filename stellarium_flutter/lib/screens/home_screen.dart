@@ -19,6 +19,7 @@ import '../services/reverse_geocoding.dart';
 import '../services/subscription_availability_service.dart';
 import '../services/saved_stars_service.dart';
 import '../services/search_history_service.dart';
+import '../services/sky_time_tracking_service.dart';
 import '../stellarium/stellarium.dart';
 import '../utils/sun_times.dart';
 import '../widgets/bottom_bar.dart';
@@ -67,6 +68,41 @@ class _HomeScreenState extends State<HomeScreen>
     _initAppReviewTracking();
     // Initialize engagement tracking for Firebase In-App Messaging
     _initEngagementTracking();
+    // Keep analytics informed about who the user is (owner, subscriber, ...)
+    SavedStarsService.instance.addListener(_syncAnalyticsProfile);
+    _syncAnalyticsProfile(refreshSubscription: true);
+  }
+
+  final DateTime _homeOpenedAt = DateTime.now();
+  bool _skyReadyLogged = false;
+  bool? _isSubscriberForAnalytics;
+
+  /// Tell analytics whether this is a star owner, a subscriber, how many
+  /// stars are saved and the app language. The subscription status is only
+  /// re-read on launch and when the app returns to the foreground.
+  Future<void> _syncAnalyticsProfile({bool refreshSubscription = false}) async {
+    await SavedStarsService.instance.load();
+
+    if (refreshSubscription &&
+        !kIsWeb &&
+        SubscriptionAvailabilityService.instance.isAvailable) {
+      try {
+        final profile = await Adapty().getProfile();
+        _isSubscriberForAnalytics =
+            profile.accessLevels.values.any((level) => level.isActive);
+      } catch (e) {
+        debugPrint('Analytics profile: subscription status unavailable: $e');
+      }
+    }
+
+    final locale =
+        LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
+    await AnalyticsService.instance.setUserProfile(
+      isStarOwner: SavedStarsService.instance.hasValidRegistration(),
+      savedStarCount: SavedStarsService.instance.savedStars.length,
+      isSubscriber: _isSubscriberForAnalytics,
+      language: locale.languageCode,
+    );
   }
 
   Future<void> _initAppReviewTracking() async {
@@ -257,10 +293,13 @@ class _HomeScreenState extends State<HomeScreen>
       case AppLifecycleState.inactive:
         AppReviewService.instance.pauseTracking();
         EngagementTrackingService.instance.pauseTracking();
+        SkyTimeTrackingService.instance.pause();
         break;
       case AppLifecycleState.resumed:
         AppReviewService.instance.resumeTracking();
         EngagementTrackingService.instance.resumeTracking();
+        SkyTimeTrackingService.instance.resume();
+        _syncAnalyticsProfile(refreshSubscription: true);
         break;
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
@@ -318,6 +357,8 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.removeObserver(this);
     AppReviewService.instance.stopTracking();
     EngagementTrackingService.instance.stopTracking();
+    SkyTimeTrackingService.instance.stop();
+    SavedStarsService.instance.removeListener(_syncAnalyticsProfile);
     _timeUpdateTimer?.cancel();
     _gateWarningTimer?.cancel();
     _searchController.dispose();
@@ -1101,6 +1142,7 @@ class _HomeScreenState extends State<HomeScreen>
               _setTimeSpeed(0.0);
             },
             onChangeEnd: (_) {
+              AnalyticsService.instance.logTimeChanged();
               // Resume time if it wasn't paused before, or keep it paused
               if (!_isTimePaused) {
                 _setTimeSpeed(1.0);
@@ -1142,6 +1184,7 @@ class _HomeScreenState extends State<HomeScreen>
                   // Real Time Button
                   IconButton(
                     onPressed: () {
+                      AnalyticsService.instance.logTimeReset();
                       final now = DateTime.now();
                       // Convert local to UTC for the engine
                       final nowMjd = Observer.dateTimeToMjd(now.toUtc());
@@ -1163,6 +1206,8 @@ class _HomeScreenState extends State<HomeScreen>
                   IconButton(
                     onPressed: () {
                       final newPausedState = !_isTimePaused;
+                      AnalyticsService.instance
+                          .logTimeAnimationToggle(playing: !newPausedState);
                       setState(() {
                         _isTimePaused = newPausedState;
                       });
@@ -1237,6 +1282,7 @@ class _HomeScreenState extends State<HomeScreen>
     // Convert to UTC for the engine
     final newMjd = Observer.dateTimeToMjd(newLocalDateTime.toUtc());
     _onTimeChanged(newMjd);
+    AnalyticsService.instance.logDateChanged();
   }
 
   String _formatCoordinates() {
@@ -1270,6 +1316,13 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Start engagement tracking now that engine is ready
     EngagementTrackingService.instance.startTracking();
+    SkyTimeTrackingService.instance.start();
+    if (!_skyReadyLogged) {
+      _skyReadyLogged = true;
+      AnalyticsService.instance.logSkyReady(
+        loadMs: DateTime.now().difference(_homeOpenedAt).inMilliseconds,
+      );
+    }
 
     // Start timer to keep time display in sync with engine
     _startTimeUpdateTimer();

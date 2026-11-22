@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'analytics_service.dart';
+
 /// Service for managing in-app review prompts.
 ///
 /// Shows a review prompt after the user has been viewing the sky for a
@@ -120,6 +122,8 @@ class AppReviewService {
     try {
       // Check if the device supports in-app review
       final isAvailable = await _inAppReview.isAvailable();
+      unawaited(AnalyticsService.instance
+          .logReviewPromptRequested(available: isAvailable));
 
       if (isAvailable) {
         debugPrint('AppReviewService: requesting in-app review');

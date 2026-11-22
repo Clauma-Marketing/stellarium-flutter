@@ -30,6 +30,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     AdaptyUI().setFlowsEventsObserver(this);
     // Track subscription screen view
     AnalyticsService.instance.logSubscriptionScreenView();
+    AnalyticsService.instance.logPaywallViewed(placement: 'onboarding');
     _loadAndShowPaywall();
   }
 
@@ -125,7 +126,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     switch (purchaseResult) {
       case AdaptyPurchaseResultSuccess():
         debugPrint('Purchase successful');
-        AnalyticsService.instance.logSubscriptionStart(productId: product.vendorProductId);
+        AnalyticsService.instance.logSubscriptionStart(
+          productId: product.vendorProductId,
+          placement: 'onboarding',
+        );
         view.dismiss();
         _completeWithSubscription();
         break;
@@ -134,6 +138,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         break;
       case AdaptyPurchaseResultUserCancelled():
         debugPrint('Purchase cancelled by user');
+        AnalyticsService.instance.logPurchaseCancelled(
+          productId: product.vendorProductId,
+          placement: 'onboarding',
+        );
         break;
       default:
         break;
@@ -147,6 +155,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     AdaptyError error,
   ) {
     debugPrint('Purchase failed: ${error.message}');
+    AnalyticsService.instance.logPurchaseFailed(
+      productId: product.vendorProductId,
+      placement: 'onboarding',
+      errorCode: error.code,
+      errorMessage: error.message,
+    );
     // Don't close - let user try again or close manually
   }
 
@@ -158,6 +172,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     final hasAccess = profile.accessLevels.values.any((level) => level.isActive);
     if (hasAccess) {
       debugPrint('Restore completed with active subscription');
+      AnalyticsService.instance.logSubscriptionRestored(placement: 'onboarding');
       view.dismiss();
       _completeWithSubscription();
     } else {
@@ -199,6 +214,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     String productId,
   ) {
     debugPrint('Product selected: $productId');
+    AnalyticsService.instance.logPaywallProductSelected(
+      productId: productId,
+      placement: 'onboarding',
+    );
   }
 
   @override
@@ -207,6 +226,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     AdaptyPaywallProduct product,
   ) {
     debugPrint('Purchase started: ${product.vendorProductId}');
+    AnalyticsService.instance.logPurchaseStarted(
+      productId: product.vendorProductId,
+      placement: 'onboarding',
+    );
   }
 
   @override

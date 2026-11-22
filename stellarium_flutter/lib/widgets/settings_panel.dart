@@ -2840,6 +2840,7 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
       );
 
       await view.present();
+      AnalyticsService.instance.logPaywallViewed(placement: 'settings');
 
       if (mounted) {
         setState(() {
@@ -2923,11 +2924,20 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
   ) {
     switch (purchaseResult) {
       case AdaptyPurchaseResultSuccess():
+        AnalyticsService.instance.logSubscriptionStart(
+          productId: product.vendorProductId,
+          placement: 'settings',
+        );
         view.dismiss();
         widget.onComplete();
         break;
       case AdaptyPurchaseResultPending():
+        break;
       case AdaptyPurchaseResultUserCancelled():
+        AnalyticsService.instance.logPurchaseCancelled(
+          productId: product.vendorProductId,
+          placement: 'settings',
+        );
         break;
       default:
         break;
@@ -2941,12 +2951,19 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
     AdaptyError error,
   ) {
     debugPrint('Purchase failed: ${error.message}');
+    AnalyticsService.instance.logPurchaseFailed(
+      productId: product.vendorProductId,
+      placement: 'settings',
+      errorCode: error.code,
+      errorMessage: error.message,
+    );
   }
 
   @override
   void flowViewDidFinishRestore(AdaptyUIFlowView view, AdaptyProfile profile) {
     final hasAccess = profile.accessLevels.values.any((level) => level.isActive);
     if (hasAccess) {
+      AnalyticsService.instance.logSubscriptionRestored(placement: 'settings');
       view.dismiss();
       widget.onComplete();
     }
@@ -2972,11 +2989,19 @@ class _SubscriptionUpgradeScreenState extends State<_SubscriptionUpgradeScreen>
   @override
   void flowViewDidSelectProduct(AdaptyUIFlowView view, String productId) {
     debugPrint('Selected product: $productId');
+    AnalyticsService.instance.logPaywallProductSelected(
+      productId: productId,
+      placement: 'settings',
+    );
   }
 
   @override
   void flowViewDidStartPurchase(AdaptyUIFlowView view, AdaptyPaywallProduct product) {
     debugPrint('Starting purchase: ${product.vendorProductId}');
+    AnalyticsService.instance.logPurchaseStarted(
+      productId: product.vendorProductId,
+      placement: 'settings',
+    );
   }
 
   @override

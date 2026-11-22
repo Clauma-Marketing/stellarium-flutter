@@ -4,7 +4,11 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
-/// Service for tracking analytics events with Firebase Analytics.
+/// Service for tracking analytics events.
+///
+/// Every event goes to Firebase Analytics and, unless a method sends its own
+/// PostHog event under a different name, to PostHog as well - so PostHog
+/// funnels can use the whole event set, not a hand-picked subset.
 class AnalyticsService {
   static final AnalyticsService _instance = AnalyticsService._internal();
   static AnalyticsService get instance => _instance;
@@ -13,6 +17,7 @@ class AnalyticsService {
 
   FirebaseAnalytics? _analytics;
   FirebaseAnalyticsObserver? _observer;
+  Map<String, Object>? _lastUserProfile;
 
   /// Initialize analytics (call after Firebase.initializeApp)
   void initialize() {
@@ -24,17 +29,32 @@ class AnalyticsService {
   /// Get the analytics observer for navigation tracking
   FirebaseAnalyticsObserver? get observer => _observer;
 
-  /// Log a custom event
+  /// Log a custom event to Firebase and PostHog.
+  ///
+  /// Pass [mirrorToPosthog] false when the caller captures its own PostHog
+  /// event for the same action, to avoid counting it twice there.
   Future<void> logEvent({
     required String name,
     Map<String, Object>? parameters,
+    bool mirrorToPosthog = true,
   }) async {
+    if (mirrorToPosthog) _captureInPosthog(name, parameters);
     if (_analytics == null) return;
     try {
       await _analytics!.logEvent(name: name, parameters: parameters);
     } catch (e) {
       debugPrint('Analytics error: $e');
     }
+  }
+
+  /// Fire-and-forget PostHog capture; analytics must never break a user flow.
+  /// PostHog itself drops the event when the user declined analytics consent.
+  void _captureInPosthog(String name, Map<String, Object>? properties) {
+    unawaited(
+      Posthog()
+          .capture(eventName: name, properties: properties)
+          .catchError((Object e) => debugPrint('PostHog capture error: $e')),
+    );
   }
 
   /// Log screen view
@@ -55,7 +75,7 @@ class AnalyticsService {
 
   /// Log when user completes onboarding
   Future<void> logOnboardingComplete() async {
-    await logEvent(name: 'onboarding_complete');
+    await logEvent(name: 'onboarding_complete', mirrorToPosthog: false);
     unawaited(Posthog().capture(eventName: 'onboarding_completed'));
   }
 
@@ -65,22 +85,102 @@ class AnalyticsService {
     unawaited(Posthog().capture(eventName: 'subscription_screen_viewed'));
   }
 
-  /// Log when user starts a subscription
-  Future<void> logSubscriptionStart({String? productId}) async {
+  /// Log that a paywall was shown. [placement] says which one: `onboarding`
+  /// (skippable, after onboarding), `engagement_gate` (forced, after the free
+  /// preview) or `settings` (opened by the user).
+  Future<void> logPaywallViewed({required String placement}) async {
+    await logEvent(
+      name: 'paywall_viewed',
+      parameters: {'placement': placement},
+    );
+  }
+
+  /// Log a completed purchase. Not for restores - see [logSubscriptionRestored].
+  Future<void> logSubscriptionStart({
+    String? productId,
+    String? placement,
+  }) async {
+    final properties = <String, Object>{
+      if (productId != null) 'product_id': productId,
+      if (placement != null) 'placement': placement,
+    };
     await logEvent(
       name: 'subscription_start',
-      parameters: productId != null ? {'product_id': productId} : null,
+      parameters: properties.isEmpty ? null : properties,
+      mirrorToPosthog: false,
     );
-    unawaited(Posthog().capture(
-      eventName: 'subscription_purchased',
-      properties: productId != null ? {'product_id': productId} : null,
-    ));
+    _captureInPosthog(
+      'subscription_purchased',
+      properties.isEmpty ? null : properties,
+    );
+  }
+
+  /// Log that the user picked a plan on a paywall.
+  Future<void> logPaywallProductSelected({
+    required String productId,
+    required String placement,
+  }) async {
+    await logEvent(
+      name: 'paywall_product_selected',
+      parameters: {'product_id': productId, 'placement': placement},
+    );
+  }
+
+  /// Log that the store purchase sheet was opened for a plan.
+  Future<void> logPurchaseStarted({
+    required String productId,
+    required String placement,
+  }) async {
+    await logEvent(
+      name: 'purchase_started',
+      parameters: {'product_id': productId, 'placement': placement},
+    );
+  }
+
+  /// Log that the user backed out of the store purchase sheet.
+  Future<void> logPurchaseCancelled({
+    required String productId,
+    required String placement,
+  }) async {
+    await logEvent(
+      name: 'purchase_cancelled',
+      parameters: {'product_id': productId, 'placement': placement},
+    );
+  }
+
+  /// Log a purchase that failed (store error, declined payment, ...).
+  Future<void> logPurchaseFailed({
+    required String productId,
+    required String placement,
+    required int errorCode,
+    required String errorMessage,
+  }) async {
+    await logEvent(
+      name: 'purchase_failed',
+      parameters: {
+        'product_id': productId,
+        'placement': placement,
+        'error_code': errorCode,
+        // Firebase rejects parameter values over 100 characters.
+        'error_message': errorMessage.length > 100
+            ? errorMessage.substring(0, 100)
+            : errorMessage,
+      },
+    );
+  }
+
+  /// Log that an existing purchase was restored from a paywall. Kept apart
+  /// from purchases so restores do not inflate conversion numbers.
+  Future<void> logSubscriptionRestored({required String placement}) async {
+    await logEvent(
+      name: 'subscription_restored',
+      parameters: {'placement': placement},
+    );
   }
 
   /// Log when user dismisses the subscription paywall without subscribing
   Future<void> logSubscriptionDismissed() async {
     await logEvent(name: 'subscription_dismissed');
-    unawaited(Posthog().capture(eventName: 'subscription_dismissed'));
   }
 
   /// Log when the free-preview-ending warning banner is shown
@@ -97,6 +197,7 @@ class AnalyticsService {
   Future<void> logStarSearch({required String query}) async {
     await logEvent(
       name: 'star_search',
+      mirrorToPosthog: false,
       parameters: {'query': query},
     );
     unawaited(Posthog().capture(
@@ -117,6 +218,7 @@ class AnalyticsService {
   Future<void> logStarSave({required String starName}) async {
     await logEvent(
       name: 'star_save',
+      mirrorToPosthog: false,
       parameters: {'star_name': starName},
     );
     unawaited(Posthog().capture(
@@ -128,6 +230,36 @@ class AnalyticsService {
   /// Log when user changes location
   Future<void> logLocationChange() async {
     await logEvent(name: 'location_change');
+  }
+
+  /// Describe who the user is, so any event can be split by it: star owner
+  /// or explorer, subscriber or not, how many stars saved, app language.
+  /// Sent as PostHog person and event properties and Firebase user
+  /// properties; a no-op when nothing changed since the last call.
+  Future<void> setUserProfile({
+    required bool isStarOwner,
+    required int savedStarCount,
+    bool? isSubscriber,
+    String? language,
+  }) async {
+    final profile = <String, Object>{
+      'is_star_owner': isStarOwner,
+      'saved_star_count': savedStarCount,
+      if (isSubscriber != null) 'is_subscriber': isSubscriber,
+      if (language != null) 'app_language': language,
+    };
+    if (mapEquals(profile, _lastUserProfile)) return;
+    _lastUserProfile = profile;
+
+    for (final entry in profile.entries) {
+      unawaited(Posthog()
+          .register(entry.key, entry.value)
+          .catchError((Object e) => debugPrint('PostHog register error: $e')));
+      unawaited(setUserProperty(name: entry.key, value: '${entry.value}'));
+    }
+    unawaited(Posthog()
+        .setPersonProperties(userPropertiesToSet: profile)
+        .catchError((Object e) => debugPrint('PostHog profile error: $e')));
   }
 
   /// Set user property
@@ -162,13 +294,6 @@ class AnalyticsService {
         if (starName != null) 'star_name': starName,
       },
     );
-    unawaited(Posthog().capture(
-      eventName: 'registration_found',
-      properties: {
-        'registration_number': registrationNumber,
-        if (starName != null) 'star_name': starName,
-      },
-    ));
   }
 
   /// Log when registration search fails
@@ -177,10 +302,6 @@ class AnalyticsService {
       name: 'registration_not_found',
       parameters: {'registration_number': registrationNumber},
     );
-    unawaited(Posthog().capture(
-      eventName: 'registration_not_found',
-      properties: {'registration_number': registrationNumber},
-    ));
   }
 
   // ==================== Certificate Scanner ====================
@@ -217,6 +338,7 @@ class AnalyticsService {
   Future<void> logStarPointAt({required String starName}) async {
     await logEvent(
       name: 'star_point_at',
+      mirrorToPosthog: false,
       parameters: {'star_name': starName},
     );
     unawaited(Posthog().capture(
@@ -369,6 +491,21 @@ class AnalyticsService {
     );
   }
 
+  // ==================== Push notifications ====================
+
+  /// Log that the user tapped a push notification. [source] is `klaviyo`
+  /// (marketing pushes; [properties] then carry `campaign_name`) or
+  /// `firebase` (star visibility alerts from our Cloud Functions).
+  Future<void> logPushOpened({
+    required String source,
+    Map<String, Object> properties = const {},
+  }) async {
+    await logEvent(
+      name: 'push_opened',
+      parameters: {'source': source, ...properties},
+    );
+  }
+
   // ==================== Onboarding ====================
 
   /// Log when user grants a permission
@@ -404,6 +541,39 @@ class AnalyticsService {
   }
 
   // ==================== Engagement Tracking ====================
+
+  /// Log that the user's total sky-viewing time passed [minutes].
+  /// Fired once per install for each milestone.
+  Future<void> logSkyTimeMilestone({required int minutes}) async {
+    await logEvent(
+      name: 'sky_time_milestone',
+      parameters: {'minutes': minutes},
+    );
+  }
+
+  /// Log that the sky finished loading, and how long that took.
+  Future<void> logSkyReady({required int loadMs}) async {
+    await logEvent(name: 'sky_ready', parameters: {'load_ms': loadMs});
+  }
+
+  /// Log that the user jumped back to the current time.
+  Future<void> logTimeReset() async {
+    await logEvent(name: 'time_reset_to_now');
+  }
+
+  /// Log that the user picked another date to view.
+  Future<void> logDateChanged() async {
+    await logEvent(name: 'date_changed');
+  }
+
+  /// Log that the store review prompt was requested. [available] is false
+  /// when the device cannot show it.
+  Future<void> logReviewPromptRequested({required bool available}) async {
+    await logEvent(
+      name: 'review_prompt_requested',
+      parameters: {'available': available.toString()},
+    );
+  }
 
   /// Log sky view milestone for Firebase In-App Messaging triggers.
   /// Fires events like 'sky_view_2_min', 'sky_view_5_min', 'sky_view_10_min'.

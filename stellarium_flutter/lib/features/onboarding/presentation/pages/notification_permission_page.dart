@@ -66,6 +66,8 @@ class _NotificationPermissionPageState
           final languageCode = locale?.languageCode ??
               WidgetsBinding.instance.platformDispatcher.locale.languageCode;
           _initializeKlaviyoAsync(languageCode);
+        } else {
+          AnalyticsService.instance.logPermissionSkipped(permission: 'notification');
         }
       }
     } catch (e) {

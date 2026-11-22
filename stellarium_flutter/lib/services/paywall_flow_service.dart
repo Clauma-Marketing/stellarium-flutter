@@ -98,6 +98,7 @@ class PaywallFlowService {
       unawaited(AnalyticsService.instance.logEvent(
         name: 'paywall_flow_assigned',
         parameters: {'flow': flowName, 'variation_id': paywall.variationId},
+        mirrorToPosthog: false,
       ));
       unawaited(Posthog().capture(
         eventName: 'paywall_flow_assigned',

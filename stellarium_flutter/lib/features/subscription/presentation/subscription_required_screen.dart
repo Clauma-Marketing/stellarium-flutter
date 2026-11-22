@@ -59,6 +59,7 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
         locale: LocaleService.instance.adaptyLocale,
       );
       await view.present();
+      AnalyticsService.instance.logPaywallViewed(placement: 'engagement_gate');
     } on AdaptyError catch (e) {
       debugPrint('SubscriptionRequired: Adapty error: ${e.message}');
       setState(() {
@@ -84,7 +85,6 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
   void _onSubscriptionSuccess() {
     // Mark paywall as handled so it doesn't show again
     EngagementTrackingService.instance.markPaywallHandled();
-    AnalyticsService.instance.logSubscriptionStart();
     widget.onComplete();
   }
 
@@ -147,6 +147,10 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
     switch (purchaseResult) {
       case AdaptyPurchaseResultSuccess():
         debugPrint('SubscriptionRequired: Purchase successful');
+        AnalyticsService.instance.logSubscriptionStart(
+          productId: product.vendorProductId,
+          placement: 'engagement_gate',
+        );
         view.dismiss();
         _onSubscriptionSuccess();
         break;
@@ -156,6 +160,10 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
         break;
       case AdaptyPurchaseResultUserCancelled():
         debugPrint('SubscriptionRequired: Purchase cancelled by user');
+        AnalyticsService.instance.logPurchaseCancelled(
+          productId: product.vendorProductId,
+          placement: 'engagement_gate',
+        );
         // Don't dismiss - user stays on paywall
         break;
       default:
@@ -171,6 +179,12 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
     AdaptyError error,
   ) {
     debugPrint('SubscriptionRequired: Purchase failed: ${error.message}');
+    AnalyticsService.instance.logPurchaseFailed(
+      productId: product.vendorProductId,
+      placement: 'engagement_gate',
+      errorCode: error.code,
+      errorMessage: error.message,
+    );
   }
 
   @override
@@ -181,6 +195,8 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
     final hasAccess = profile.accessLevels.values.any((level) => level.isActive);
     if (hasAccess) {
       debugPrint('SubscriptionRequired: Restore completed with active subscription');
+      AnalyticsService.instance
+          .logSubscriptionRestored(placement: 'engagement_gate');
       view.dismiss();
       _onSubscriptionSuccess();
     } else {
@@ -222,6 +238,10 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
     String productId,
   ) {
     debugPrint('SubscriptionRequired: Product selected: $productId');
+    AnalyticsService.instance.logPaywallProductSelected(
+      productId: productId,
+      placement: 'engagement_gate',
+    );
   }
 
   @override
@@ -230,6 +250,10 @@ class _SubscriptionRequiredScreenState extends State<SubscriptionRequiredScreen>
     AdaptyPaywallProduct product,
   ) {
     debugPrint('SubscriptionRequired: Purchase started: ${product.vendorProductId}');
+    AnalyticsService.instance.logPurchaseStarted(
+      productId: product.vendorProductId,
+      placement: 'engagement_gate',
+    );
   }
 
   @override
