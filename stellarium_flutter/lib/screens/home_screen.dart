@@ -19,6 +19,7 @@ import '../services/reverse_geocoding.dart';
 import '../services/subscription_availability_service.dart';
 import '../services/saved_stars_service.dart';
 import '../services/search_history_service.dart';
+import '../services/shop_link_service.dart';
 import '../stellarium/stellarium.dart';
 import '../utils/sun_times.dart';
 import '../widgets/bottom_bar.dart';
@@ -708,9 +709,7 @@ class _HomeScreenState extends State<HomeScreen>
               }
             },
             onNameStar: () async {
-              AnalyticsService.instance.logNameStarClicked();
-              final locale = LocaleService.instance.locale ?? ui.PlatformDispatcher.instance.locale;
-              final languageCode = locale.languageCode;
+              final languageCode = ShopLinkService.currentLanguageCode();
 
               String? hipNumber;
               final modelData = _selectedStarInfo?.modelData;
@@ -739,13 +738,17 @@ class _HomeScreenState extends State<HomeScreen>
                 }
               }
 
-              final baseUrl = languageCode == 'de'
-                  ? 'https://www.sterntaufe-deutschland.de/products/sterntaufe'
-                  : 'https://www.star-registration.com/products/standard';
-
-              final uri = hipNumber != null
-                  ? Uri.parse('$baseUrl?hip=$hipNumber')
-                  : Uri.parse(baseUrl);
+              final uri = ShopLinkService.nameStarUri(
+                languageCode: languageCode,
+                placement: ShopLinkPlacement.starSheet,
+                hipNumber: hipNumber,
+              );
+              AnalyticsService.instance.logNameStarClicked(
+                placement: ShopLinkPlacement.starSheet,
+                languageCode: languageCode,
+                destination: uri,
+                hipNumber: hipNumber,
+              );
 
               try {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);

@@ -5,6 +5,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../../screens/certificate_scanner_factory.dart';
 import '../../../../services/analytics_service.dart';
 import '../../../../services/saved_stars_service.dart';
+import '../../../../services/shop_link_service.dart';
 import '../../../../widgets/star_info_sheet.dart';
 import '../widgets/animated_starfield.dart';
 import '../widgets/permission_page_template.dart';
@@ -21,6 +22,10 @@ class StarRegistrationPage extends StatefulWidget {
   /// the "Have you named a star?" question (used by the subscription paywall).
   final bool startInRegistrationMode;
 
+  /// Where this page is shown, one of [ShopLinkPlacement]. Tags the
+  /// "Name a Star" shop link and its click event.
+  final String placement;
+
   const StarRegistrationPage({
     super.key,
     required this.onContinue,
@@ -29,6 +34,7 @@ class StarRegistrationPage extends StatefulWidget {
     this.currentPage,
     this.totalPages,
     this.startInRegistrationMode = false,
+    this.placement = ShopLinkPlacement.onboarding,
   });
 
   @override
@@ -179,8 +185,16 @@ class _StarRegistrationPageState extends State<StarRegistrationPage>
 
   Future<void> _openNameStarWebsite() async {
     // Track name a star click
-    AnalyticsService.instance.logNameStarClicked();
-    final uri = Uri.parse('https://www.star-register.com');
+    final languageCode = ShopLinkService.currentLanguageCode();
+    final uri = ShopLinkService.nameStarUri(
+      languageCode: languageCode,
+      placement: widget.placement,
+    );
+    AnalyticsService.instance.logNameStarClicked(
+      placement: widget.placement,
+      languageCode: languageCode,
+      destination: uri,
+    );
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
