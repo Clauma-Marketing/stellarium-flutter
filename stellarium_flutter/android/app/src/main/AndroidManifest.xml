@@ -5,8 +5,11 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- FCM push notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- Remove AD_ID permission to comply with Google Play policy for API 33+ -->
-    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
+    <!-- Advertising ID, used for ad attribution (Google Ads via Firebase
+         Analytics, Adapty). Must match the "Advertising ID" declaration in
+         Play Console, which is set to Yes. Without this permission Android 13+
+         hands out an all-zero ID. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
     <application
         android:usesCleartextTraffic="true"
         android:label="Star Registration Planetarium"
@@ -65,14 +68,10 @@
         <meta-data
             android:name="AdaptyObserverMode"
             android:value="false" />
-        <meta-data
-            android:name="AdaptyGoogleAdvertisingIdCollectionDisabled"
-            android:value="true" />
-
-        <!-- Disable Google Analytics advertising ID collection -->
-        <meta-data
-            android:name="google_analytics_adid_collection_enabled"
-            android:value="false" />
+        <!-- Advertising ID collection is governed by consent, not switched
+             off here: Google Analytics only reads it once ad_storage consent is
+             granted (Consent Mode defaults below, updated by ConsentService),
+             and Adapty is told at activation in main.dart. -->
 
         <!-- Google Consent Mode v2 defaults: denied until ConsentService
              grants (automatically outside EEA/UK/CH, or via the consent

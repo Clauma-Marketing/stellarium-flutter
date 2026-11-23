@@ -299,6 +299,10 @@ void main() async {
             apiKey: 'public_live_IOi0yFDb.WFTHrIKk8DzeTfEPmBwQ',
           )
             ..withLogLevel(AdaptyLogLevel.error)
+            // Advertising ID (Android) only with consent. Decided once per
+            // launch, so a consent change applies from the next start.
+            ..withGoogleAdvertisingIdCollectionDisabled(
+                !ConsentService.instance.isGranted)
             ..withActivateUI(true),
         );
 
