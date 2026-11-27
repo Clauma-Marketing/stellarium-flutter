@@ -98,8 +98,8 @@ dependencies:
   sign_in_with_apple: ^7.0.1
   crypto: ^3.0.6
 
-  # Klaviyo for email marketing
-  klaviyo_flutter: ^0.2.0
+  # Klaviyo for email and push marketing (Klaviyo's official SDK)
+  klaviyo_flutter_sdk: ^0.5.0
 
   # Firebase Messaging for push notifications
   firebase_messaging: ^15.2.0

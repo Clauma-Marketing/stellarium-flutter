@@ -19,6 +19,15 @@
       }
     },
     {
+      "identity" : "anycodable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Flight-School/AnyCodable",
+      "state" : {
+        "revision" : "862808b2070cd908cb04f9aafe7de83d35f81b05",
+        "version" : "0.6.7"
+      }
+    },
+    {
       "identity" : "app-check",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/google/app-check.git",
@@ -133,6 +142,15 @@
       "state" : {
         "revision" : "040d087ac2267d2ddd4cca36c757d1c6a05fdbfe",
         "version" : "101.0.0"
+      }
+    },
+    {
+      "identity" : "klaviyo-swift-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/klaviyo/klaviyo-swift-sdk",
+      "state" : {
+        "revision" : "fcd017e47b37c4d07c9b2a55075bea08cf789fa3",
+        "version" : "5.6.0"
       }
     },
     {

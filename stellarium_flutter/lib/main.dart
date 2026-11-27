@@ -64,9 +64,6 @@ Future<void> _handleNotificationTap(RemoteMessage message) async {
   final data = message.data;
   debugPrint('Notification tapped with data: $data');
 
-  // Track Klaviyo push open
-  await KlaviyoService.instance.handlePush(data);
-
   final type = data['type'];
   final title = message.notification?.title;
   unawaited(AnalyticsService.instance.logPushOpened(

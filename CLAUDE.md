@@ -77,7 +77,7 @@ Mixed feature-first + layered layout:
 
 - **Firebase** (`firebase.json`, `functions/`): Auth, Firestore, Analytics, Crashlytics, Messaging, In-App Messaging. Cloud Functions (`functions/`, TypeScript, Node 20) implement **star-visibility push notifications** — the app syncs saved stars to Firestore via `FirestoreSyncService` and Functions decide when to notify. Build/deploy: `cd functions && npm run build && npm run deploy`. Firestore security in `firestore.rules` / `firestore.indexes.json`.
 - **Adapty** — subscriptions and paywalls (`features/subscription/`, `subscription_availability_service.dart`).
-- **Klaviyo** — email/push marketing; push payloads are forwarded to `KlaviyoService.instance.handlePush` (including from the top-level background message handler in `main.dart`).
+- **Klaviyo** — email/push marketing through Klaviyo's official `klaviyo_flutter_sdk` (wrapped by `KlaviyoService`; German and English users go to different Klaviyo accounts). The native SDKs report "Opened Push" and open a push's link themselves; `AppDelegate.swift` / `MainActivity.kt` additionally hand the tapped push to Dart over the `klaviyo_push` channel so `main.dart` can log `push_opened` and route it. A web link in a push's "Deep link" field opens in the browser, whatever the website: iOS via the deep link handler registered in `AppDelegate.swift`, Android in `MainActivity` (from the VIEW intent for the shop hosts in its intent filter, otherwise from the push's `com.klaviyo.url` extra).
 - Notification taps route through `_handleNotificationTap` in `main.dart` (external URL, `registration_number` deep link to a star, or `screen` navigation).
 
 ## Custom star labels (engine + bridge + app feature)

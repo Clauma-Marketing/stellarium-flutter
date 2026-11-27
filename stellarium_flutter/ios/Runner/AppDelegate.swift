@@ -4,6 +4,7 @@ import GoogleMaps
 import FirebaseCore
 import FirebaseMessaging
 import KlaviyoSwift
+import klaviyo_flutter_sdk
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -22,6 +23,15 @@ import KlaviyoSwift
     // Configure Firebase
     FirebaseApp.configure()
 
+    // The links on Klaviyo pushes are web links, to the shop or to any other
+    // website. Without a handler
+    // of its own, Klaviyo's SDK treats an https link as a link into this app
+    // and passes it to Flutter, which has no route for it. Open every push
+    // link in the browser instead.
+    KlaviyoSDK().registerDeepLinkHandler { url in
+      UIApplication.shared.open(url)
+    }
+
     // Set up push notification delegate for iOS 10+
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self
@@ -36,10 +46,10 @@ import KlaviyoSwift
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
 
-    // klaviyo_flutter makes itself the notification-centre delegate while it
-    // registers and forwards to no one, which cuts Firebase Messaging off from
-    // notification taps. Take the delegate back: this class tracks Klaviyo
-    // opens below and passes everything else on to the plugins.
+    // Make sure this class is still the notification-centre delegate once the
+    // plugins have registered. Klaviyo's official SDK leaves it alone, but the
+    // package used before it took the delegate for itself and forwarded to no
+    // one, which silently cut Firebase Messaging off from notification taps.
     UNUserNotificationCenter.current().delegate = self
 
     let channel = FlutterMethodChannel(
@@ -63,22 +73,22 @@ import KlaviyoSwift
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
-    if let payload = AppDelegate.klaviyoPushPayload(response) {
-      // Kept until Dart collects it, so a tap that launches the app is not lost.
-      pendingPush = payload
-      pushChannel?.invokeMethod("onPushOpened", arguments: nil)
-    }
-
-    // Tracks "Opened Push" and opens the push's link when it is Klaviyo's.
-    // Safe before Klaviyo is initialised from Dart: the SDK queues the event.
-    let handled = KlaviyoSDK().handle(
-      notificationResponse: response,
-      withCompletionHandler: completionHandler
-    )
-    if !handled {
+    guard let payload = AppDelegate.klaviyoPushPayload(response) else {
+      // Not Klaviyo's: let the plugins see it (Firebase Messaging reports it
+      // to Dart).
       super.userNotificationCenter(
         center, didReceive: response, withCompletionHandler: completionHandler)
+      return
     }
+
+    // Kept until Dart collects it, so a tap that launches the app is not lost.
+    pendingPush = payload
+    pushChannel?.invokeMethod("onPushOpened", arguments: nil)
+
+    // Reports "Opened Push" to Klaviyo and opens the push's link or runs its
+    // action button.
+    KlaviyoFlutterSdkPlugin.shared.handleNotificationResponse(response)
+    completionHandler()
   }
 
   // A notification arrived while the app is in the foreground.

@@ -5,10 +5,15 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:klaviyo_flutter/klaviyo_flutter.dart';
+import 'package:klaviyo_flutter_sdk/klaviyo_flutter_sdk.dart';
 
-/// Service for managing Klaviyo email marketing integration.
-/// Uses different API keys for German and English users.
+/// Service for managing Klaviyo email and push marketing, on Klaviyo's
+/// official Flutter SDK. Uses different API keys for German and English users.
+///
+/// The native SDKs report "Opened Push" to Klaviyo and open a push's link on
+/// their own (see AppDelegate.swift and the SDK's Android plugin). This class
+/// sets up the profile and push token, and passes tapped pushes on to the app
+/// for analytics and in-app routing.
 class KlaviyoService {
   static final KlaviyoService _instance = KlaviyoService._internal();
   static KlaviyoService get instance => _instance;
@@ -29,8 +34,8 @@ class KlaviyoService {
   bool _pushOpenChannelReady = false;
   StreamSubscription<String>? _tokenRefreshSubscription;
 
-  /// Called with the data of a tapped Klaviyo notification, after Klaviyo has
-  /// been told about the open. Set once at startup.
+  /// Called with the data of a tapped Klaviyo notification. Set once at
+  /// startup.
   Future<void> Function(Map<String, dynamic> data)? onPushOpened;
 
   /// Initialize Klaviyo with the appropriate API key based on locale.
@@ -42,7 +47,7 @@ class KlaviyoService {
     _currentLocale = languageCode;
 
     try {
-      await Klaviyo.instance.initialize(apiKey);
+      await KlaviyoSDK().initialize(apiKey: apiKey);
       _isInitialized = true;
       debugPrint('Klaviyo initialized for locale: $languageCode');
       _setupPushOpenChannel();
@@ -62,7 +67,9 @@ class KlaviyoService {
     if (!_isInitialized) return;
 
     try {
-      await Klaviyo.instance.logEvent(eventName, properties ?? {});
+      await KlaviyoSDK().createEvent(
+        KlaviyoEvent.custom(metric: eventName, properties: properties),
+      );
     } catch (e) {
       debugPrint('Klaviyo logEvent error: $e');
     }
@@ -73,7 +80,7 @@ class KlaviyoService {
     if (!_isInitialized) return;
 
     try {
-      await Klaviyo.instance.setExternalId(externalId);
+      await KlaviyoSDK().setExternalId(externalId);
     } catch (e) {
       debugPrint('Klaviyo setExternalId error: $e');
     }
@@ -84,7 +91,7 @@ class KlaviyoService {
     if (!_isInitialized) return;
 
     try {
-      await Klaviyo.instance.setEmail(email);
+      await KlaviyoSDK().setEmail(email);
     } catch (e) {
       debugPrint('Klaviyo setEmail error: $e');
     }
@@ -95,7 +102,7 @@ class KlaviyoService {
     if (!_isInitialized) return;
 
     try {
-      await Klaviyo.instance.setPhoneNumber(phoneNumber);
+      await KlaviyoSDK().setPhoneNumber(phoneNumber);
     } catch (e) {
       debugPrint('Klaviyo setPhoneNumber error: $e');
     }
@@ -106,7 +113,7 @@ class KlaviyoService {
     if (!_isInitialized) return;
 
     try {
-      await Klaviyo.instance.resetProfile();
+      await KlaviyoSDK().resetProfile();
     } catch (e) {
       debugPrint('Klaviyo resetProfile error: $e');
     }
@@ -136,6 +143,11 @@ class KlaviyoService {
 
   /// Register push token with Klaviyo after user grants notification permission.
   /// This subscribes the user's device for push notifications in Klaviyo.
+  ///
+  /// The SDK also forwards the token by itself when the system hands one out,
+  /// but on Android it drops a token that arrives before [initialize] has run,
+  /// so the token is still sent from here. Sending the same token twice costs
+  /// nothing: the native SDK only makes a request when something changed.
   Future<bool> registerPushToken() async {
     if (!_isInitialized || kIsWeb) return false;
 
@@ -143,7 +155,7 @@ class KlaviyoService {
       final token = await _platformPushToken();
 
       if (token != null && token.isNotEmpty) {
-        await Klaviyo.instance.sendTokenToKlaviyo(token);
+        await KlaviyoSDK().setPushToken(token);
         _pushTokenRegistered = true;
         debugPrint('Klaviyo push token registered successfully');
         return true;
@@ -199,19 +211,6 @@ class KlaviyoService {
   /// Check if push token is registered
   bool get isPushTokenRegistered => _pushTokenRegistered;
 
-  /// Track a Klaviyo push open from its data payload. Only call this for a
-  /// notification the user actually tapped - Klaviyo records every call that
-  /// carries a Klaviyo payload as "Opened Push".
-  Future<void> handlePush(Map<String, dynamic> data) async {
-    if (!_isInitialized) return;
-
-    try {
-      await Klaviyo.instance.handlePush(data);
-    } catch (e) {
-      debugPrint('Klaviyo handlePush error: $e');
-    }
-  }
-
   /// Listen for token refresh and update Klaviyo
   void setupTokenRefreshListener() {
     if (kIsWeb || _tokenRefreshSubscription != null) return;
@@ -234,6 +233,9 @@ class KlaviyoService {
   /// report as an opened message. iOS: the app delegate handles the tap
   /// natively and passes the payload on. Both keep it until it is taken
   /// here, so cold starts are covered as well.
+  ///
+  /// The SDK's own `onPushNotification` stream is not used for this: on
+  /// Android it loses the tap that starts the app, which is the common case.
   void _setupPushOpenChannel() {
     if (kIsWeb || _pushOpenChannelReady) return;
     if (!Platform.isAndroid && !Platform.isIOS) return;
@@ -253,10 +255,7 @@ class KlaviyoService {
           .invokeMapMethod<String, String>('takePendingPush');
       if (payload == null || !payload.containsKey('_k')) return;
 
-      // On iOS the Klaviyo SDK has already recorded the open natively.
-      if (Platform.isAndroid) {
-        await handlePush(Map<String, dynamic>.from(payload));
-      }
+      // Klaviyo itself has already been told about the open natively.
       await onPushOpened?.call(routingDataFromKlaviyoPush(payload));
     } catch (e) {
       debugPrint('Klaviyo push open handling error: $e');
